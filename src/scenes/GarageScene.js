@@ -56,9 +56,9 @@ export class GarageScene extends BaseScene {
     this.preview = null; // сборка «если поставить» при наведении на карточку
 
     this.#drawRoom();
-    const opts = { x: cfg.carX, y: cfg.groundY, dirty: gameState.car.dirty };
+    const opts = { x: cfg.carX, y: cfg.groundY, dirty: gameState.car.dirty, scale: cfg.carScale };
     this.reflection = buildCar(this, gameState.build, gameState.cosmetics, opts)
-      .setScale(1, -1)
+      .setScale(cfg.carScale, -cfg.carScale)
       .setAlpha(cfg.reflectionAlpha);
     this.#drawFloorFade();
     this.car = buildCar(this, gameState.build, gameState.cosmetics, opts);
@@ -145,15 +145,21 @@ export class GarageScene extends BaseScene {
     const n = TEST_IDS.indexOf(this.testId) + 1;
     this.$stats = el('div', { class: 'gstats' });
     this.$verdict = el('div', { class: 'gverdict' });
-    this.$note = el('div', { class: 'gnote__text' });
+    this.$adviceText = el('div', { class: 'gadvice__text' });
+    this.$advice = el('section', { class: 'gadvice', hidden: true }, [
+      el('div', { class: 'gadvice__title', text: t('garage.noteTitle') }),
+      this.$adviceText,
+    ]);
     this.$tray = el('div', { class: 'ui-abs gtray' });
     this.$tabs = el('div', { class: 'ui-abs gtabs', role: 'tablist' });
-    this.$missing = el('div', { class: 'glaunch__missing' });
     this.$launch = webButton(this.test.startButton, () => this.#launch(), {
       variant: 'primary',
       icon: 'play',
       className: 'glaunch__btn',
     });
+    // Вторая строка на кнопке: чего не хватает для запуска.
+    this.$launchSub = el('span', { class: 'glaunch__sub' });
+    this.$launch.querySelector('.wbtn__label').append(this.$launchSub);
 
     this.ui.append(
       el('header', { class: 'ui-abs gtop' }, [
@@ -177,16 +183,10 @@ export class GarageScene extends BaseScene {
           }),
         ]),
       ]),
-      el('aside', { class: 'ui-abs gside' }, [
-        el('section', { class: 'gpanel' }, [this.$stats, this.$verdict]),
-        el('section', { class: 'gnote' }, [
-          el('div', { class: 'gnote__title', text: t('garage.noteTitle') }),
-          this.$note,
-        ]),
-      ]),
+      el('aside', { class: 'ui-abs gpanel gside' }, [this.$stats, this.$verdict, this.$advice]),
       this.$tray,
       this.$tabs,
-      el('div', { class: 'ui-abs glaunch' }, [this.$missing, this.$launch]),
+      el('div', { class: 'ui-abs glaunch' }, this.$launch),
     );
   }
 
@@ -204,7 +204,7 @@ export class GarageScene extends BaseScene {
     this.#renderTabs();
     this.#renderTray();
     this.#renderLaunch();
-    this.#renderNote();
+    this.#renderAdvice();
   }
 
   // ---------- Характеристики ----------
@@ -423,10 +423,8 @@ export class GarageScene extends BaseScene {
             ? el('span', { class: 'gcard__tag' }, [icon('check'), t('garage.installed')])
             : null,
         ]),
-        // Стоящая деталь — короткое описание, остальные — что изменится, если поставить.
-        selected
-          ? el('div', { class: 'gcard__desc', text: desc })
-          : el('div', { class: 'gcard__delta' }, this.#deltas(nextBuild)),
+        el('div', { class: 'gcard__desc', text: desc }),
+        el('div', { class: 'gcard__delta' }, selected ? [] : this.#deltas(nextBuild)),
       ],
     );
     return card;
@@ -485,18 +483,21 @@ export class GarageScene extends BaseScene {
   #renderLaunch() {
     const { missing } = computeStats(gameState.build);
     this.$launch.disabled = missing.length > 0;
-    this.$missing.textContent = missing.length
+    this.$launchSub.textContent = missing.length
       ? t('garage.missing', {
           slots: missing.map((s) => t(`garage.tabs.${s}`).toLowerCase()).join(', '),
         })
       : '';
   }
 
-  #renderNote() {
+  /** Совет деда — только когда он нужен: после провала, прямой совет — после трёх подряд (ТЗ 4.5). */
+  #renderAdvice() {
     const hint = shouldShowGrandpaHint(this.testId) ? this.test.grandpaHint : null;
     const last = gameState.lastResult;
     const lastHint = last && !last.ok && last.testId === this.testId ? last.hint : null;
-    this.$note.textContent = hint ?? lastHint ?? t('garage.noteDefault');
+    const text = hint ?? lastHint;
+    this.$advice.hidden = !text;
+    this.$adviceText.textContent = text ?? '';
   }
 
   #launch() {

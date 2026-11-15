@@ -48,8 +48,8 @@
     "finishHoldMs": 1500
   },
   "garage": {
-    "carX": 416,
-    "groundY": 236,
+    "carX": 400,
+    "groundY": 248,
     "reflectionAlpha": 0.16,
     "barSegments": 12,
     "statMax": {
@@ -58,6 +58,7 @@
       "grip": 12,
       "downforce": 3,
       "durability": 9
-    }
+    },
+    "carScale": 1.3
   }
 }

@@ -73,13 +73,12 @@
       "medium": "средний",
       "heavy": "тяжёлый"
     },
-    "noteDefault": "Двигатель живой, остальное сам смотри.",
     "wash": "Помыть",
     "washed": "Чистая",
     "noSpoiler": "Без спойлера",
     "testChip": "{name} · {n} из {total}",
     "installed": "Стоит",
-    "noteTitle": "Записка деда",
+    "noteTitle": "Совет деда",
     "verdict": {
       "trialNeed": "Нужная тяга",
       "trialHave": "Тяга сейчас",

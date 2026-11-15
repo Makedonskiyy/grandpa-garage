@@ -514,14 +514,16 @@
   z-index: 2;
 }
 
-/* ---------- Гараж: тюнинг ---------- */
-/* Компактная кнопка-иконка (помощь, настройки в верхней панели). */
+/* ---------- Гараж: тюнинг ----------
+ * Сетка Full HD: поля 40, шаг 8. Слева панель характеристик 440, справа от неё —
+ * зона машины; снизу лоток деталей (h 152) и ряд вкладок с кнопкой запуска (h 96).
+ */
 .wbtn--icon {
-  width: 96px;
-  height: 96px;
+  width: 64px;
+  height: 64px;
   padding: 0;
-  border-radius: 24px;
-  box-shadow: none;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.3);
 }
 
 .wbtn--icon .wbtn__label {
@@ -529,82 +531,79 @@
 }
 
 .wbtn--icon .icon {
-  width: 54px;
-  height: 54px;
+  width: 28px;
+  height: 28px;
 }
 
-/* Общий вид панелей гаража: тёмная тёплая поверхность и волосная рамка. */
-.gpanel,
+/* Общая поверхность панелей: тёплый тёмный, волосная рамка, без свечений. */
+.gside,
 .gtray,
 .gtabs,
 .gtop__goal {
-  background: rgb(22 21 19 / 0.9);
-  box-shadow: inset 0 0 0 3px rgb(239 233 222 / 0.08);
+  background: rgb(22 21 19 / 0.92);
+  box-shadow: inset 0 0 0 1px rgb(239 233 222 / 0.08);
   color: #efe9de;
   font-family: var(--font-ui);
 }
 
 .gtop {
-  left: 36px;
-  right: 36px;
-  top: 36px;
+  left: 40px;
+  right: 40px;
+  top: 40px;
+  height: 64px;
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 36px;
+  align-items: center;
+  gap: 16px;
 }
 
 .gtop__goal {
-  display: flex;
-  align-items: center;
-  gap: 36px;
-  height: 96px;
-  padding: 0 36px 0 12px;
-  border-radius: 24px;
   flex: 1;
   min-width: 0;
+  height: 64px;
+  padding: 0 24px 0 12px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
 }
 
 .gtop__chip {
   flex: none;
-  height: 72px;
-  padding: 0 24px;
-  border-radius: 18px;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   background: var(--ui-accent);
   color: var(--ui-ink);
-  font-size: 33px;
+  font-size: 20px;
   font-weight: 500;
 }
 
 .gtop__text {
-  font-size: 33px;
-  color: #aaa398;
+  min-width: 0;
+  font-size: 22px;
+  color: #c9c1b4;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .gtop__actions {
+  flex: none;
   display: flex;
-  gap: 24px;
+  gap: 16px;
 }
 
-/* Левая колонка: характеристики и записка деда. */
+/* Левая панель: характеристики, вердикт, совет деда. */
 .gside {
-  left: 36px;
-  top: 168px;
-  bottom: 36px;
-  width: 504px;
+  left: 40px;
+  top: 136px;
+  width: 440px;
+  padding: 32px;
+  border-radius: 20px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
-}
-
-.gpanel {
-  padding: 36px;
-  border-radius: 36px;
 }
 
 .gstats {
@@ -617,17 +616,18 @@
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  gap: 24px;
-  margin-bottom: 12px;
-  font-size: 30px;
-  line-height: 36px;
+  gap: 16px;
+  margin-bottom: 10px;
 }
 
 .gstat__label {
+  font-size: 20px;
   color: #aaa398;
 }
 
 .gstat__value {
+  font-size: 22px;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
   color: #efe9de;
   transition: color var(--ui-fast) var(--ui-ease);
@@ -644,12 +644,12 @@
 .gbar {
   display: grid;
   grid-template-columns: repeat(12, 1fr);
-  gap: 6px;
+  gap: 4px;
 }
 
 .gbar__seg {
-  height: 12px;
-  border-radius: 3px;
+  height: 8px;
+  border-radius: 2px;
   background: rgb(239 233 222 / 0.1);
 }
 
@@ -667,7 +667,7 @@
 
 .gbar__seg.is-removed {
   background: transparent;
-  box-shadow: inset 0 0 0 3px currentColor;
+  box-shadow: inset 0 0 0 2px currentColor;
 }
 
 .gbar__seg.is-up.is-removed {
@@ -679,14 +679,13 @@
 }
 
 .gverdict {
-  margin-top: 36px;
+  margin-top: 32px;
   padding-top: 24px;
-  border-top: 3px solid rgb(239 233 222 / 0.08);
+  border-top: 1px solid rgb(239 233 222 / 0.1);
   display: flex;
   flex-direction: column;
   gap: 12px;
-  font-size: 30px;
-  line-height: 42px;
+  font-size: 20px;
 }
 
 .gverdict__row {
@@ -696,6 +695,7 @@
 }
 
 .gverdict__row span:last-child {
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
   color: #efe9de;
 }
@@ -710,68 +710,66 @@
 
 .gverdict__empty {
   color: #e2766b;
+  line-height: 1.4;
 }
 
-/* Записка деда: та же бумага и почерк, что в интро. */
-.gnote {
-  margin-top: auto;
-  padding: 24px 36px 36px;
-  border-radius: 6px;
-  background: #f3ead7;
-  color: #2a3348;
-  box-shadow: 0 18px 48px rgb(0 0 0 / 0.45);
-  transform: rotate(-1deg);
+/* Совет деда появляется только после провала. */
+.gadvice {
+  margin-top: 24px;
+  padding: 16px 20px;
+  border-radius: 12px;
+  background: rgb(238 164 90 / 0.1);
+  box-shadow: inset 4px 0 0 var(--ui-accent);
 }
 
-.gnote__title {
-  font-family: var(--font-ui);
-  font-size: 27px;
-  color: #7b7266;
-  margin-bottom: 6px;
+.gadvice[hidden] {
+  display: none;
 }
 
-.gnote__text {
-  font-family: 'Caveat Variable', 'Caveat', cursive;
-  font-size: 45px;
-  line-height: 51px;
+.gadvice__title {
+  font-size: 16px;
+  color: var(--ui-accent);
+  margin-bottom: 4px;
 }
 
-/*
- * Нижняя зона справа от колонки (x 192…628): лоток деталей сверху (h 48),
- * под ним вкладки (h 40) и кнопка запуска (h 40). Машина стоит выше, на y 236.
- */
+.gadvice__text {
+  font-size: 19px;
+  line-height: 1.4;
+  color: #efe9de;
+}
+
+/* Лоток деталей. */
 .gtray {
-  left: 576px;
-  right: 36px;
-  bottom: 180px;
-  height: 144px;
-  padding: 18px;
-  border-radius: 36px;
+  left: 520px;
+  right: 40px;
+  bottom: 152px;
+  height: 168px;
+  padding: 16px;
+  border-radius: 20px;
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: 1fr;
-  gap: 18px;
+  gap: 16px;
 }
 
 .gtray.is-looks {
   grid-auto-columns: auto;
   justify-content: space-between;
   align-items: center;
-  gap: 24px;
-  padding: 6px 30px;
+  padding: 16px 32px;
 }
 
 .gcard {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 12px;
-  padding: 0 30px;
+  justify-content: flex-start;
+  gap: 6px;
+  padding: 14px 20px;
   border: 0;
-  border-radius: 24px;
+  border-radius: 14px;
   background: #262421;
-  box-shadow: inset 0 0 0 3px rgb(239 233 222 / 0.06);
+  box-shadow: inset 0 0 0 1px rgb(239 233 222 / 0.06);
   color: #efe9de;
   font-family: var(--font-ui);
   text-align: left;
@@ -787,12 +785,12 @@
 
 .gcard.is-selected {
   background: #2e2b27;
-  box-shadow: inset 0 0 0 3px var(--ui-accent);
+  box-shadow: inset 0 0 0 2px var(--ui-accent);
 }
 
 .gcard:focus-visible {
-  outline: 6px solid var(--ui-accent);
-  outline-offset: 6px;
+  outline: 3px solid var(--ui-accent);
+  outline-offset: 3px;
 }
 
 .gcard__head {
@@ -803,9 +801,8 @@
 }
 
 .gcard__name {
-  font-size: 33px;
+  font-size: 22px;
   font-weight: 500;
-  line-height: 42px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -815,32 +812,33 @@
   flex: none;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 27px;
+  gap: 4px;
+  font-size: 16px;
   color: var(--ui-accent);
 }
 
 .gcard__tag .icon {
-  width: 30px;
-  height: 30px;
-}
-
-.gcard__desc,
-.gcard__delta {
-  font-size: 27px;
-  line-height: 36px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  width: 18px;
+  height: 18px;
 }
 
 .gcard__desc {
+  font-size: 16px;
+  line-height: 1.35;
   color: #8a847a;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .gcard__delta {
+  margin-top: auto;
+  min-height: 22px;
   display: flex;
-  gap: 18px;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 17px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -856,67 +854,66 @@
   color: #8a847a;
 }
 
-/* Группа цветов: подпись над сеткой 4×2, чтобы четыре группы и «Помыть» влезли в ряд. */
+/* Внешний вид: группы цветов 4×2 с подписью сверху. */
 .gswatches {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 10px;
 }
 
 .gswatches__label {
   font-family: var(--font-ui);
-  font-size: 27px;
-  line-height: 30px;
+  font-size: 18px;
   color: #aaa398;
 }
 
 .gswatches__row {
   display: grid;
-  grid-template-columns: repeat(4, 42px);
-  gap: 12px;
+  grid-template-columns: repeat(4, 36px);
+  gap: 10px;
 }
 
 .gswatch {
-  width: 42px;
-  height: 42px;
+  width: 36px;
+  height: 36px;
   padding: 0;
   border: 0;
-  border-radius: 12px;
-  box-shadow: inset 0 0 0 3px rgb(255 255 255 / 0.15);
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.15);
   cursor: pointer;
 }
 
 .gswatch.is-off {
-  background: repeating-linear-gradient(135deg, #3a3631 0 6px, #26241f 6px 12px);
+  background: repeating-linear-gradient(135deg, #3a3631 0 4px, #26241f 4px 8px);
 }
 
 .gswatch.is-selected {
-  outline: 6px solid var(--ui-accent);
+  outline: 3px solid var(--ui-accent);
   outline-offset: 3px;
 }
 
 .gwash {
-  height: 84px;
-  padding: 0 30px;
-  font-size: 33px;
+  height: 56px;
+  padding: 0 24px;
+  font-size: 20px;
 }
 
 .gwash .icon {
-  width: 42px;
-  height: 42px;
+  width: 24px;
+  height: 24px;
 }
 
 /* Вкладки: иконка над подписью. */
 .gtabs {
-  left: 576px;
-  width: 780px;
-  bottom: 36px;
-  height: 120px;
-  padding: 12px;
-  border-radius: 36px;
+  left: 520px;
+  width: 920px;
+  bottom: 40px;
+  height: 96px;
+  padding: 8px;
+  border-radius: 20px;
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 12px;
+  gap: 8px;
 }
 
 .gtab {
@@ -926,12 +923,11 @@
   justify-content: center;
   gap: 6px;
   border: 0;
-  border-radius: 24px;
+  border-radius: 14px;
   background: transparent;
   color: #8a847a;
   font-family: var(--font-ui);
-  font-size: 24px;
-  line-height: 27px;
+  font-size: 18px;
   cursor: pointer;
   transition:
     background-color var(--ui-fast) var(--ui-ease),
@@ -939,8 +935,8 @@
 }
 
 .gtab .icon {
-  width: 48px;
-  height: 48px;
+  width: 32px;
+  height: 32px;
 }
 
 .gtab:hover {
@@ -951,36 +947,57 @@
 .gtab.is-active {
   color: #efe9de;
   background: #2e2b27;
-  box-shadow: inset 0 0 0 3px rgb(239 233 222 / 0.1);
+  box-shadow: inset 0 0 0 1px rgb(239 233 222 / 0.1);
 }
 
 .gtab:focus-visible {
-  outline: 6px solid var(--ui-accent);
-  outline-offset: 3px;
+  outline: 3px solid var(--ui-accent);
+  outline-offset: 2px;
 }
 
 /* Запуск: справа от вкладок, той же высоты. */
 .glaunch {
-  left: 1380px;
-  right: 36px;
-  bottom: 36px;
-  height: 120px;
+  left: 1464px;
+  right: 40px;
+  bottom: 40px;
+  height: 96px;
 }
 
 .glaunch__btn {
   width: 100%;
-  height: 120px;
-  padding: 0 36px;
-  font-size: 36px;
+  height: 96px;
+  padding: 0 28px;
+  gap: 16px;
+  justify-content: flex-start;
+  border-radius: 20px;
+  font-size: 26px;
 }
 
-.glaunch__missing {
-  position: absolute;
-  right: 0;
-  bottom: 132px;
-  font-family: var(--font-ui);
-  font-size: 27px;
-  color: #e2766b;
-  white-space: nowrap;
-  pointer-events: none;
+.glaunch__btn .icon {
+  width: 32px;
+  height: 32px;
+}
+
+.glaunch__btn .wbtn__label {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  white-space: normal;
+  line-height: 1.1;
+}
+
+.glaunch__sub {
+  font-size: 17px;
+  font-weight: 400;
+}
+
+.glaunch__sub:empty {
+  display: none;
+}
+
+.glaunch__btn:disabled {
+  opacity: 1;
+  background: #3a352f;
+  color: #c9c1b4;
 }

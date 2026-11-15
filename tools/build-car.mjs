@@ -464,10 +464,10 @@ function layerOverlay(kind) {
 
 function layerSpoiler(kind, part) {
   if (kind === 'lip') {
-    const lip = 'M 10 35.8 L 36 34.4 L 41 32.2 Q 40 31.6 38 31.8 L 12 33.4 Q 9.5 34 10 35.8 Z';
+    const lip = 'M 9.5 35.9 L 37 34.3 L 43.5 29.6 Q 43 28.8 41 29 L 12 32 Q 9 32.8 9.5 35.9 Z';
     return part === 'paint'
       ? svg(
-          `<path d="${lip}" fill="${gray(0.9)}"/>${rect(12, 33.4, 26, 0.6, gray(1))}<path d="${lip}" fill="none" stroke="${C.outline}" stroke-width="${STEP * 2}"/>`,
+          `<path d="${lip}" fill="${gray(0.82)}"/><path d="M 12 32 L 41 29 Q 43 28.8 43.5 29.6 L 42.6 30.3 Q 41 29.9 12 33 Z" fill="${gray(1)}"/><path d="M 37 34.3 L 43.5 29.6 L 43.6 30.8 L 37.6 35 Z" fill="${gray(0.5)}"/><path d="${lip}" fill="none" stroke="${C.outline}" stroke-width="${STEP * 2}"/>`,
         )
       : svg('');
   }
