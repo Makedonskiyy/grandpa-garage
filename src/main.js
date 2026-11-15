@@ -5,6 +5,7 @@ import Phaser from 'phaser';
 // Шрифт интерфейса лежит в сборке (woff2 из npm), игрокам не нужен доступ к Google Fonts.
 import '@fontsource-variable/literata';
 import './styles/main.css';
+import './styles/ui.css';
 import { GAME_WIDTH, GAME_HEIGHT, SCENES, config } from './config/constants.js';
 import { loadSettings } from './systems/settings.js';
 import { initScale } from './systems/scale.js';

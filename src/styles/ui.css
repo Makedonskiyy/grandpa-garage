@@ -1,0 +1,273 @@
+/*
+ * Веб-интерфейс нового стиля (макет меню): обычные кнопки, Literata, оранжевый из логотипа.
+ * Пиксельным остаётся только арт. Размеры — в пикселях игры (640×360) на сетке 4 px;
+ * весь #stage масштабируется целиком, поэтому 20px здесь = 40px в окне при масштабе 2×.
+ */
+:root {
+  /* Тёплая нейтральная шкала (гараж, дерево, бумага) и один акцент. */
+  --ui-ink: #1f1b16; /* основной текст на светлом */
+  --ui-ink-2: #5e554a; /* вторичный */
+  --ui-ink-3: #7b7266; /* приглушённый: подписи, значения */
+  --ui-paper: #fdfbf7; /* светлые кнопки и окна */
+  --ui-paper-raised: #efe9df; /* наведение, поля ввода */
+  --ui-hairline: rgb(31 27 22 / 0.1);
+  --ui-accent: #eea45a; /* оранжевый ушанки — только главное действие и выбор */
+  --ui-accent-hover: #f2b273;
+  --ui-accent-press: #e3954a;
+  --ui-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ui-fast: 150ms;
+  --ui-enter: 200ms;
+}
+
+/* ---------- Кнопки ---------- */
+.wbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 10px;
+  font-family: var(--font-ui);
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--ui-ink);
+  background: var(--ui-paper);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.28);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  transition:
+    background-color var(--ui-fast) var(--ui-ease),
+    transform var(--ui-fast) var(--ui-ease);
+}
+
+.wbtn--primary {
+  background: var(--ui-accent);
+}
+
+.wbtn--light:hover:not(:disabled) {
+  background: var(--ui-paper-raised);
+}
+
+.wbtn--primary:hover:not(:disabled) {
+  background: var(--ui-accent-hover);
+}
+
+.wbtn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.wbtn--primary:active:not(:disabled) {
+  background: var(--ui-accent-press);
+}
+
+.wbtn:focus-visible {
+  outline: 2px solid var(--ui-paper);
+  outline-offset: 2px;
+}
+
+.wbtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.wbtn--small {
+  height: 32px;
+  padding: 0 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  box-shadow: none;
+}
+
+/* Иконка — квадрат 20×20 в потоке flex, по центру строки, без ручных сдвигов. */
+.icon {
+  display: inline-flex;
+  flex: none;
+  width: 20px;
+  height: 20px;
+}
+
+.icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* ---------- Меню ---------- */
+.menu-logo {
+  /* Край ушанки в SVG отстоит от края файла на 3px: сдвиг выравнивает её по краю кнопок. */
+  left: 29px;
+  top: 32px;
+  height: 32px;
+  user-select: none;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 4px rgb(0 0 0 / 0.5));
+}
+
+.menu-actions {
+  left: 32px;
+  bottom: 32px;
+  display: grid;
+  grid-template-columns: repeat(3, 176px);
+  gap: 12px;
+}
+
+.version {
+  right: 8px;
+  bottom: 8px;
+  font-family: var(--font-ui);
+  font-size: 8px;
+  font-variant-numeric: tabular-nums;
+  color: rgb(255 255 255 / 0.4);
+}
+
+/* ---------- Модальные окна ---------- */
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(0 0 0 / 0.6);
+  pointer-events: auto;
+  animation: ui-fade var(--ui-enter) var(--ui-ease);
+}
+
+.modal {
+  width: 376px;
+  max-height: 320px;
+  overflow: auto;
+  padding: 20px 24px;
+  border-radius: 14px;
+  background: var(--ui-paper);
+  color: var(--ui-ink);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.35);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  line-height: 1.5;
+  animation: ui-rise var(--ui-enter) var(--ui-ease);
+}
+
+.modal h2 {
+  margin: 0 0 16px;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.modal p {
+  margin: 0 0 8px;
+  color: var(--ui-ink-2);
+}
+
+.modal__footer {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Поле настроек: подпись | контрол | значение — три выровненные колонки. */
+.field {
+  display: grid;
+  grid-template-columns: 112px 1fr 24px;
+  align-items: center;
+  gap: 12px;
+  min-height: 28px;
+  margin-bottom: 8px;
+}
+
+.field select {
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--ui-hairline);
+  border-radius: 8px;
+  font: inherit;
+  color: var(--ui-ink);
+  background: var(--ui-paper-raised);
+}
+
+.field__value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-ink-3);
+}
+
+.field input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--ui-accent);
+}
+
+/* Ползунок в цветах интерфейса вместо системного. */
+.field input[type='range'] {
+  width: 100%;
+  height: 16px;
+  margin: 0;
+  background: transparent;
+  appearance: none;
+  cursor: pointer;
+}
+
+.field input[type='range']::-webkit-slider-runnable-track {
+  /* Пройденная часть — акцентом: --fill выставляет SettingsPanel.js. */
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    var(--ui-accent) 0 var(--fill, 50%),
+    var(--ui-paper-raised) var(--fill, 50%)
+  );
+}
+
+.field input[type='range']::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--ui-paper-raised);
+}
+
+.field input[type='range']::-moz-range-progress {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--ui-accent);
+}
+
+.field input[type='range']::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -6px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ui-accent);
+}
+
+.field input[type='range']::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ui-accent);
+}
+
+.field input[type='range']:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+@keyframes ui-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes ui-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}

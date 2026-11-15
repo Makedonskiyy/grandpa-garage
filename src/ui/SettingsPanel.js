@@ -14,8 +14,12 @@ function volumeField(labelKey, key) {
   const s = getSettings();
   const value = el('span', { class: 'field__value', text: String(s[key]) });
   const input = el('input', { type: 'range', min: 0, max: 100, step: 5, value: s[key] });
+  // --fill закрашивает пройденную часть дорожки (см. ui.css).
+  const paint = () => input.style.setProperty('--fill', `${input.value}%`);
+  paint();
   input.addEventListener('input', () => {
     value.textContent = input.value;
+    paint();
     updateSettings({ [key]: Number(input.value) });
   });
   return el('label', { class: 'field' }, [t(labelKey), input, value]);
