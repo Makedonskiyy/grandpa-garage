@@ -345,3 +345,171 @@
     opacity: 0.55;
   }
 }
+
+/* ---------- Диалоги ---------- */
+/* Слой диалога пропускает клики в канвас и к кнопкам сцены; ловит их только панель. */
+.ui-layer.dialog-layer > * {
+  pointer-events: none;
+}
+
+.ui-layer.dialog-layer > .dlg {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.dlg {
+  left: 24px;
+  right: 24px;
+  bottom: 24px;
+  height: 96px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px;
+  border-radius: 14px;
+  background: rgb(22 21 19 / 0.94);
+  box-shadow:
+    inset 0 0 0 1px rgb(239 233 222 / 0.08),
+    0 8px 24px rgb(0 0 0 / 0.4);
+  font-family: var(--font-ui);
+  color: #efe9de;
+}
+
+.dlg__portrait {
+  flex: none;
+  width: 64px;
+  height: 64px;
+  border-radius: 8px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: #262421;
+  box-shadow: inset 0 0 0 1px rgb(239 233 222 / 0.08);
+  font-size: 28px;
+  font-weight: 500;
+  color: #8a847a;
+}
+
+.dlg__portrait img {
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
+.dlg__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.dlg__name {
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  color: var(--ui-accent);
+}
+
+.dlg__text {
+  font-size: 15px;
+  line-height: 22px;
+  white-space: pre-wrap;
+}
+
+/* «Дальше»: маленький треугольник в углу, появляется, когда реплика допечатана. */
+.dlg__next {
+  position: absolute;
+  right: 16px;
+  bottom: 14px;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid currentColor;
+  opacity: 0;
+  transition: opacity var(--ui-fast) var(--ui-ease);
+}
+
+.dialog-layer--done .dlg__next {
+  opacity: 0.6;
+}
+
+.dlg-date {
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: #000;
+  font-family: var(--font-ui);
+  color: #efe9de;
+}
+
+.dlg-date .dlg__text {
+  max-width: 440px;
+  font-size: 20px;
+  line-height: 28px;
+  text-align: center;
+}
+
+.dlg-caption {
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgb(0 0 0 / 0.6);
+  font-family: var(--font-ui);
+  color: #efe9de;
+}
+
+.dlg-caption .dlg__text {
+  max-width: 440px;
+  font-size: 16px;
+  line-height: 24px;
+  text-align: center;
+}
+
+/* Записка деда: лист в линейку, почерк, тень от лампы. */
+.dlg-note {
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgb(0 0 0 / 0.35);
+}
+
+.dlg-note__sheet {
+  position: relative;
+  width: 352px;
+  min-height: 160px;
+  padding: 24px 28px 32px;
+  border-radius: 2px;
+  background:
+    repeating-linear-gradient(to bottom, transparent 0 27px, rgb(70 96 140 / 0.22) 27px 28px),
+    #f3ead7;
+  background-position: 0 24px; /* линейки — под строками почерка */
+  box-shadow: 0 10px 24px rgb(0 0 0 / 0.5);
+  transform: rotate(-1.2deg);
+  font-family: 'Caveat Variable', 'Caveat', cursive;
+  color: #2a3348;
+}
+
+.dlg-note .dlg__text {
+  font-size: 24px;
+  line-height: 28px;
+}
+
+.dlg-note .dlg__next {
+  color: #2a3348;
+}
+
+.dlg--enter {
+  animation: ui-fade var(--ui-enter) var(--ui-ease);
+}
+
+.dlg.dlg--enter,
+.dlg-note.dlg--enter .dlg-note__sheet {
+  animation: ui-rise var(--ui-enter) var(--ui-ease);
+}
+
+/* Кнопка «Пропустить» над диалогом. */
+.skip {
+  top: 16px;
+  right: 16px;
+  z-index: 2;
+}

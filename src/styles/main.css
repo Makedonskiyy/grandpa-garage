@@ -345,8 +345,3 @@ body {
   font-size: 12px;
   color: var(--c-accent);
 }
-
-.skip {
-  right: 8px;
-  top: 6px;
-}

@@ -4,6 +4,7 @@
 import Phaser from 'phaser';
 // Шрифт интерфейса лежит в сборке (woff2 из npm), игрокам не нужен доступ к Google Fonts.
 import '@fontsource-variable/literata';
+import '@fontsource-variable/caveat'; // почерк деда в записке
 import './styles/main.css';
 import './styles/ui.css';
 import { GAME_WIDTH, GAME_HEIGHT, SCENES, config } from './config/constants.js';

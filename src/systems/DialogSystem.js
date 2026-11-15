@@ -1,19 +1,24 @@
 /**
- * DialogSystem — диалоговое окно (ТЗ 3.5, 7.5).
+ * DialogSystem — диалоговое окно (ТЗ 3.5, 7.5) в веб-стиле интерфейса.
  * Читает story.json, печатает текст по буквам (~30 зн/с) со «щелчком» на каждые две буквы.
  * Клик / Пробел / Enter: первое нажатие допечатывает реплику, второе — следующая реплика.
  *
  * Виды реплик (поле kind):
- *   speech  — рамка внизу, портрет 64×64 слева, имя говорящего;
- *   note    — записка деда отдельным листком по центру;
+ *   speech  — панель внизу ~592×96: портрет 64×64 слева, имя, текст;
+ *   note    — записка деда листком бумаги, почерк Caveat;
  *   date    — текст на чёрном экране, держится и сменяется сам;
- *   caption — надпись по центру без портрета.
+ *   caption — надпись по центру на затемнении.
+ *
+ * Окно живёт в собственном HTML-слое поверх интерфейса сцены. Слой пропускает клики,
+ * поэтому кнопки сцены («Пропустить») остаются доступны.
  */
 import Phaser from 'phaser';
 import story from '../../data/story.json';
 import config from '../../data/config.json';
-import { FONT_FAMILY, SFX } from '../config/constants.js';
+import { SFX } from '../config/constants.js';
 import { audio } from './AudioManager.js';
+import { createLayer } from '../ui/overlay.js';
+import { el, clear } from '../ui/dom.js';
 
 const cfg = config.dialog;
 const byId = new Map(story.lines.map((l) => [l.id, l]));
@@ -36,33 +41,28 @@ export function getSequenceLines(name) {
   return lines;
 }
 
-const COLORS = {
-  frame: 0xe8d9b0,
-  frameShadow: 0x5a4a2a,
-  fill: 0x15141a,
-  paper: 0xefe4c4,
-  ink: '#2b2418',
-  text: '#f2ead6',
-  name: '#e6b34a',
-};
-
 export class DialogSystem {
-  /**
-   * @param {Phaser.Scene} scene
-   * @param {{ depth?: number }} [opts]
-   */
-  constructor(scene, opts = {}) {
+  /** @param {Phaser.Scene} scene */
+  constructor(scene) {
     this.scene = scene;
-    this.depth = opts.depth ?? 1000;
-    this.container = scene.add.container(0, 0).setDepth(this.depth).setVisible(false);
+    this.layer = createLayer(scene);
+    this.layer.classList.add('dialog-layer');
     this.line = null;
     this.shown = 0;
     this.typing = false;
     this.timer = null;
-    this.resolve = null;
     this.holdTimer = null;
+    this.resolve = null;
 
-    this.#bindInput();
+    this.onPointer = () => this.advance();
+    this.onKey = (e) => {
+      if (e.code === 'Space' || e.code === 'Enter' || e.code === 'NumpadEnter') {
+        e.preventDefault();
+        this.advance();
+      }
+    };
+    scene.input.on('pointerdown', this.onPointer);
+    window.addEventListener('keydown', this.onKey);
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroy());
   }
 
@@ -94,7 +94,7 @@ export class DialogSystem {
     this.holdTimer = null;
     this.line = null;
     this.typing = false;
-    this.container.removeAll(true).setVisible(false);
+    clear(this.layer);
     const r = this.resolve;
     this.resolve = null;
     if (callResolve) r?.();
@@ -107,17 +107,8 @@ export class DialogSystem {
   destroy() {
     this.finish(false);
     this.scene.input?.off('pointerdown', this.onPointer);
-    this.scene.input?.keyboard?.off('keydown', this.onKey);
-    this.container.destroy();
-  }
-
-  #bindInput() {
-    this.onPointer = () => this.advance();
-    this.onKey = (e) => {
-      if (e.code === 'Space' || e.code === 'Enter' || e.code === 'NumpadEnter') this.advance();
-    };
-    this.scene.input.on('pointerdown', this.onPointer);
-    this.scene.input.keyboard?.on('keydown', this.onKey);
+    window.removeEventListener('keydown', this.onKey);
+    this.layer.remove();
   }
 
   #next() {
@@ -129,110 +120,71 @@ export class DialogSystem {
   #show(id) {
     const line = byId.get(id);
     if (!line) throw new Error(`Нет реплики ${id}`);
+    const sameKind = this.line?.kind === line.kind && this.line?.who === line.who;
     this.line = line;
     this.shown = 0;
-    this.container.removeAll(true).setVisible(true);
-    this.textObj = this.#layout(line);
+    clear(this.layer);
+    this.$text = this.#layout(line, sameKind);
     this.#startTyping();
   }
 
-  #layout(line) {
-    const { width, height } = this.scene.scale;
+  #layout(line, sameKind) {
     const speaker = story.speakers[line.who];
+    const $text = el('div', { class: 'dlg__text' });
+    // Анимация появления — только когда меняется вид окна или говорящий.
+    const enter = sameKind ? '' : ' dlg--enter';
 
-    if (line.kind === 'date' || line.kind === 'caption') {
-      if (line.kind === 'date') {
-        this.container.add(this.scene.add.rectangle(0, 0, width, height, 0x000000).setOrigin(0));
-      }
-      const text = this.scene.add
-        .text(width / 2, height / 2, '', {
-          fontFamily: FONT_FAMILY,
-          fontSize: '10px',
-          color: COLORS.text,
-          align: 'center',
-          wordWrap: { width: width - 80 },
-          lineSpacing: 6,
-        })
-        .setOrigin(0.5);
-      this.container.add(text);
-      return text;
-    }
-
-    if (line.kind === 'note') {
-      const w = 360;
-      const h = 150;
-      const x = (width - w) / 2;
-      const y = 50;
-      const g = this.scene.add.graphics();
-      g.fillStyle(0x000000, 0.35).fillRect(x + 4, y + 4, w, h);
-      g.fillStyle(COLORS.paper, 1).fillRect(x, y, w, h);
-      g.lineStyle(1, 0xc9b98f, 1);
-      for (let ly = y + 30; ly < y + h - 10; ly += 18) g.lineBetween(x + 12, ly, x + w - 12, ly);
-      this.container.add(g);
-      const text = this.scene.add.text(x + 20, y + 20, '', {
-        fontFamily: FONT_FAMILY,
-        fontSize: '10px',
-        color: COLORS.ink,
-        wordWrap: { width: w - 40 },
-        lineSpacing: 8,
-      });
-      this.container.add(text);
-      return text;
-    }
-
-    // speech
-    const { x, y, width: w, height: h, portraitSize: p } = cfg.box;
-    const g = this.scene.add.graphics();
-    g.fillStyle(COLORS.frameShadow, 1).fillRect(x, y, w, h);
-    g.fillStyle(COLORS.frame, 1).fillRect(x + 1, y + 1, w - 2, h - 2);
-    g.fillStyle(COLORS.fill, 0.96).fillRect(x + 3, y + 3, w - 6, h - 6);
-    this.container.add(g);
-
-    const px = x + 14;
-    const py = y + (h - p) / 2;
-    if (speaker.portrait && this.scene.textures.exists(speaker.portrait)) {
-      this.container.add(this.scene.add.image(px, py, speaker.portrait).setOrigin(0));
+    if (line.kind === 'date') {
+      this.layer.append(el('div', { class: `ui-abs dlg-date${enter}` }, $text));
+    } else if (line.kind === 'caption') {
+      this.layer.append(el('div', { class: `ui-abs dlg-caption${enter}` }, $text));
+    } else if (line.kind === 'note') {
+      this.layer.append(
+        el('div', { class: `ui-abs dlg-note${enter}` }, [
+          el('div', { class: 'dlg-note__sheet' }, [$text, this.#hint()]),
+        ]),
+      );
     } else {
-      // Заглушка портрета, пока нет арта: силуэт с первой буквой имени (ТЗ 6.3 запасной вариант).
-      this.container.add(this.scene.add.rectangle(px, py, p, p, 0x2e2c36).setOrigin(0));
-      this.container.add(
-        this.scene.add
-          .text(px + p / 2, py + p / 2, speaker.name.charAt(0), {
-            fontFamily: FONT_FAMILY,
-            fontSize: '24px',
-            color: COLORS.name,
-          })
-          .setOrigin(0.5),
+      this.layer.append(
+        el('div', { class: `ui-abs dlg${enter}`, onclick: () => this.advance() }, [
+          this.#portrait(speaker),
+          el('div', { class: 'dlg__body' }, [
+            el('div', { class: 'dlg__name', text: speaker.name }),
+            $text,
+          ]),
+          this.#hint(),
+        ]),
       );
     }
+    return $text;
+  }
 
-    const tx = px + p + 14;
-    this.container.add(
-      this.scene.add.text(tx, y + 12, speaker.name, {
-        fontFamily: FONT_FAMILY,
-        fontSize: '8px',
-        color: COLORS.name,
-      }),
-    );
-    const text = this.scene.add.text(tx, y + 30, '', {
-      fontFamily: FONT_FAMILY,
-      fontSize: '8px',
-      color: COLORS.text,
-      wordWrap: { width: x + w - tx - 14 },
-      lineSpacing: 8,
-    });
-    this.container.add(text);
-    return text;
+  /** Портрет 64×64: пиксельный арт из assets/images/portraits, пока его нет — инициал. */
+  #portrait(speaker) {
+    const box = el('div', { class: 'dlg__portrait' });
+    if (speaker.portrait && this.scene.textures.exists(speaker.portrait)) {
+      const src = this.scene.textures.get(speaker.portrait).getSourceImage().src;
+      box.append(el('img', { src, alt: speaker.name }));
+    } else {
+      box.append(el('span', { text: speaker.name.charAt(0) }));
+    }
+    return box;
+  }
+
+  /** Маленький значок «дальше» — виден, когда реплика допечатана. */
+  #hint() {
+    return el('div', { class: 'dlg__next', 'aria-hidden': 'true' });
   }
 
   #startTyping() {
     this.typing = true;
+    this.layer.classList.remove('dialog-layer--done');
     this.timer = this.scene.time.addEvent({
       delay: 1000 / cfg.charsPerSecond,
       loop: true,
       callback: () => {
         this.shown += 1;
-        this.textObj.setText(this.line.text.slice(0, this.shown));
+        this.$text.textContent = this.line.text.slice(0, this.shown);
         if (this.shown % cfg.clickEveryChars === 0) audio.playSfx(SFX.TYPE, { volume: 0.5 });
         if (this.shown >= this.line.text.length) this.#completeTyping();
       },
@@ -244,7 +196,8 @@ export class DialogSystem {
     this.timer = null;
     this.typing = false;
     this.shown = this.line.text.length;
-    this.textObj.setText(this.line.text);
+    this.$text.textContent = this.line.text;
+    this.layer.classList.add('dialog-layer--done');
     if (this.line.kind === 'date') {
       this.holdTimer = this.scene.time.delayedCall(cfg.dateHoldMs, () => this.#next());
     }
