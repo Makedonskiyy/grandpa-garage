@@ -120,7 +120,7 @@ export class CarRig extends Phaser.GameObjects.Container {
         170,
         28,
         0xffffff,
-        0.16,
+        0.07,
       )
       .setOrigin(0, 0.5)
       .setBlendMode(Phaser.BlendModes.ADD);
@@ -172,7 +172,7 @@ export class CarRig extends Phaser.GameObjects.Container {
 
     const lightColor = colorOf('headlight', looks.headlight);
     L.headlight.setTint(lightColor);
-    this.beam.setVisible(this.night).setFillStyle(lightColor, 0.16);
+    this.beam.setVisible(this.night).setFillStyle(lightColor, 0.07);
 
     const neon = colorOf('neon', looks.neon);
     this.neon.setVisible(neon !== null);

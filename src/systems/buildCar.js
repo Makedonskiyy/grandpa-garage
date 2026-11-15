@@ -50,7 +50,7 @@ export function buildRivalCar(scene, opts = {}) {
     return c;
   });
   if (opts.night) {
-    const cone = scene.add.triangle(92, -30, 0, 0, 160, -26, 160, 26, 0xffe8b0, 0.16);
+    const cone = scene.add.triangle(92, -30, 0, 0, 160, -26, 160, 26, 0xffe8b0, 0.07);
     cone.setOrigin(0, 0.5).setBlendMode(Phaser.BlendModes.ADD);
     car.add(cone);
   }

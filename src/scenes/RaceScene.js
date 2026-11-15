@@ -1,20 +1,30 @@
 import Phaser from 'phaser';
 import config from '../../data/config.json';
 import { BaseScene } from './BaseScene.js';
-import { SCENES, MUSIC, SFX, FONT_FAMILY, WORLD } from '../config/constants.js';
+import { SCENES, MUSIC, SFX, WORLD } from '../config/constants.js';
 import { buildCar, buildRivalCar, spinWheels } from '../systems/buildCar.js';
 import { evaluateRace, getTest, raceTelemetry, formatSeconds } from '../systems/simulate.js';
 import { DialogSystem } from '../systems/DialogSystem.js';
 import { audio } from '../systems/AudioManager.js';
+import { getRenderZoom } from '../systems/scale.js';
 import { gameState, recordResult } from '../gameState.js';
 import { el } from '../ui/dom.js';
 import { t } from '../systems/strings.js';
 
 const cfg = config.race;
+const TACHO_SEGMENTS = 14;
+const TACHO_RED = 3; // последние сегменты — красная зона
+
+/** Детерминированный генератор: фон одинаков при каждом запуске. */
+function rng(seed) {
+  let v = seed;
+  return () => (v = (v * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+}
 
 /**
- * Заезд с Палычем (ТЗ 3.9): ночной пустырь, две машины, «ёлка» (3 жёлтых через 0,6 с → зелёный),
- * приборы: тахометр, секундомер, спидометр. Время и ускорение посчитаны до старта (ТЗ 4.4).
+ * Заезд с Палычем (ТЗ 3.9): ночной пустырь за заводом, две машины, «ёлка» (3 жёлтых через 0,6 с →
+ * зелёный), приборы: тахометр, секундомер, спидометр. Время и ускорение посчитаны до старта (ТЗ 4.4).
+ * Позиции машин считаются по переднему бамперу: обе пересекают одну линию финиша.
  */
 export class RaceScene extends BaseScene {
   constructor() {
@@ -31,42 +41,24 @@ export class RaceScene extends BaseScene {
     this.s = 0;
 
     this.#drawNight();
+    this.rival = buildRivalCar(this, { x: 0, y: cfg.rivalLaneY, scale: cfg.carScale, night: true });
+    this.rival.front = cfg.rivalFront * cfg.carScale;
+    this.rival.plateOffset = 72 * cfg.carScale; // над крышей «девятки»
     this.player = buildCar(this, gameState.build, gameState.cosmetics, {
-      x: cfg.trackStartX,
+      x: 0,
       y: cfg.playerLaneY,
-      scale: 0.5,
+      scale: cfg.carScale,
       night: true,
       dirty: gameState.car.dirty,
     });
-    this.rival = buildRivalCar(this, {
-      x: cfg.trackStartX,
-      y: cfg.rivalLaneY,
-      scale: 0.5,
-      night: true,
-    });
+    this.player.front = cfg.playerFront * cfg.carScale;
+    this.player.plateOffset = 92 * cfg.carScale; // над крышей японки
+    for (const car of [this.rival, this.player]) car.x = cfg.startX - car.front;
     this.#nameplate(this.player, t('race.you'));
     this.#nameplate(this.rival, t('race.rival'));
     this.tree = this.#drawTree();
 
-    this.$rpm = el('div', { class: 'gauge__value', text: '0' });
-    this.$time = el('div', { class: 'gauge__value', text: '0,00' });
-    this.$speed = el('div', { class: 'gauge__value', text: '0' });
-    this.$hud = el('div', { class: 'ui-abs gauges' }, [
-      el('div', { class: 'panel gauge' }, [
-        this.$rpm,
-        el('div', { class: 'muted', text: t('race.tacho') }),
-      ]),
-      el('div', { class: 'panel gauge' }, [
-        this.$time,
-        el('div', { class: 'muted', text: t('race.timer') }),
-      ]),
-      el('div', { class: 'panel gauge' }, [
-        this.$speed,
-        el('div', { class: 'muted', text: t('race.speedo') }),
-      ]),
-    ]);
-    this.ui.append(this.$hud);
-
+    this.#buildHud();
     this.engine = audio.loopSfx(SFX.ENGINE);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.engine?.destroy());
 
@@ -76,56 +68,153 @@ export class RaceScene extends BaseScene {
     this.#runTree();
   }
 
+  #buildHud() {
+    this.$tacho = Array.from({ length: TACHO_SEGMENTS }, (_, i) =>
+      el('span', { class: `tacho__seg${i >= TACHO_SEGMENTS - TACHO_RED ? ' is-red' : ''}` }),
+    );
+    this.$rpm = el('span', { text: '0' });
+    this.$speed = el('span', { text: '0' });
+    this.$gear = el('div', { class: 'race-hud__gear', text: t('race.gear', { n: 1 }) });
+    this.$time = el('div', { class: 'race-hud__value', text: '0,00' });
+    this.$hud = el('div', { class: 'ui-abs surface race-hud' }, [
+      el('div', { class: 'race-hud__gauge' }, [
+        el('div', { class: 'race-hud__value' }, [
+          this.$rpm,
+          el('span', { class: 'race-hud__unit', text: t('race.rpmUnit') }),
+        ]),
+        el('div', { class: 'tacho' }, this.$tacho),
+      ]),
+      el('div', { class: 'race-hud__time' }, [
+        this.$time,
+        el('div', { class: 'race-hud__label', text: t('race.timer') }),
+      ]),
+      el('div', { class: 'race-hud__gauge' }, [
+        el('div', { class: 'race-hud__value' }, [
+          this.$speed,
+          el('span', { class: 'race-hud__unit', text: t('race.kmh') }),
+        ]),
+        this.$gear,
+      ]),
+    ]);
+    this.ui.append(this.$hud);
+  }
+
+  /** Ночной пустырь за заводом: небо, корпуса с окнами, прожектор, мокрый асфальт. */
   #drawNight() {
     const { width, height } = WORLD;
+    const r = rng(41);
     const g = this.add.graphics();
-    g.fillStyle(0x0b0d18).fillRect(0, 0, width, height);
-    g.fillStyle(0x161a26).fillRect(0, 150, width, 30);
-    g.fillStyle(0x1f2230).fillRect(0, 180, width, height - 180);
-    g.fillStyle(0xd8d0bc).fillRect(cfg.trackStartX + 50, 180, 3, 140);
-    g.fillStyle(0xffffff).fillRect(cfg.trackFinishX + 50, 180, 4, 140);
-    const spot = this.add.ellipse(width / 2, 260, 420, 160, 0xfff2c0, 0.06);
-    spot.setBlendMode(Phaser.BlendModes.ADD);
+    // Небо ступенями: к горизонту светлее от городского зарева.
+    [0x07080f, 0x0a0c15, 0x0e111b, 0x131622, 0x1a1c27].forEach((c, i) =>
+      g.fillStyle(c).fillRect(0, i * 30, width, 31),
+    );
+    // Заводские корпуса и трубы.
+    let x = 0;
+    while (x < width) {
+      const w = 50 + Math.floor(r() * 70);
+      const h = 30 + Math.floor(r() * 40);
+      g.fillStyle(0x0c0d13).fillRect(x, 170 - h, w, h + 20);
+      for (let wy = 170 - h + 6; wy < 166; wy += 8) {
+        for (let wx = x + 4; wx < x + w - 6; wx += 7) {
+          if (r() < 0.12) g.fillStyle(0xd9b56a, 0.8).fillRect(wx, wy, 3, 2);
+        }
+      }
+      if (r() < 0.4) g.fillStyle(0x0c0d13).fillRect(x + w / 2, 170 - h - 40, 6, 40);
+      x += w + Math.floor(r() * 20);
+    }
+    // Бетонный забор и асфальт.
+    g.fillStyle(0x15161c).fillRect(0, 170, width, 20);
+    for (let fx = 0; fx < width; fx += 24) g.fillStyle(0x101116).fillRect(fx, 170, 1, 20);
+    g.fillStyle(0x1c1d24).fillRect(0, 190, width, height - 190);
+    // Разметка полос и мокрые отблески.
+    for (let lx = 0; lx < width; lx += 32) g.fillStyle(0x3a3a40).fillRect(lx, 262, 16, 2);
+    for (let i = 0; i < 40; i++) {
+      g.fillStyle(0x2b2d36).fillRect(
+        Math.floor(r() * width),
+        200 + Math.floor(r() * 150),
+        6 + Math.floor(r() * 10),
+        1,
+      );
+    }
+    // Старт и финиш (по переднему бамперу).
+    g.fillStyle(0xd8d0bc).fillRect(cfg.startX, 196, 2, 112);
+    for (let fy = 196; fy < 308; fy += 4) {
+      g.fillStyle((fy / 4) % 2 ? 0xffffff : 0x111111).fillRect(cfg.finishX, fy, 2, 4);
+      g.fillStyle((fy / 4) % 2 ? 0x111111 : 0xffffff).fillRect(cfg.finishX + 2, fy, 2, 4);
+    }
+    // Прожектор слева и пятно света на асфальте — ступенями, режим ADD.
+    g.fillStyle(0x0c0d13).fillRect(36, 70, 3, 120);
+    g.fillStyle(0x2a2c35).fillRect(30, 64, 16, 8);
+    const light = this.add.graphics().setBlendMode(Phaser.BlendModes.ADD);
+    for (const [w, a] of [
+      [260, 0.025],
+      [200, 0.03],
+      [140, 0.035],
+    ]) {
+      light.fillStyle(0xfff0c8, a).fillTriangle(38, 70, 38 + w, 300, 38 + w * 0.2, 300);
+    }
+    for (const [w, h, a] of [
+      [420, 60, 0.03],
+      [300, 40, 0.035],
+    ]) {
+      light.fillStyle(0xfff0c8, a).fillEllipse(220, 280, w, h);
+    }
   }
 
   #nameplate(car, name) {
-    const label = this.add
-      .text(car.x, car.y - 46, name, { fontFamily: FONT_FAMILY, fontSize: '6px', color: '#e6b34a' })
-      .setOrigin(0.5);
-    car.nameplate = label;
+    const zoom = getRenderZoom();
+    car.nameplate = this.add
+      .text(car.x, car.y - car.plateOffset, name, {
+        fontFamily: '"Literata Variable", Literata, Georgia, serif',
+        fontSize: '8px',
+        color: '#efe9de',
+        backgroundColor: 'rgba(22, 21, 19, 0.85)',
+        padding: { x: 4, y: 2 },
+      })
+      .setOrigin(0.5)
+      .setResolution(zoom);
   }
 
+  /** «Ёлка» на правом краю: три жёлтых и зелёный, горящие лампы светятся. */
   #drawTree() {
-    const x = WORLD.width - 24;
-    this.add.rectangle(x, 120, 18, 100, 0x111111).setStrokeStyle(1, 0x444444);
+    const x = WORLD.width - 22;
+    this.add.rectangle(x, 150, 3, 120, 0x0c0d13);
+    this.add.rectangle(x, 104, 22, 92, 0x111218).setStrokeStyle(1, 0x2a2c35);
+    const lamp = (y, off) => {
+      const glow = this.add.circle(x, y, 10, 0xffffff, 0).setBlendMode(Phaser.BlendModes.ADD);
+      return { core: this.add.circle(x, y, 6, off), glow };
+    };
     const ambers = [];
-    for (let i = 0; i < this.test.christmasTree.ambers; i++) {
-      ambers.push(this.add.circle(x, 84 + i * 20, 6, 0x3a2f10));
-    }
-    const green = this.add.circle(x, 84 + ambers.length * 20, 6, 0x10301a);
+    for (let i = 0; i < this.test.christmasTree.ambers; i++)
+      ambers.push(lamp(70 + i * 22, 0x3a2f10));
+    const green = lamp(70 + ambers.length * 22, 0x10301a);
     return { ambers, green };
   }
 
   #runTree() {
     const step = this.test.christmasTree.intervalSec * 1000;
-    this.tree.ambers.forEach((lamp, i) => {
+    const light = (l, color) => {
+      l.core.setFillStyle(color);
+      l.glow.setFillStyle(color, 0.35);
+    };
+    this.tree.ambers.forEach((l, i) => {
       this.time.delayedCall(step * (i + 1), () => {
-        lamp.setFillStyle(0xffc21a);
+        light(l, 0xffc21a);
         audio.playSfx(SFX.TREE_BEEP);
       });
     });
     this.time.delayedCall(step * (this.tree.ambers.length + 1), () => {
-      this.tree.green.setFillStyle(0x2fff6a);
+      light(this.tree.green, 0x2fff6a);
       audio.playSfx(SFX.TREE_GO);
       this.state = 'running';
     });
   }
 
-  #xFor(distance) {
+  /** Положение передка по пройденному пути → координата центра машины. */
+  #xFor(car, distance) {
     const { distance: total } = this.test.formula;
-    return (
-      cfg.trackStartX + (Math.min(distance, total) / total) * (cfg.trackFinishX - cfg.trackStartX)
-    );
+    const front = cfg.startX + (Math.min(distance, total) / total) * (cfg.finishX - cfg.startX);
+    return front - car.front;
   }
 
   update(_time, delta) {
@@ -143,9 +232,8 @@ export class RaceScene extends BaseScene {
       [this.player, me],
       [this.rival, rival],
     ]) {
-      const x = this.#xFor(
-        brokenStop && car === this.player ? Math.min(tel.distance, 200) : tel.distance,
-      );
+      const dist = brokenStop && car === this.player ? Math.min(tel.distance, 200) : tel.distance;
+      const x = this.#xFor(car, dist);
       if (car === this.player) {
         // Пока разгоняется — приседает на задние колёса (ускорение из расчёта заезда).
         car.step(delta / 1000, {
@@ -159,8 +247,11 @@ export class RaceScene extends BaseScene {
       car.nameplate.x = x;
     }
 
-    this.$rpm.textContent = String(Math.round(me.rpm / 10) * 10);
+    const lit = Math.round((me.rpm / this.test.gauges.redlineRpm) * TACHO_SEGMENTS);
+    this.$tacho.forEach((seg, i) => seg.classList.toggle('is-on', i < lit));
+    this.$rpm.textContent = String(Math.round(me.rpm / 100) * 100);
     this.$speed.textContent = String(Math.round(me.speedKmh));
+    this.$gear.textContent = t('race.gear', { n: me.gear });
     this.$time.textContent = formatSeconds(Math.min(this.s, me.finishTime));
     this.engine?.setRate?.(0.7 + (me.rpm / this.test.gauges.redlineRpm) * 0.8);
 

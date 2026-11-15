@@ -41,10 +41,13 @@
   },
   "sceneFadeMs": 300,
   "race": {
-    "trackStartX": 70,
-    "trackFinishX": 560,
+    "startX": 190,
+    "finishX": 600,
     "playerLaneY": 300,
-    "rivalLaneY": 215,
+    "rivalLaneY": 212,
+    "carScale": 0.8,
+    "playerFront": 134,
+    "rivalFront": 94,
     "finishHoldMs": 1500
   },
   "garage": {
