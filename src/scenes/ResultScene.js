@@ -5,8 +5,12 @@ import { audio } from '../systems/AudioManager.js';
 import { formatSeconds, getTest } from '../systems/simulate.js';
 import { gameState } from '../gameState.js';
 import { el } from '../ui/dom.js';
-import { button } from '../ui/components.js';
+import { webButton } from '../ui/components.js';
 import { t } from '../systems/strings.js';
+import { drawGarageRoom, placeGarageCar } from './garageBackdrop.js';
+
+// Машина в левой части экрана, под своей лампой; итог — справа.
+const STAGE = { carX: 196, groundY: 248, scale: 1.1 };
 
 /**
  * Результат (ТЗ 3.10): «Успех»/«Провал», причина простыми словами, числа, подсказка.
@@ -19,8 +23,7 @@ export class ResultScene extends BaseScene {
 
   async create() {
     this.enter();
-    this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0x0e0d12).setOrigin(0);
-
+    this.car = null;
     const r = gameState.lastResult;
     if (!r) {
       this.goTo(SCENES.MENU);
@@ -28,35 +31,76 @@ export class ResultScene extends BaseScene {
     }
     const test = getTest(r.testId);
 
-    // Поражение в заезде: сначала реплика Палыча (20), потом экран результата.
+    drawGarageRoom(this, { lampX: STAGE.carX, groundY: STAGE.groundY });
+    ({ car: this.car } = placeGarageCar(this, {
+      x: STAGE.carX,
+      groundY: STAGE.groundY,
+      scale: STAGE.scale,
+    }));
+
+    // Поражение в заезде: сначала реплика Палыча (20), потом итог.
     if (!r.ok && r.testId === 'race') await new DialogSystem(this).play('raceLose');
 
-    const lines = [];
+    const sec = t('garage.units.sec');
+    const row = (label, value, cls = '') =>
+      el('div', { class: 'result-panel__row' }, [
+        el('span', { text: label }),
+        el('span', { class: cls, text: value }),
+      ]);
+    const rows = [];
     if (r.testId === 'race') {
-      lines.push(`${t('result.time')}: ${formatSeconds(r.details.time)} ${t('garage.units.sec')}`);
-      lines.push(r.details.diffText);
+      rows.push(row(t('result.time'), `${formatSeconds(r.details.time)} ${sec}`));
+      rows.push(row(t('result.rival'), `${formatSeconds(r.details.rivalTime)} ${sec}`));
+      rows.push(row(t('result.diffLabel'), r.details.diffText, r.ok ? 'is-ok' : 'is-bad'));
+    } else if (r.details) {
+      const pulls = r.details.force >= r.details.need;
+      rows.push(row(t('garage.verdict.trialNeed'), String(Math.round(r.details.need))));
+      rows.push(
+        row(
+          t('garage.verdict.trialHave'),
+          String(Math.round(r.details.force)),
+          pulls ? 'is-ok' : 'is-bad',
+        ),
+      );
     }
-    lines.push(`${t('result.durabilityLeft')}: ${r.stats.durability} (≥ ${test.minDurability})`);
+    rows.push(
+      row(
+        t('result.durability'),
+        t('result.durabilityValue', { have: r.stats.durability, min: test.minDurability }),
+        r.stats.durability >= test.minDurability ? 'is-ok' : 'is-bad',
+      ),
+    );
 
     const next = r.ok ? (r.testId === 'trial' ? SCENES.PALYCH : SCENES.ENDING) : SCENES.GARAGE;
     this.ui.append(
-      el('div', { class: 'ui-abs panel result' }, [
-        el('div', { class: 'muted', text: test.name }),
-        el('h1', {
-          class: r.ok ? 'ok' : 'bad',
-          text: r.ok ? t('result.success') : t('result.fail'),
-        }),
-        r.reason ? el('p', { text: r.reason }) : null,
-        ...lines.map((l) => el('p', { class: 'muted', text: l })),
-        r.hint ? el('p', { class: 'accent', text: r.hint }) : null,
-        el('div', { class: 'result__actions' }, [
-          button(t('result.toMenu'), () => this.goTo(SCENES.MENU)),
-          button(r.ok ? t('result.next') : t('result.rebuild'), () => this.goTo(next), {
+      el('section', { class: 'ui-abs surface result-panel' }, [
+        el('div', { class: 'result-panel__eyebrow', text: test.name }),
+        el('h1', { class: 'result-panel__title' }, [
+          el('span', { class: `status-dot${r.ok ? '' : ' is-bad'}`, 'aria-hidden': 'true' }),
+          r.ok ? t('result.success') : t('result.fail'),
+        ]),
+        r.reason ? el('p', { class: 'result-panel__reason', text: r.reason }) : null,
+        el('div', { class: 'result-panel__rows' }, rows),
+        r.hint
+          ? el('div', { class: 'gadvice' }, [
+              el('div', { class: 'gadvice__title', text: t('result.hintTitle') }),
+              el('div', { class: 'gadvice__text', text: r.hint }),
+            ])
+          : null,
+        el('div', { class: 'result-panel__actions' }, [
+          webButton(r.ok ? t('result.next') : t('result.rebuild'), () => this.goTo(next), {
             variant: 'primary',
+            icon: 'play',
           }),
+          webButton(t('result.toMenu'), () => this.goTo(SCENES.MENU)),
         ]),
       ]),
     );
     audio.playSfx(r.ok ? SFX.SUCCESS : SFX.FAIL);
+  }
+
+  update(_time, delta) {
+    if (!this.car) return;
+    this.car.step(delta / 1000);
   }
 }

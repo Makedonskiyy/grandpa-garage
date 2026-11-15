@@ -3,6 +3,9 @@ import config from '../../data/config.json';
 export const GAME_WIDTH = config.game.width;
 export const GAME_HEIGHT = config.game.height;
 
+/** Размер мира игры: в этих координатах живут сцены (камера растягивает его на холст). */
+export const WORLD = Object.freeze({ width: GAME_WIDTH, height: GAME_HEIGHT });
+
 /** Ключи сцен (ТЗ 3.1). Сцены ссылаются друг на друга только через эти константы. */
 export const SCENES = Object.freeze({
   BOOT: 'Boot',

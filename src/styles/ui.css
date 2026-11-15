@@ -1,7 +1,7 @@
 /*
  * Веб-интерфейс нового стиля (макет меню): обычные кнопки, Literata, оранжевый из логотипа.
- * Пиксельным остаётся только арт. Размеры — в пикселях игры (640×360) на сетке 4 px;
- * весь #stage масштабируется целиком, поэтому 20px здесь = 40px в окне при масштабе 2×.
+ * Пиксельным остаётся только арт. Размеры — в пикселях Full HD (1920×1080), сетка 8 px;
+ * #stage вписывается в окно целиком (src/systems/scale.js).
  */
 :root {
   /* Тёплая нейтральная шкала (гараж, дерево, бумага) и один акцент. */
@@ -24,18 +24,18 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  height: 44px;
-  padding: 0 20px;
+  gap: 24px;
+  height: 132px;
+  padding: 0 60px;
   border: 0;
-  border-radius: 10px;
+  border-radius: 30px;
   font-family: var(--font-ui);
-  font-size: 18px;
+  font-size: 54px;
   font-weight: 500;
   line-height: 1;
   color: var(--ui-ink);
   background: var(--ui-paper);
-  box-shadow: 0 4px 12px rgb(0 0 0 / 0.28);
+  box-shadow: 0 12px 36px rgb(0 0 0 / 0.28);
   cursor: pointer;
   user-select: none;
   white-space: nowrap;
@@ -65,8 +65,8 @@
 }
 
 .wbtn:focus-visible {
-  outline: 2px solid var(--ui-paper);
-  outline-offset: 2px;
+  outline: 6px solid var(--ui-paper);
+  outline-offset: 6px;
 }
 
 .wbtn:disabled {
@@ -75,10 +75,10 @@
 }
 
 .wbtn--small {
-  height: 32px;
-  padding: 0 16px;
-  border-radius: 8px;
-  font-size: 13px;
+  height: 96px;
+  padding: 0 48px;
+  border-radius: 24px;
+  font-size: 39px;
   box-shadow: none;
 }
 
@@ -86,8 +86,8 @@
 .icon {
   display: inline-flex;
   flex: none;
-  width: 20px;
-  height: 20px;
+  width: 60px;
+  height: 60px;
 }
 
 .icon svg {
@@ -98,28 +98,28 @@
 
 /* ---------- Меню ---------- */
 .menu-logo {
-  /* Край ушанки в SVG отстоит от края файла на 3px: сдвиг выравнивает её по краю кнопок. */
-  left: 29px;
-  top: 32px;
-  height: 32px;
+  /* Край ушанки в SVG отстоит от края файла на 9px: сдвиг выравнивает её по краю кнопок. */
+  left: 87px;
+  top: 96px;
+  height: 96px;
   user-select: none;
   pointer-events: none;
-  filter: drop-shadow(0 2px 4px rgb(0 0 0 / 0.5));
+  filter: drop-shadow(0 6px 12px rgb(0 0 0 / 0.5));
 }
 
 .menu-actions {
-  left: 32px;
-  bottom: 32px;
+  left: 96px;
+  bottom: 96px;
   display: grid;
-  grid-template-columns: repeat(3, 176px);
-  gap: 12px;
+  grid-template-columns: repeat(3, 528px);
+  gap: 36px;
 }
 
 .version {
-  right: 8px;
-  bottom: 8px;
+  right: 24px;
+  bottom: 24px;
   font-family: var(--font-ui);
-  font-size: 8px;
+  font-size: 24px;
   font-variant-numeric: tabular-nums;
   color: rgb(255 255 255 / 0.4);
 }
@@ -137,34 +137,34 @@
 }
 
 .modal {
-  width: 376px;
-  max-height: 320px;
+  width: 1128px;
+  max-height: 960px;
   overflow: auto;
-  padding: 20px 24px;
-  border-radius: 14px;
+  padding: 60px 72px;
+  border-radius: 42px;
   background: var(--ui-paper);
   color: var(--ui-ink);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 0.35);
+  box-shadow: 0 24px 72px rgb(0 0 0 / 0.35);
   font-family: var(--font-ui);
-  font-size: 12px;
+  font-size: 36px;
   line-height: 1.5;
   animation: ui-rise var(--ui-enter) var(--ui-ease);
 }
 
 .modal h2 {
-  margin: 0 0 16px;
-  font-size: 20px;
+  margin: 0 0 48px;
+  font-size: 60px;
   font-weight: 500;
   line-height: 1.2;
 }
 
 .modal p {
-  margin: 0 0 8px;
+  margin: 0 0 24px;
   color: var(--ui-ink-2);
 }
 
 .modal__footer {
-  margin-top: 20px;
+  margin-top: 60px;
   display: flex;
   justify-content: flex-end;
 }
@@ -172,18 +172,18 @@
 /* Поле настроек: подпись | контрол | значение — три выровненные колонки. */
 .field {
   display: grid;
-  grid-template-columns: 112px 1fr 24px;
+  grid-template-columns: 336px 1fr 72px;
   align-items: center;
-  gap: 12px;
-  min-height: 28px;
-  margin-bottom: 8px;
+  gap: 36px;
+  min-height: 84px;
+  margin-bottom: 24px;
 }
 
 .field select {
-  height: 28px;
-  padding: 0 8px;
-  border: 1px solid var(--ui-hairline);
-  border-radius: 8px;
+  height: 84px;
+  padding: 0 24px;
+  border: 3px solid var(--ui-hairline);
+  border-radius: 24px;
   font: inherit;
   color: var(--ui-ink);
   background: var(--ui-paper-raised);
@@ -196,8 +196,8 @@
 }
 
 .field input[type='checkbox'] {
-  width: 16px;
-  height: 16px;
+  width: 48px;
+  height: 48px;
   margin: 0;
   accent-color: var(--ui-accent);
 }
@@ -205,7 +205,7 @@
 /* Ползунок в цветах интерфейса вместо системного. */
 .field input[type='range'] {
   width: 100%;
-  height: 16px;
+  height: 48px;
   margin: 0;
   background: transparent;
   appearance: none;
@@ -214,8 +214,8 @@
 
 .field input[type='range']::-webkit-slider-runnable-track {
   /* Пройденная часть — акцентом: --fill выставляет SettingsPanel.js. */
-  height: 4px;
-  border-radius: 2px;
+  height: 12px;
+  border-radius: 6px;
   background: linear-gradient(
     to right,
     var(--ui-accent) 0 var(--fill, 50%),
@@ -224,39 +224,39 @@
 }
 
 .field input[type='range']::-moz-range-track {
-  height: 4px;
-  border-radius: 2px;
+  height: 12px;
+  border-radius: 6px;
   background: var(--ui-paper-raised);
 }
 
 .field input[type='range']::-moz-range-progress {
-  height: 4px;
-  border-radius: 2px;
+  height: 12px;
+  border-radius: 6px;
   background: var(--ui-accent);
 }
 
 .field input[type='range']::-webkit-slider-thumb {
   appearance: none;
-  width: 16px;
-  height: 16px;
-  margin-top: -6px;
+  width: 48px;
+  height: 48px;
+  margin-top: -18px;
   border: 0;
   border-radius: 50%;
   background: var(--ui-accent);
 }
 
 .field input[type='range']::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
+  width: 48px;
+  height: 48px;
   border: 0;
   border-radius: 50%;
   background: var(--ui-accent);
 }
 
 .field input[type='range']:focus-visible {
-  outline: 2px solid var(--ui-accent);
-  outline-offset: 4px;
-  border-radius: 4px;
+  outline: 6px solid var(--ui-accent);
+  outline-offset: 12px;
+  border-radius: 12px;
 }
 
 @keyframes ui-fade {
@@ -268,31 +268,31 @@
 @keyframes ui-rise {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(24px);
   }
 }
 
 /* ---------- Загрузка ---------- */
 .boot {
-  left: 200px;
-  right: 200px;
-  top: 128px;
+  left: 600px;
+  right: 600px;
+  top: 384px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 24px;
+  gap: 72px;
 }
 
 .boot__logo {
-  height: 40px;
+  height: 120px;
   user-select: none;
   pointer-events: none;
 }
 
 .boot__bar {
   width: 100%;
-  height: 4px;
-  border-radius: 2px;
+  height: 12px;
+  border-radius: 6px;
   background: rgb(255 255 255 / 0.12);
   overflow: hidden;
 }
@@ -307,11 +307,11 @@
 
 .boot__row {
   width: 100%;
-  margin-top: -12px; /* подписи ближе к полосе, чем полоса к логотипу */
+  margin-top: -36px; /* подписи ближе к полосе, чем полоса к логотипу */
   display: flex;
   justify-content: space-between;
   font-family: var(--font-ui);
-  font-size: 12px;
+  font-size: 36px;
   color: #aaa398;
 }
 
@@ -323,7 +323,7 @@
 .boot__status--ready {
   width: 100%;
   text-align: center;
-  font-size: 14px;
+  font-size: 42px;
   color: #efe9de;
   animation: ui-wait 2s var(--ui-ease) infinite alternate;
 }
@@ -332,10 +332,10 @@
   left: 0;
   right: 0;
   top: auto;
-  bottom: 16px;
+  bottom: 48px;
   text-align: center;
   font-family: var(--font-ui);
-  font-size: 9px;
+  font-size: 27px;
   color: #8a847a;
 }
 
@@ -358,34 +358,34 @@
 }
 
 .dlg {
-  left: 24px;
-  right: 24px;
-  bottom: 24px;
-  height: 96px;
+  left: 72px;
+  right: 72px;
+  bottom: 72px;
+  height: 288px;
   display: flex;
   align-items: flex-start;
-  gap: 16px;
-  padding: 16px;
-  border-radius: 14px;
+  gap: 48px;
+  padding: 48px;
+  border-radius: 42px;
   background: rgb(22 21 19 / 0.94);
   box-shadow:
-    inset 0 0 0 1px rgb(239 233 222 / 0.08),
-    0 8px 24px rgb(0 0 0 / 0.4);
+    inset 0 0 0 3px rgb(239 233 222 / 0.08),
+    0 24px 72px rgb(0 0 0 / 0.4);
   font-family: var(--font-ui);
   color: #efe9de;
 }
 
 .dlg__portrait {
   flex: none;
-  width: 64px;
-  height: 64px;
-  border-radius: 8px;
+  width: 192px;
+  height: 192px;
+  border-radius: 24px;
   overflow: hidden;
   display: grid;
   place-items: center;
   background: #262421;
-  box-shadow: inset 0 0 0 1px rgb(239 233 222 / 0.08);
-  font-size: 28px;
+  box-shadow: inset 0 0 0 3px rgb(239 233 222 / 0.08);
+  font-size: 84px;
   font-weight: 500;
   color: #8a847a;
 }
@@ -402,29 +402,29 @@
 }
 
 .dlg__name {
-  margin-bottom: 4px;
-  font-size: 12px;
+  margin-bottom: 12px;
+  font-size: 36px;
   font-weight: 500;
-  line-height: 16px;
+  line-height: 48px;
   color: var(--ui-accent);
 }
 
 .dlg__text {
-  font-size: 15px;
-  line-height: 22px;
+  font-size: 45px;
+  line-height: 66px;
   white-space: pre-wrap;
 }
 
 /* «Дальше»: маленький треугольник в углу, появляется, когда реплика допечатана. */
 .dlg__next {
   position: absolute;
-  right: 16px;
-  bottom: 14px;
+  right: 48px;
+  bottom: 42px;
   width: 0;
   height: 0;
-  border-left: 5px solid transparent;
-  border-right: 5px solid transparent;
-  border-top: 6px solid currentColor;
+  border-left: 15px solid transparent;
+  border-right: 15px solid transparent;
+  border-top: 18px solid currentColor;
   opacity: 0;
   transition: opacity var(--ui-fast) var(--ui-ease);
 }
@@ -443,9 +443,9 @@
 }
 
 .dlg-date .dlg__text {
-  max-width: 440px;
-  font-size: 20px;
-  line-height: 28px;
+  max-width: 1320px;
+  font-size: 60px;
+  line-height: 84px;
   text-align: center;
 }
 
@@ -459,9 +459,9 @@
 }
 
 .dlg-caption .dlg__text {
-  max-width: 440px;
-  font-size: 16px;
-  line-height: 24px;
+  max-width: 1320px;
+  font-size: 48px;
+  line-height: 72px;
   text-align: center;
 }
 
@@ -475,23 +475,23 @@
 
 .dlg-note__sheet {
   position: relative;
-  width: 352px;
-  min-height: 160px;
-  padding: 24px 28px 32px;
-  border-radius: 2px;
+  width: 1056px;
+  min-height: 480px;
+  padding: 72px 84px 96px;
+  border-radius: 6px;
   background:
-    repeating-linear-gradient(to bottom, transparent 0 27px, rgb(70 96 140 / 0.22) 27px 28px),
+    repeating-linear-gradient(to bottom, transparent 0 81px, rgb(70 96 140 / 0.22) 81px 84px),
     #f3ead7;
-  background-position: 0 24px; /* линейки — под строками почерка */
-  box-shadow: 0 10px 24px rgb(0 0 0 / 0.5);
+  background-position: 0 72px; /* линейки — под строками почерка */
+  box-shadow: 0 30px 72px rgb(0 0 0 / 0.5);
   transform: rotate(-1.2deg);
   font-family: 'Caveat Variable', 'Caveat', cursive;
   color: #2a3348;
 }
 
 .dlg-note .dlg__text {
-  font-size: 24px;
-  line-height: 28px;
+  font-size: 72px;
+  line-height: 84px;
 }
 
 .dlg-note .dlg__next {
@@ -509,7 +509,787 @@
 
 /* Кнопка «Пропустить» над диалогом. */
 .skip {
-  top: 16px;
-  right: 16px;
+  top: 48px;
+  right: 48px;
   z-index: 2;
+}
+
+/* ---------- Гараж: тюнинг ----------
+ * Сетка Full HD: поля 40, шаг 8. Слева панель характеристик 440, справа от неё —
+ * зона машины; снизу лоток деталей (h 152) и ряд вкладок с кнопкой запуска (h 96).
+ */
+.wbtn--icon {
+  width: 64px;
+  height: 64px;
+  padding: 0;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.3);
+}
+
+.wbtn--icon .wbtn__label {
+  display: none;
+}
+
+.wbtn--icon .icon {
+  width: 28px;
+  height: 28px;
+}
+
+/* Общая поверхность панелей: тёплый тёмный, волосная рамка, без свечений. */
+.gside,
+.gtray,
+.gtabs,
+.gtop__goal {
+  background: rgb(22 21 19 / 0.92);
+  box-shadow: inset 0 0 0 1px rgb(239 233 222 / 0.08);
+  color: #efe9de;
+  font-family: var(--font-ui);
+}
+
+.gtop {
+  left: 40px;
+  right: 40px;
+  top: 40px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.gtop__goal {
+  flex: 1;
+  min-width: 0;
+  height: 64px;
+  padding: 0 24px 0 12px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.gtop__chip {
+  flex: none;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  background: var(--ui-accent);
+  color: var(--ui-ink);
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.gtop__text {
+  min-width: 0;
+  font-size: 22px;
+  color: #c9c1b4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gtop__actions {
+  flex: none;
+  display: flex;
+  gap: 16px;
+}
+
+/* Левая панель: характеристики, вердикт, совет деда. */
+.gside {
+  left: 40px;
+  top: 136px;
+  width: 440px;
+  padding: 32px;
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.gstats {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.gstat__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+
+.gstat__label {
+  font-size: 20px;
+  color: #aaa398;
+}
+
+.gstat__value {
+  font-size: 22px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: #efe9de;
+  transition: color var(--ui-fast) var(--ui-ease);
+}
+
+.gstat__value.is-up {
+  color: #7fc98a;
+}
+
+.gstat__value.is-down {
+  color: #e2766b;
+}
+
+.gbar {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 4px;
+}
+
+.gbar__seg {
+  height: 8px;
+  border-radius: 2px;
+  background: rgb(239 233 222 / 0.1);
+}
+
+.gbar__seg.is-on {
+  background: #efe9de;
+}
+
+.gbar__seg.is-up {
+  background: #7fc98a;
+}
+
+.gbar__seg.is-down {
+  background: #e2766b;
+}
+
+.gbar__seg.is-removed {
+  background: transparent;
+  box-shadow: inset 0 0 0 2px currentColor;
+}
+
+.gbar__seg.is-up.is-removed {
+  color: #7fc98a;
+}
+
+.gbar__seg.is-down.is-removed {
+  color: #e2766b;
+}
+
+.gverdict {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid rgb(239 233 222 / 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 20px;
+}
+
+.gverdict__row {
+  display: flex;
+  justify-content: space-between;
+  color: #aaa398;
+}
+
+.gverdict__row span:last-child {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: #efe9de;
+}
+
+.gverdict__row .is-ok {
+  color: #7fc98a !important;
+}
+
+.gverdict__row .is-bad {
+  color: #e2766b !important;
+}
+
+.gverdict__empty {
+  color: #e2766b;
+  line-height: 1.4;
+}
+
+/* Совет деда появляется только после провала. */
+.gadvice {
+  margin-top: 24px;
+  padding: 16px 20px;
+  border-radius: 12px;
+  background: rgb(238 164 90 / 0.1);
+  box-shadow: inset 4px 0 0 var(--ui-accent);
+}
+
+.gadvice[hidden] {
+  display: none;
+}
+
+.gadvice__title {
+  font-size: 16px;
+  color: var(--ui-accent);
+  margin-bottom: 4px;
+}
+
+.gadvice__text {
+  font-size: 19px;
+  line-height: 1.4;
+  color: #efe9de;
+}
+
+/* Лоток деталей. */
+.gtray {
+  left: 520px;
+  right: 40px;
+  bottom: 152px;
+  height: 168px;
+  padding: 16px;
+  border-radius: 20px;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 16px;
+}
+
+.gtray.is-looks {
+  grid-auto-columns: auto;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 32px;
+}
+
+.gcard {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 6px;
+  padding: 14px 20px;
+  border: 0;
+  border-radius: 14px;
+  background: #262421;
+  box-shadow: inset 0 0 0 1px rgb(239 233 222 / 0.06);
+  color: #efe9de;
+  font-family: var(--font-ui);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color var(--ui-fast) var(--ui-ease),
+    box-shadow var(--ui-fast) var(--ui-ease);
+}
+
+.gcard:hover {
+  background: #2e2b27;
+}
+
+.gcard.is-selected {
+  background: #2e2b27;
+  box-shadow: inset 0 0 0 2px var(--ui-accent);
+}
+
+.gcard:focus-visible {
+  outline: 3px solid var(--ui-accent);
+  outline-offset: 3px;
+}
+
+.gcard__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.gcard__name {
+  font-size: 22px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gcard__tag {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 16px;
+  color: var(--ui-accent);
+}
+
+.gcard__tag .icon {
+  width: 18px;
+  height: 18px;
+}
+
+.gcard__desc {
+  font-size: 16px;
+  line-height: 1.35;
+  color: #8a847a;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.gcard__delta {
+  margin-top: auto;
+  min-height: 22px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+}
+
+.gcard__delta .is-up {
+  color: #7fc98a;
+}
+
+.gcard__delta .is-down {
+  color: #e2766b;
+}
+
+.gcard__delta .is-same {
+  color: #8a847a;
+}
+
+/* Внешний вид: группы цветов 4×2 с подписью сверху. */
+.gswatches {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gswatches__label {
+  font-family: var(--font-ui);
+  font-size: 18px;
+  color: #aaa398;
+}
+
+.gswatches__row {
+  display: grid;
+  grid-template-columns: repeat(4, 36px);
+  gap: 10px;
+}
+
+.gswatch {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.15);
+  cursor: pointer;
+}
+
+.gswatch.is-off {
+  background: repeating-linear-gradient(135deg, #3a3631 0 4px, #26241f 4px 8px);
+}
+
+.gswatch.is-selected {
+  outline: 3px solid var(--ui-accent);
+  outline-offset: 3px;
+}
+
+.gwash {
+  height: 56px;
+  padding: 0 24px;
+  font-size: 20px;
+}
+
+.gwash .icon {
+  width: 24px;
+  height: 24px;
+}
+
+/* Вкладки: иконка над подписью. */
+.gtabs {
+  left: 520px;
+  width: 920px;
+  bottom: 40px;
+  height: 96px;
+  padding: 8px;
+  border-radius: 20px;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+
+.gtab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: #8a847a;
+  font-family: var(--font-ui);
+  font-size: 18px;
+  cursor: pointer;
+  transition:
+    background-color var(--ui-fast) var(--ui-ease),
+    color var(--ui-fast) var(--ui-ease);
+}
+
+.gtab .icon {
+  width: 32px;
+  height: 32px;
+}
+
+.gtab:hover {
+  color: #efe9de;
+  background: rgb(239 233 222 / 0.06);
+}
+
+.gtab.is-active {
+  color: #efe9de;
+  background: #2e2b27;
+  box-shadow: inset 0 0 0 1px rgb(239 233 222 / 0.1);
+}
+
+.gtab:focus-visible {
+  outline: 3px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+
+/* Запуск: справа от вкладок, той же высоты. */
+.glaunch {
+  left: 1464px;
+  right: 40px;
+  bottom: 40px;
+  height: 96px;
+}
+
+.glaunch__btn {
+  width: 100%;
+  height: 96px;
+  padding: 0 28px;
+  gap: 16px;
+  justify-content: flex-start;
+  border-radius: 20px;
+  font-size: 26px;
+}
+
+.glaunch__btn .icon {
+  width: 32px;
+  height: 32px;
+}
+
+.glaunch__btn .wbtn__label {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  white-space: normal;
+  line-height: 1.1;
+}
+
+.glaunch__sub {
+  font-size: 17px;
+  font-weight: 400;
+}
+
+.glaunch__sub:empty {
+  display: none;
+}
+
+.glaunch__btn:disabled {
+  opacity: 1;
+  background: #3a352f;
+  color: #c9c1b4;
+}
+
+/* ---------- Общая поверхность экранов игры (как в гараже) ---------- */
+.surface {
+  background: rgb(22 21 19 / 0.92);
+  box-shadow: inset 0 0 0 1px rgb(239 233 222 / 0.08);
+  border-radius: 20px;
+  color: #efe9de;
+  font-family: var(--font-ui);
+}
+
+.status-dot {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #7fc98a;
+}
+
+.status-dot.is-bad {
+  background: #e2766b;
+}
+
+/* ---------- Результат: машина слева, итог справа ---------- */
+.result-panel {
+  left: 1104px;
+  right: 40px;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 48px;
+  display: flex;
+  flex-direction: column;
+}
+
+.result-panel__eyebrow {
+  font-size: 22px;
+  color: #aaa398;
+}
+
+.result-panel__title {
+  margin: 8px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 56px;
+  font-weight: 500;
+  line-height: 1.1;
+}
+
+.result-panel__reason {
+  margin: 16px 0 0;
+  font-size: 26px;
+  line-height: 1.35;
+  color: #c9c1b4;
+}
+
+.result-panel__rows {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid rgb(239 233 222 / 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 22px;
+}
+
+.result-panel__row {
+  display: flex;
+  justify-content: space-between;
+  color: #aaa398;
+}
+
+.result-panel__row span:last-child {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: #efe9de;
+}
+
+.result-panel__row .is-ok {
+  color: #7fc98a;
+}
+
+.result-panel__row .is-bad {
+  color: #e2766b;
+}
+
+.result-panel .gadvice {
+  margin-top: 32px;
+}
+
+.result-panel__actions {
+  margin-top: 40px;
+  display: flex;
+  gap: 16px;
+}
+
+.result-panel__actions .wbtn {
+  height: 72px;
+  padding: 0 32px;
+  font-size: 24px;
+  border-radius: 16px;
+  box-shadow: none;
+}
+
+.result-panel__actions .icon {
+  width: 26px;
+  height: 26px;
+}
+
+/* ---------- Финал: машина под лампой, итоги снизу ---------- */
+.ending-panel {
+  left: 40px;
+  right: 40px;
+  bottom: 40px;
+  height: 168px;
+  padding: 0 48px;
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr 1.6fr auto;
+  align-items: center;
+  gap: 40px;
+}
+
+.ending-panel__title {
+  font-size: 40px;
+  font-weight: 500;
+  line-height: 1.15;
+}
+
+.ending-stat__label {
+  font-size: 18px;
+  color: #aaa398;
+  margin-bottom: 8px;
+}
+
+.ending-stat__value {
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+}
+
+.ending-panel .wbtn {
+  height: 80px;
+  padding: 0 36px;
+  font-size: 24px;
+  border-radius: 16px;
+  box-shadow: none;
+}
+
+.ending-panel .icon {
+  width: 26px;
+  height: 26px;
+}
+
+/* ---------- Полосы: путь, прочность, обороты ---------- */
+.meter {
+  height: 10px;
+  border-radius: 5px;
+  background: rgb(239 233 222 / 0.1);
+  overflow: hidden;
+}
+
+.meter__fill {
+  height: 100%;
+  width: 100%;
+  border-radius: 5px;
+  background: #efe9de;
+  transform-origin: left center;
+  transform: scaleX(0);
+}
+
+.meter__fill.is-good {
+  background: #7fc98a;
+}
+
+.meter__fill.is-bad {
+  background: #e2766b;
+}
+
+/* ---------- Обкатка: одна панель внизу ---------- */
+.trial-hud {
+  left: 40px;
+  right: 40px;
+  bottom: 40px;
+  height: 96px;
+  padding: 0 32px;
+  display: grid;
+  grid-template-columns: 1fr 360px auto;
+  align-items: center;
+  gap: 48px;
+}
+
+.hud-meter__head {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-size: 20px;
+  color: #aaa398;
+}
+
+.hud-meter__head span:last-child {
+  font-variant-numeric: tabular-nums;
+  color: #efe9de;
+}
+
+.trial-hud .wbtn {
+  height: 56px;
+  padding: 0 24px;
+  font-size: 20px;
+  box-shadow: none;
+}
+
+.trial-hud .wbtn.is-on {
+  background: var(--ui-accent);
+}
+
+/* ---------- Заезд: приборная панель снизу по центру ---------- */
+.race-hud {
+  left: 50%;
+  bottom: 40px;
+  width: 880px;
+  height: 128px;
+  transform: translateX(-50%);
+  padding: 0 40px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 48px;
+}
+
+.race-hud__gauge {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.race-hud__value {
+  font-size: 40px;
+  font-weight: 500;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.race-hud__unit {
+  margin-left: 8px;
+  font-size: 18px;
+  font-weight: 400;
+  color: #aaa398;
+}
+
+.race-hud__time {
+  text-align: center;
+}
+
+.race-hud__time .race-hud__value {
+  font-size: 64px;
+}
+
+.race-hud__label {
+  font-size: 18px;
+  color: #aaa398;
+}
+
+.race-hud__gear {
+  font-size: 18px;
+  color: #aaa398;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Тахометр: сегменты, последние — красная зона. */
+.tacho {
+  display: grid;
+  grid-template-columns: repeat(14, 1fr);
+  gap: 3px;
+}
+
+.tacho__seg {
+  height: 12px;
+  border-radius: 2px;
+  background: rgb(239 233 222 / 0.1);
+}
+
+.tacho__seg.is-on {
+  background: #efe9de;
+}
+
+.tacho__seg.is-red {
+  background: rgb(226 118 107 / 0.25);
+}
+
+.tacho__seg.is-red.is-on {
+  background: #e2766b;
 }

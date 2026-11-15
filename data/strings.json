@@ -44,18 +44,20 @@
       "wheels": "Колёса",
       "engine": "Двигатель",
       "body": "Кузов",
+      "spoiler": "Спойлер",
       "looks": "Внешний вид"
     },
     "looks": {
-      "paint": "Цвет кузова",
-      "rim": "Цвет дисков",
-      "headlight": "Цвет фар",
+      "paint": "Кузов",
+      "rim": "Диски",
+      "headlight": "Фары",
       "neon": "Неон"
     },
     "stats": {
       "power": "Мощность",
       "mass": "Масса",
-      "grip": "Сцепление ({surface})",
+      "grip": "Сцепление, {surface}",
+      "downforce": "Прижим, асфальт",
       "durability": "Прочность",
       "need": "Нужно",
       "have": "Есть"
@@ -71,7 +73,21 @@
       "medium": "средний",
       "heavy": "тяжёлый"
     },
-    "noteDefault": "Дед: «Двигатель живой, остальное сам смотри»."
+    "wash": "Помыть",
+    "washed": "Чистая",
+    "noSpoiler": "Без спойлера",
+    "testChip": "{name} · {n} из {total}",
+    "installed": "Стоит",
+    "noteTitle": "Совет деда",
+    "verdict": {
+      "trialNeed": "Нужная тяга",
+      "trialHave": "Тяга сейчас",
+      "raceNeed": "Время Палыча",
+      "raceHave": "Твоё время",
+      "durabilityNeed": "Прочность от {min}"
+    },
+    "deltaNone": "Без изменений",
+    "missingWheels": "Поставь колёса — машина на кирпичах"
   },
   "trial": {
     "speedUp": "Ускорить ×2",
@@ -82,9 +98,12 @@
     "you": "Ты",
     "rival": "Палыч",
     "preStart": "Ждём сигнала",
-    "tacho": "об/мин",
-    "speedo": "км/ч",
-    "timer": "Время"
+    "tacho": "Обороты",
+    "speedo": "Скорость",
+    "timer": "Время",
+    "rpmUnit": "об/мин",
+    "kmh": "км/ч",
+    "gear": "{n}-я передача"
   },
   "result": {
     "success": "Успех",
@@ -94,12 +113,24 @@
     "toMenu": "В меню",
     "time": "Время",
     "diff": "Разница с Палычем",
-    "durabilityLeft": "Прочность"
+    "durabilityLeft": "Прочность",
+    "rival": "Палыч",
+    "diffLabel": "Разница",
+    "durability": "Прочность",
+    "durabilityValue": "{have} при нужных {min}",
+    "hintTitle": "Совет",
+    "titleOk": "{name}: пройдено",
+    "titleFail": "{name}: не вышло"
   },
   "ending": {
     "attempts": "Попыток: обкатка {trial}, заезд {race}",
     "raceTime": "Время заезда: {time} с",
     "winningParts": "Победная сборка: {parts}",
-    "playAgain": "Играть снова"
+    "playAgain": "Играть снова",
+    "title": "Палыч обогнан",
+    "attemptsLabel": "Попытки",
+    "attemptsValue": "обкатка {trial} · заезд {race}",
+    "timeLabel": "Время заезда",
+    "partsLabel": "Сборка"
   }
 }

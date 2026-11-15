@@ -5,6 +5,7 @@ import { BaseScene } from './BaseScene.js';
 import { SCENES } from '../config/constants.js';
 import { el } from '../ui/dom.js';
 import { t } from '../systems/strings.js';
+import { preloadCar } from '../systems/CarRig.js';
 
 /**
  * Boot (ТЗ 3.2, 7.3): логотип, «Игра загружается…», проценты и полоса прогресса
@@ -50,6 +51,7 @@ export class BootScene extends BaseScene {
     for (const a of manifest.images) this.load.image(a.key, a.path);
     for (const a of manifest.spritesheets) this.load.spritesheet(a.key, a.path, a.frame);
     for (const a of manifest.audio) this.load.audio(a.key, [].concat(a.path));
+    preloadCar(this); // слои машины игрока: список берётся из data/car.json
   }
 
   create() {

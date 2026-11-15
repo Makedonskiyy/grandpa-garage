@@ -4,6 +4,10 @@
     {
       "key": "bg_menu",
       "path": "assets/images/bg/menu_garage.png"
+    },
+    {
+      "key": "bg_garage",
+      "path": "assets/images/bg/garage_room.png"
     }
   ],
   "spritesheets": [],

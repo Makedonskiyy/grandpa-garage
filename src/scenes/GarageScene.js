@@ -1,10 +1,10 @@
 import Phaser from 'phaser';
 import partsData from '../../data/parts.json';
 import cosmetics from '../../data/cosmetics.json';
+import config from '../../data/config.json';
 import { BaseScene } from './BaseScene.js';
-import { SCENES, MUSIC, FONT_FAMILY, TEST_IDS } from '../config/constants.js';
-import { drawGarageInterior, FLOOR_Y } from './garageBackdrop.js';
-import { buildCar } from '../systems/buildCar.js';
+import { SCENES, MUSIC, TEST_IDS } from '../config/constants.js';
+import { drawGarageRoom, placeGarageCar } from './garageBackdrop.js';
 import { DialogSystem } from '../systems/DialogSystem.js';
 import { audio } from '../systems/AudioManager.js';
 import {
@@ -19,22 +19,27 @@ import {
   getCurrentTestId,
   onStateChange,
   togglePart,
+  removePart,
   setCosmetic,
+  washCar,
   shouldShowGrandpaHint,
 } from '../gameState.js';
 import { el, clear } from '../ui/dom.js';
-import { button } from '../ui/components.js';
+import { webButton } from '../ui/components.js';
+import { icon } from '../ui/icons.js';
 import { openSettings } from '../ui/SettingsPanel.js';
 import { openHowTo } from '../ui/HowToPanel.js';
 import { t } from '../systems/strings.js';
 
-const CAR_X = 300;
-const CAR_Y = FLOOR_Y - 6;
+const cfg = config.garage;
 const LOOK_GROUPS = ['paint', 'rim', 'headlight', 'neon'];
+const TABS = [...partsData.slots.map((s) => s.id), 'looks'];
+const { hpPerPowerPoint: HP, kgPerMassPoint: KG } = partsData.units;
 
 /**
- * Гараж (ТЗ 3.6): машина в центре, слоты с подписями, панель характеристик справа,
- * вкладки деталей снизу, записка деда, кнопка запуска. Пересчёт — в том же кадре.
+ * Гараж — тюнинг (ТЗ 3.6). Машина под лампой на глянцевом полу — единственное яркое место;
+ * интерфейс тихий: характеристики слева, записка деда, детали и вкладки снизу, запуск справа.
+ * Наведение на карточку показывает, как деталь изменит характеристики, клик ставит или снимает.
  */
 export class GarageScene extends BaseScene {
   constructor() {
@@ -44,13 +49,19 @@ export class GarageScene extends BaseScene {
   create() {
     this.enter();
     audio.playMusic(MUSIC.GARAGE);
-    drawGarageInterior(this);
 
     this.testId = getCurrentTestId();
     this.test = getTest(this.testId);
     this.activeTab = this.activeTab ?? 'wheels';
-    this.car = null;
-    this.slotLabels = this.#createSlotLabels();
+    this.preview = null; // сборка «если поставить» при наведении на карточку
+
+    drawGarageRoom(this, { lampX: cfg.carX, groundY: cfg.groundY });
+    ({ car: this.car } = placeGarageCar(this, {
+      x: cfg.carX,
+      groundY: cfg.groundY,
+      scale: cfg.carScale,
+    }));
+    this.lastBuild = JSON.stringify(gameState.build);
 
     this.alive = true;
     this.#buildUI();
@@ -65,6 +76,10 @@ export class GarageScene extends BaseScene {
     if (!gameState.flags.garageIntroSeen) this.#playGarageIntro();
   }
 
+  update(_time, delta) {
+    this.car.step(delta / 1000);
+  }
+
   async #playGarageIntro() {
     gameState.flags.garageIntroSeen = true;
     this.ui.style.visibility = 'hidden';
@@ -72,187 +87,336 @@ export class GarageScene extends BaseScene {
     this.ui.style.visibility = '';
   }
 
-  // ---------- Phaser: машина и подписи слотов ----------
-
-  #createSlotLabels() {
-    const style = { fontFamily: FONT_FAMILY, fontSize: '6px', color: '#e8d9b0' };
-    const g = this.add.graphics().lineStyle(1, 0xe8d9b0, 0.6);
-    // Линии-подписи от деталей машины к названиям слотов.
-    g.lineBetween(CAR_X + 68, CAR_Y - 6, CAR_X + 104, CAR_Y - 6);
-    g.lineBetween(CAR_X + 70, CAR_Y - 36, CAR_X + 40, CAR_Y - 104);
-    g.lineBetween(CAR_X - 30, CAR_Y - 62, CAR_X - 60, CAR_Y - 104);
-    return {
-      wheels: this.add.text(CAR_X + 108, CAR_Y - 9, '', style),
-      engine: this.add.text(CAR_X + 10, CAR_Y - 114, '', style),
-      body: this.add.text(CAR_X - 150, CAR_Y - 114, '', style),
-    };
-  }
-
-  #renderCar() {
-    this.car?.destroy();
-    this.car = buildCar(this, gameState.build, gameState.cosmetics, { x: CAR_X, y: CAR_Y });
-    for (const slot of partsData.slots) {
-      const part = computeStats(gameState.build).parts[slot.id];
-      this.slotLabels[slot.id].setText(`${slot.name}: ${part ? part.name : '—'}`);
-    }
-  }
-
   // ---------- HTML-интерфейс ----------
 
   #buildUI() {
     const n = TEST_IDS.indexOf(this.testId) + 1;
-    this.$stats = el('div', { class: 'ui-abs panel stats' });
-    this.$tabs = el('div', { class: 'tabs' });
-    this.$cards = el('div', { class: 'cards' });
-    this.$missing = el('div', { class: 'launch__missing' });
-    this.$launch = button(this.test.startButton, () => this.#launch(), { variant: 'primary' });
-    this.$note = el('div', { class: 'ui-abs note' });
+    this.$stats = el('div', { class: 'gstats' });
+    this.$verdict = el('div', { class: 'gverdict' });
+    this.$adviceText = el('div', { class: 'gadvice__text' });
+    this.$advice = el('section', { class: 'gadvice', hidden: true }, [
+      el('div', { class: 'gadvice__title', text: t('garage.noteTitle') }),
+      this.$adviceText,
+    ]);
+    this.$tray = el('div', { class: 'ui-abs gtray' });
+    this.$tabs = el('div', { class: 'ui-abs gtabs', role: 'tablist' });
+    this.$launch = webButton(this.test.startButton, () => this.#launch(), {
+      variant: 'primary',
+      icon: 'play',
+      className: 'glaunch__btn',
+    });
+    // Вторая строка на кнопке: чего не хватает для запуска.
+    this.$launchSub = el('span', { class: 'glaunch__sub' });
+    this.$launch.querySelector('.wbtn__label').append(this.$launchSub);
 
     this.ui.append(
-      el('div', { class: 'ui-abs topbar' }, [
-        el('div', { class: 'panel topbar__goal' }, [
-          el('span', { class: 'accent', text: `${this.test.name}. ` }),
-          this.test.goal,
+      el('header', { class: 'ui-abs gtop' }, [
+        el('div', { class: 'gtop__goal' }, [
+          el('div', {
+            class: 'gtop__chip',
+            text: t('garage.testChip', { name: this.test.name, n, total: TEST_IDS.length }),
+          }),
+          el('div', { class: 'gtop__text', text: this.test.goal }),
         ]),
-        el('div', { class: 'panel', text: t('garage.testCounter', { n, total: TEST_IDS.length }) }),
-        button('?', () => openHowTo(), { variant: 'icon' }),
-        button('⚙', () => openSettings(), { variant: 'icon' }),
+        el('div', { class: 'gtop__actions' }, [
+          webButton('', () => openHowTo(), {
+            icon: 'help',
+            className: 'wbtn--icon',
+            title: t('menu.howTo'),
+          }),
+          webButton('', () => openSettings(), {
+            icon: 'gear',
+            className: 'wbtn--icon',
+            title: t('menu.settings'),
+          }),
+        ]),
       ]),
-      this.$stats,
-      this.$note,
-      el('div', { class: 'ui-abs bottom' }, [
-        el('div', { class: 'panel' }, [this.$tabs, this.$cards]),
-        el('div', { class: 'panel launch' }, [this.$missing, this.$launch]),
-      ]),
+      el('aside', { class: 'ui-abs gpanel gside' }, [this.$stats, this.$verdict, this.$advice]),
+      this.$tray,
+      this.$tabs,
+      el('div', { class: 'ui-abs glaunch' }, this.$launch),
     );
   }
 
   #render() {
     // В create() сцена ещё не «активна» по мнению Phaser, поэтому свой флаг жизни.
     if (!this.alive) return;
-    this.#renderCar();
+    const buildKey = JSON.stringify(gameState.build);
+    this.car.apply(gameState.build, gameState.cosmetics, gameState.car.dirty);
+    if (buildKey !== this.lastBuild) this.car.drop();
+    this.lastBuild = buildKey;
+
     this.#renderStats();
     this.#renderTabs();
-    this.#renderCards();
+    this.#renderTray();
     this.#renderLaunch();
-    this.#renderNote();
+    this.#renderAdvice();
   }
+
+  // ---------- Характеристики ----------
 
   #renderStats() {
-    const stats = computeStats(gameState.build);
-    const r = evaluate(this.testId, gameState.build);
-    const row = (label, value) =>
-      el('div', { class: 'stats__row' }, [el('span', { class: 'muted', text: label }), value]);
+    const now = computeStats(gameState.build);
+    const next = this.preview ? computeStats(this.preview) : null;
+    const surface = this.test.surface;
+    const max = cfg.statMax;
 
-    // «Нужно / Есть»: тяга против сопротивления грязи на обкатке, время против Палыча в заезде.
-    const need = [];
-    if (r.details) {
-      const sec = t('garage.units.sec');
-      const [needText, haveText] =
-        this.testId === 'trial'
-          ? [String(Math.round(r.details.need)), String(Math.round(r.details.force))]
-          : [
-              `< ${formatSeconds(this.test.rivalTime)} ${sec}`,
-              `${formatSeconds(r.details.time)} ${sec}`,
-            ];
-      const ok =
-        this.testId === 'trial'
-          ? r.details.force >= r.details.need
-          : r.details.time < this.test.rivalTime;
-      need.push(
-        row(t('garage.stats.need'), needText),
-        row(t('garage.stats.have'), el('span', { class: ok ? 'ok' : 'bad', text: haveText })),
-      );
-    }
-    need.push(
-      row(
-        `${t('garage.stats.durability')} ≥ ${this.test.minDurability}`,
-        el('span', {
-          class: stats.durability >= this.test.minDurability ? 'ok' : 'bad',
-          text: String(stats.durability),
-        }),
-      ),
-    );
+    const rows = [
+      {
+        label: t('garage.stats.power'),
+        value: (s) => s.power,
+        show: (s) => `${s.power * HP} ${t('garage.units.hp')}`,
+        max: max.power,
+      },
+      {
+        label: t('garage.stats.mass'),
+        value: (s) => s.mass,
+        show: (s) => `${s.mass * KG} ${t('garage.units.kg')}`,
+        max: max.mass,
+        lowerIsBetter: true,
+      },
+      {
+        label: t('garage.stats.grip', { surface: this.test.surfaceName }),
+        value: (s) => s.grip[surface],
+        show: (s) => String(s.grip[surface]),
+        max: max.grip,
+      },
+      {
+        label: t('garage.stats.downforce'),
+        value: (s) => s.downforce,
+        show: (s) => String(s.downforce),
+        max: max.downforce,
+      },
+      {
+        label: t('garage.stats.durability'),
+        value: (s) => s.durability,
+        show: (s) => String(s.durability),
+        max: max.durability,
+      },
+    ];
 
     clear(this.$stats).append(
-      row(t('garage.stats.power'), `${stats.display.hp} ${t('garage.units.hp')}`),
-      row(t('garage.stats.mass'), `${stats.display.kg} ${t('garage.units.kg')}`),
-      row(
-        t('garage.stats.grip', { surface: this.test.surfaceName }),
-        String(stats.grip[this.test.surface]),
-      ),
-      row(t('garage.stats.durability'), String(stats.durability)),
-      el('div', { class: 'stats__need' }, need),
+      ...rows.map((r) => {
+        const v = r.value(now);
+        const nv = next ? r.value(next) : v;
+        const diff = nv - v;
+        const better = r.lowerIsBetter ? diff < 0 : diff > 0;
+        return el('div', { class: 'gstat' }, [
+          el('div', { class: 'gstat__head' }, [
+            el('span', { class: 'gstat__label', text: r.label }),
+            el('span', {
+              class: `gstat__value${diff ? (better ? ' is-up' : ' is-down') : ''}`,
+              text: r.show(next ?? now),
+            }),
+          ]),
+          this.#bar(v, nv, r.max, better),
+        ]);
+      }),
     );
+
+    this.#renderVerdict(next ? this.preview : gameState.build);
   }
 
-  #renderTabs() {
-    const ids = [...partsData.slots.map((s) => s.id), 'looks'];
-    clear(this.$tabs).append(
-      ...ids.map((id) =>
-        el('button', {
-          class: `tab${id === this.activeTab ? ' tab--active' : ''}`,
-          type: 'button',
-          text: t(`garage.tabs.${id}`),
-          onclick: () => {
-            this.activeTab = id;
-            this.#render();
-          },
-        }),
-      ),
-    );
-  }
-
-  #massLabel(mass) {
-    const { light, heavy } = partsData.units.massBars;
-    if (mass <= light) return t('garage.massBars.light');
-    if (mass >= heavy) return t('garage.massBars.heavy');
-    return t('garage.massBars.medium');
-  }
-
-  #renderCards() {
-    clear(this.$cards);
-    if (this.activeTab === 'looks') {
-      this.$cards.append(...LOOK_GROUPS.map((g) => this.#swatchGroup(g)));
-      return;
+  /** Сегментная полоса: текущее значение и, при наведении, прибавка или убыль. */
+  #bar(value, next, max, better) {
+    const n = cfg.barSegments;
+    const a = Math.round((Math.min(value, max) / max) * n);
+    const b = Math.round((Math.min(next, max) / max) * n);
+    const segs = [];
+    for (let i = 0; i < n; i++) {
+      let cls = 'gbar__seg';
+      if (i < Math.min(a, b)) cls += ' is-on';
+      else if (i < Math.max(a, b))
+        cls += `${better ? ' is-up' : ' is-down'}${b < a ? ' is-removed' : ''}`;
+      segs.push(el('span', { class: cls }));
     }
-    for (const part of getPartsBySlot(this.activeTab)) {
-      const selected = gameState.build[part.slot] === part.id;
-      const props = [`${t('garage.stats.mass')}: ${this.#massLabel(part.mass)}`];
-      if (part.power) props.push(`${part.power * partsData.units.hpPerPowerPoint} л.с.`);
-      if (part.grip) props.push(`грунт ${part.grip.clay} · асфальт ${part.grip.asphalt}`);
-      props.push(`${t('garage.stats.durability')}: ${part.durability}`);
-      this.$cards.append(
-        el(
-          'button',
-          {
-            class: `card${selected ? ' card--selected' : ''}`,
-            type: 'button',
-            onclick: () => togglePart(part.id),
-          },
-          [
-            el('div', { class: 'card__name', text: part.name }),
-            ...props.map((p) => el('div', { text: p })),
-          ],
+    return el('div', { class: 'gbar' }, segs);
+  }
+
+  #renderVerdict(build) {
+    const r = evaluate(this.testId, build);
+    const stats = computeStats(build);
+    const v = (label, value, ok) =>
+      el('div', { class: 'gverdict__row' }, [
+        el('span', { text: label }),
+        el('span', { class: ok === null ? '' : ok ? 'is-ok' : 'is-bad', text: value }),
+      ]);
+    const rows = [];
+    if (!r.details) {
+      rows.push(el('div', { class: 'gverdict__empty', text: t('garage.missingWheels') }));
+    } else if (this.testId === 'trial') {
+      const ok = r.details.force >= r.details.need;
+      rows.push(v(t('garage.verdict.trialNeed'), String(Math.round(r.details.need)), null));
+      rows.push(v(t('garage.verdict.trialHave'), String(Math.round(r.details.force)), ok));
+    } else {
+      const sec = t('garage.units.sec');
+      rows.push(
+        v(t('garage.verdict.raceNeed'), `${formatSeconds(this.test.rivalTime)} ${sec}`, null),
+      );
+      rows.push(
+        v(
+          t('garage.verdict.raceHave'),
+          `${formatSeconds(r.details.time)} ${sec}`,
+          r.details.time < this.test.rivalTime,
         ),
       );
     }
+    if (r.details) {
+      rows.push(
+        v(
+          t('garage.verdict.durabilityNeed', { min: this.test.minDurability }),
+          String(stats.durability),
+          stats.durability >= this.test.minDurability,
+        ),
+      );
+    }
+    clear(this.$verdict).append(...rows);
   }
 
-  #swatchGroup(group) {
-    return el('div', { class: 'card' }, [
-      el('div', { class: 'card__name', text: t(`garage.looks.${group}`) }),
+  // ---------- Вкладки и детали ----------
+
+  #renderTabs() {
+    clear(this.$tabs).append(
+      ...TABS.map((id) =>
+        el(
+          'button',
+          {
+            class: `gtab${id === this.activeTab ? ' is-active' : ''}`,
+            type: 'button',
+            role: 'tab',
+            'aria-selected': String(id === this.activeTab),
+            onclick: () => {
+              this.activeTab = id;
+              this.preview = null;
+              this.#render();
+            },
+          },
+          [icon(id), el('span', { class: 'gtab__label', text: t(`garage.tabs.${id}`) })],
+        ),
+      ),
+    );
+  }
+
+  #renderTray() {
+    clear(this.$tray);
+    if (this.activeTab === 'looks') {
+      this.$tray.classList.add('is-looks');
+      this.$tray.append(...LOOK_GROUPS.map((g) => this.#swatches(g)));
+      if (gameState.car.dirty) {
+        this.$tray.append(
+          webButton(t('garage.wash'), () => washCar(), {
+            icon: 'wash',
+            className: 'wbtn--small gwash',
+          }),
+        );
+      }
+      return;
+    }
+    this.$tray.classList.remove('is-looks');
+    const slot = this.activeTab;
+    const options = getPartsBySlot(slot).map((p) => this.#partCard(p));
+    if (slot === 'spoiler') options.unshift(this.#noneCard(slot));
+    this.$tray.append(...options);
+  }
+
+  #withPart(slot, id) {
+    return { ...gameState.build, [slot]: id };
+  }
+
+  /** Краткий итог «что изменится»: только то, что меняется, со знаком. */
+  #deltas(nextBuild) {
+    const a = computeStats(gameState.build);
+    const b = computeStats(nextBuild);
+    const surface = this.test.surface;
+    const out = [];
+    const push = (diff, text, lowerIsBetter = false) => {
+      if (!diff) return;
+      const good = lowerIsBetter ? diff < 0 : diff > 0;
+      out.push(el('span', { class: good ? 'is-up' : 'is-down', text }));
+    };
+    const sign = (n) => (n > 0 ? `+${n}` : `−${Math.abs(n)}`);
+    push(b.power - a.power, `${sign((b.power - a.power) * HP)} ${t('garage.units.hp')}`);
+    push(b.mass - a.mass, `${sign((b.mass - a.mass) * KG)} ${t('garage.units.kg')}`, true);
+    push(b.grip[surface] - a.grip[surface], `${sign(b.grip[surface] - a.grip[surface])} сцеп.`);
+    push(b.downforce - a.downforce, `${sign(b.downforce - a.downforce)} прижим`);
+    push(b.durability - a.durability, `${sign(b.durability - a.durability)} прочн.`);
+    if (!out.length) out.push(el('span', { class: 'is-same', text: t('garage.deltaNone') }));
+    return out;
+  }
+
+  #card({ selected, name, desc, nextBuild, onClick }) {
+    const card = el(
+      'button',
+      {
+        class: `gcard${selected ? ' is-selected' : ''}`,
+        type: 'button',
+        title: desc,
+        'aria-pressed': String(selected),
+        onclick: onClick,
+        onpointerenter: () => {
+          this.preview = nextBuild;
+          this.#renderStats();
+        },
+        onpointerleave: () => {
+          this.preview = null;
+          this.#renderStats();
+        },
+      },
+      [
+        el('div', { class: 'gcard__head' }, [
+          el('span', { class: 'gcard__name', text: name }),
+          selected
+            ? el('span', { class: 'gcard__tag' }, [icon('check'), t('garage.installed')])
+            : null,
+        ]),
+        el('div', { class: 'gcard__desc', text: desc }),
+        el('div', { class: 'gcard__delta' }, selected ? [] : this.#deltas(nextBuild)),
+      ],
+    );
+    return card;
+  }
+
+  #partCard(part) {
+    const selected = gameState.build[part.slot] === part.id;
+    return this.#card({
+      selected,
+      name: part.name,
+      desc: part.description,
+      nextBuild: this.#withPart(part.slot, selected ? null : part.id),
+      onClick: () => {
+        this.preview = null;
+        togglePart(part.id);
+      },
+    });
+  }
+
+  #noneCard(slot) {
+    const selected = !gameState.build[slot];
+    return this.#card({
+      selected,
+      name: t('garage.noSpoiler'),
+      desc: 'Легче, но на асфальте зад не прижат.',
+      nextBuild: this.#withPart(slot, null),
+      onClick: () => {
+        this.preview = null;
+        removePart(slot);
+      },
+    });
+  }
+
+  #swatches(group) {
+    return el('div', { class: 'gswatches' }, [
+      el('div', { class: 'gswatches__label', text: t(`garage.looks.${group}`) }),
       el(
         'div',
-        {},
+        { class: 'gswatches__row' },
         cosmetics[group].map((c) =>
           el('button', {
-            class: `swatch${gameState.cosmetics[group] === c.id ? ' swatch--selected' : ''}`,
+            class: `gswatch${gameState.cosmetics[group] === c.id ? ' is-selected' : ''}${c.hex ? '' : ' is-off'}`,
             type: 'button',
             title: c.name,
-            style: {
-              background: c.hex ?? 'repeating-linear-gradient(45deg,#222 0 2px,#444 2px 4px)',
-            },
+            'aria-label': c.name,
+            style: c.hex ? { background: c.hex } : {},
             onclick: () => setCosmetic(group, c.id),
           }),
         ),
@@ -260,21 +424,26 @@ export class GarageScene extends BaseScene {
     ]);
   }
 
+  // ---------- Запуск и записка ----------
+
   #renderLaunch() {
     const { missing } = computeStats(gameState.build);
     this.$launch.disabled = missing.length > 0;
-    this.$missing.textContent = missing.length
+    this.$launchSub.textContent = missing.length
       ? t('garage.missing', {
           slots: missing.map((s) => t(`garage.tabs.${s}`).toLowerCase()).join(', '),
         })
       : '';
   }
 
-  #renderNote() {
+  /** Совет деда — только когда он нужен: после провала, прямой совет — после трёх подряд (ТЗ 4.5). */
+  #renderAdvice() {
     const hint = shouldShowGrandpaHint(this.testId) ? this.test.grandpaHint : null;
     const last = gameState.lastResult;
     const lastHint = last && !last.ok && last.testId === this.testId ? last.hint : null;
-    this.$note.textContent = hint ?? lastHint ?? t('garage.noteDefault');
+    const text = hint ?? lastHint;
+    this.$advice.hidden = !text;
+    this.$adviceText.textContent = text ?? '';
   }
 
   #launch() {

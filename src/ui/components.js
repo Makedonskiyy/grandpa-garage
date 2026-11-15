@@ -17,12 +17,6 @@ function wire(node, onClick) {
   return node;
 }
 
-/** Пиксельная кнопка старого стиля (гараж, заезды — до их редизайна). */
-export function button(label, onClick, { variant, disabled, title, className = '' } = {}) {
-  const cls = ['btn', variant && `btn--${variant}`, className].filter(Boolean).join(' ');
-  return wire(el('button', { class: cls, type: 'button', disabled, title }, label), onClick);
-}
-
 /**
  * Обычная веб-кнопка нового стиля (макет меню): скруглённая, со шрифтом Literata и иконкой.
  * @param {{ variant?: 'primary'|'light', icon?: string, disabled?: boolean, title?: string, className?: string }} [opts]

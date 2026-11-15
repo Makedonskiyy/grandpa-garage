@@ -2,14 +2,43 @@
   "units": {
     "hpPerPowerPoint": 20,
     "kgPerMassPoint": 50,
-    "massBars": { "light": 4, "heavy": 7 }
+    "massBars": {
+      "light": 4,
+      "heavy": 7
+    }
   },
   "slots": [
-    { "id": "wheels", "name": "Колёса", "icon": "slot_wheels.png" },
-    { "id": "engine", "name": "Двигатель", "icon": "slot_engine.png" },
-    { "id": "body", "name": "Кузов", "icon": "slot_body.png" }
+    {
+      "id": "wheels",
+      "name": "Колёса",
+      "icon": "slot_wheels.png",
+      "required": true
+    },
+    {
+      "id": "engine",
+      "name": "Двигатель",
+      "icon": "slot_engine.png",
+      "required": true
+    },
+    {
+      "id": "body",
+      "name": "Кузов",
+      "icon": "slot_body.png",
+      "required": true
+    },
+    {
+      "id": "spoiler",
+      "name": "Спойлер",
+      "icon": "slot_spoiler.png",
+      "required": false
+    }
   ],
-  "initialBuild": { "wheels": "wheels_stock", "engine": "engine_stock", "body": "body_rusty" },
+  "initialBuild": {
+    "wheels": null,
+    "engine": "engine_stock",
+    "body": "body_rusty",
+    "spoiler": null
+  },
   "parts": [
     {
       "id": "wheels_studded",
@@ -18,10 +47,14 @@
       "description": "Цепко держит грязь и лёд. На асфальте шумит и скользит.",
       "mass": 4,
       "power": 0,
-      "grip": { "clay": 8, "asphalt": 4 },
+      "grip": {
+        "clay": 8,
+        "asphalt": 4
+      },
       "durability": 6,
       "icon": "wheels_studded.png",
-      "sprite": "tire_studded"
+      "sprite": "tire_studded",
+      "downforce": 0
     },
     {
       "id": "wheels_stock",
@@ -30,10 +63,14 @@
       "description": "Всесезонка деда. Везде средне, зато надёжно.",
       "mass": 4,
       "power": 0,
-      "grip": { "clay": 5, "asphalt": 5 },
+      "grip": {
+        "clay": 5,
+        "asphalt": 5
+      },
       "durability": 5,
       "icon": "wheels_stock.png",
-      "sprite": "tire_stock"
+      "sprite": "tire_stock",
+      "downforce": 0
     },
     {
       "id": "wheels_slicks",
@@ -42,10 +79,14 @@
       "description": "Лысая гоночная резина. Асфальт — её стихия, грязь — нет.",
       "mass": 3,
       "power": 0,
-      "grip": { "clay": 2, "asphalt": 9 },
+      "grip": {
+        "clay": 2,
+        "asphalt": 9
+      },
       "durability": 3,
       "icon": "wheels_slicks.png",
-      "sprite": "tire_slicks"
+      "sprite": "tire_slicks",
+      "downforce": 0
     },
     {
       "id": "engine_stock",
@@ -57,7 +98,8 @@
       "grip": null,
       "durability": 6,
       "icon": "engine_stock.png",
-      "sprite": null
+      "sprite": null,
+      "downforce": 0
     },
     {
       "id": "engine_tuned",
@@ -69,7 +111,8 @@
       "grip": null,
       "durability": 5,
       "icon": "engine_tuned.png",
-      "sprite": null
+      "sprite": null,
+      "downforce": 0
     },
     {
       "id": "engine_turbo",
@@ -81,7 +124,8 @@
       "grip": null,
       "durability": 3,
       "icon": "engine_turbo.png",
-      "sprite": null
+      "sprite": null,
+      "downforce": 0
     },
     {
       "id": "body_rusty",
@@ -93,7 +137,8 @@
       "grip": null,
       "durability": 4,
       "icon": "body_rusty.png",
-      "sprite": "overlay_rust"
+      "sprite": "overlay_rust",
+      "downforce": 0
     },
     {
       "id": "body_cage",
@@ -105,7 +150,8 @@
       "grip": null,
       "durability": 9,
       "icon": "body_cage.png",
-      "sprite": "overlay_cage"
+      "sprite": "overlay_cage",
+      "downforce": 0
     },
     {
       "id": "body_light",
@@ -117,7 +163,35 @@
       "grip": null,
       "durability": 2,
       "icon": "body_light.png",
-      "sprite": "overlay_spoiler"
+      "sprite": "overlay_spoiler",
+      "downforce": 0
+    },
+    {
+      "id": "spoiler_lip",
+      "slot": "spoiler",
+      "name": "Лип на багажник",
+      "description": "Невысокий козырёк. Чуть прижимает зад на асфальте.",
+      "mass": 2,
+      "power": 0,
+      "grip": null,
+      "downforce": 2,
+      "durability": 6,
+      "icon": "spoiler_lip.png",
+      "sprite": "spoiler_lip"
+    },
+    {
+      "id": "spoiler_wing",
+      "slot": "spoiler",
+      "name": "Высокое крыло",
+      "description": "Большое крыло на стойках. Сильно прижимает, но хлипкое.",
+      "mass": 2,
+      "power": 0,
+      "grip": null,
+      "downforce": 3,
+      "durability": 3,
+      "icon": "spoiler_wing.png",
+      "sprite": "spoiler_wing"
     }
-  ]
+  ],
+  "$comment": "Детали. downforce — прижимная сила спойлера: прибавляется к сцеплению на асфальте (на грунте скорости малы, не влияет). Слот spoiler необязательный."
 }

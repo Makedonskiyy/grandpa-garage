@@ -7,11 +7,18 @@ import cosmetics from '../data/cosmetics.json';
 const MAX_LINE = 90; // ТЗ 2.3: реплика влезает в две строки диалогового окна
 
 describe('parts.json', () => {
-  const slotIds = parts.slots.map((s) => s.id);
+  it('в обязательных слотах ровно три детали, в необязательных — хотя бы одна', () => {
+    for (const slot of parts.slots) {
+      const count = parts.parts.filter((p) => p.slot === slot.id).length;
+      if (slot.required === false) expect(count).toBeGreaterThan(0);
+      else expect(count).toBe(3);
+    }
+  });
 
-  it('в каждом слоте ровно три детали', () => {
-    for (const slot of slotIds) {
-      expect(parts.parts.filter((p) => p.slot === slot)).toHaveLength(3);
+  it('прижимная сила есть только у спойлеров', () => {
+    for (const p of parts.parts) {
+      if (p.slot === 'spoiler') expect(p.downforce).toBeGreaterThan(0);
+      else expect(p.downforce ?? 0).toBe(0);
     }
   });
 
