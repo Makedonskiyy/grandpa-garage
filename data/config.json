@@ -1,0 +1,15 @@
+{
+  "game": { "width": 640, "height": 360, "backgroundColor": "#000000" },
+  "boot": { "minDurationMs": 1500 },
+  "dialog": {
+    "charsPerSecond": 30,
+    "clickEveryChars": 2,
+    "dateHoldMs": 2000,
+    "box": { "x": 20, "y": 256, "width": 600, "height": 96, "portraitSize": 64 }
+  },
+  "audio": { "musicCrossfadeMs": 800 },
+  "settingsDefaults": { "scale": "auto", "music": 70, "sfx": 80, "muted": false },
+  "hints": { "failStreakForGrandpaHint": 3 },
+  "trial": { "speedUpFactor": 2 },
+  "sceneFadeMs": 300
+}

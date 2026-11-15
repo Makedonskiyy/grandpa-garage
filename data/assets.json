@@ -1,0 +1,7 @@
+{
+  "$comment": "Манифест для BootScene. Добавили файл в public/assets — добавьте строку сюда и в docs/RESOURCES.md. Пути относительно public/.",
+  "images": [],
+  "spritesheets": [],
+  "audio": [],
+  "fonts": []
+}
