@@ -11,7 +11,7 @@ import { webButton } from '../ui/components.js';
 import { t } from '../systems/strings.js';
 
 // Победившая машина в центре под лампой — как в гараже, только крупнее итогов.
-const STAGE = { carX: 320, groundY: 240, scale: 1.3 };
+const STAGE = { carX: 320, groundY: 248, scale: 1.3 };
 
 /** Финал (ТЗ 3.11): реплики 16–19, машина в гараже, итоги, «Играть снова». */
 export class EndingScene extends BaseScene {
@@ -23,7 +23,7 @@ export class EndingScene extends BaseScene {
     this.enter();
     audio.playMusic(MUSIC.ENDING);
     drawGarageRoom(this, { lampX: STAGE.carX, groundY: STAGE.groundY });
-    ({ car: this.car, reflection: this.reflection } = placeGarageCar(this, {
+    ({ car: this.car } = placeGarageCar(this, {
       x: STAGE.carX,
       groundY: STAGE.groundY,
       scale: STAGE.scale,
@@ -66,6 +66,5 @@ export class EndingScene extends BaseScene {
   update(_time, delta) {
     if (!this.car) return;
     this.car.step(delta / 1000);
-    this.reflection.syncFrom(this.car);
   }
 }

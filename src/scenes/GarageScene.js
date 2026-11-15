@@ -56,11 +56,10 @@ export class GarageScene extends BaseScene {
     this.preview = null; // сборка «если поставить» при наведении на карточку
 
     drawGarageRoom(this, { lampX: cfg.carX, groundY: cfg.groundY });
-    ({ car: this.car, reflection: this.reflection } = placeGarageCar(this, {
+    ({ car: this.car } = placeGarageCar(this, {
       x: cfg.carX,
       groundY: cfg.groundY,
       scale: cfg.carScale,
-      reflectionAlpha: cfg.reflectionAlpha,
     }));
     this.lastBuild = JSON.stringify(gameState.build);
 
@@ -79,7 +78,6 @@ export class GarageScene extends BaseScene {
 
   update(_time, delta) {
     this.car.step(delta / 1000);
-    this.reflection.syncFrom(this.car);
   }
 
   async #playGarageIntro() {
@@ -144,9 +142,7 @@ export class GarageScene extends BaseScene {
     // В create() сцена ещё не «активна» по мнению Phaser, поэтому свой флаг жизни.
     if (!this.alive) return;
     const buildKey = JSON.stringify(gameState.build);
-    for (const rig of [this.car, this.reflection]) {
-      rig.apply(gameState.build, gameState.cosmetics, gameState.car.dirty);
-    }
+    this.car.apply(gameState.build, gameState.cosmetics, gameState.car.dirty);
     if (buildKey !== this.lastBuild) this.car.drop();
     this.lastBuild = buildKey;
 

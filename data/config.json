@@ -53,7 +53,6 @@
   "garage": {
     "carX": 400,
     "groundY": 248,
-    "reflectionAlpha": 0.16,
     "barSegments": 12,
     "statMax": {
       "power": 9,

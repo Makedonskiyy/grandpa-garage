@@ -36,6 +36,8 @@ const { values: opt, positionals } = parseArgs({
     saturation: { type: 'string', default: '1.15' },
     brightness: { type: 'string', default: '1.0' },
     contrast: { type: 'string', default: '1.1' },
+    warm: { type: 'string', default: '0' }, // теплее: +красный, −синий (0.05–0.15)
+    extract: { type: 'string' }, // вырезать из исходника до уменьшения: x,y,ширина,высота
     cleanup: { type: 'string', default: '1' }, // проходов чистки одиночных пикселей
     palette: { type: 'string' }, // JSON-палитра игры: ["#rrggbb", …]
     'save-palette': { type: 'string' }, // сохранить получившуюся палитру
@@ -66,8 +68,12 @@ const hexToRgb = (hex) => {
 const rgbToHex = ([r, g, b]) => '#' + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1);
 
 // 1–2. Уменьшение, шумоподавление, цвет.
-let img = sharp(input)
-  .rotate()
+let img = sharp(input).rotate();
+if (opt.extract) {
+  const [left, top, width, height] = opt.extract.split(',').map(Number);
+  img = sharp(await img.extract({ left, top, width, height }).toBuffer());
+}
+img = img
   .resize(w, h, {
     fit: opt.fit,
     position: opt.position,
@@ -77,6 +83,8 @@ let img = sharp(input)
   .modulate({ saturation: Number(opt.saturation), brightness: Number(opt.brightness) });
 const c = Number(opt.contrast);
 if (c !== 1) img = img.linear(c, 128 * (1 - c));
+const warm = Number(opt.warm);
+if (warm) img = img.linear([1 + warm, 1, 1 - warm], [0, 0, 0]);
 if (Number(opt.denoise) > 1) img = img.median(Number(opt.denoise));
 if (Number(opt.sharpen) > 0) img = img.sharpen({ sigma: Number(opt.sharpen) });
 

@@ -32,7 +32,7 @@ export class ResultScene extends BaseScene {
     const test = getTest(r.testId);
 
     drawGarageRoom(this, { lampX: STAGE.carX, groundY: STAGE.groundY });
-    ({ car: this.car, reflection: this.reflection } = placeGarageCar(this, {
+    ({ car: this.car } = placeGarageCar(this, {
       x: STAGE.carX,
       groundY: STAGE.groundY,
       scale: STAGE.scale,
@@ -102,6 +102,5 @@ export class ResultScene extends BaseScene {
   update(_time, delta) {
     if (!this.car) return;
     this.car.step(delta / 1000);
-    this.reflection.syncFrom(this.car);
   }
 }
