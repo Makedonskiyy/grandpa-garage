@@ -271,3 +271,77 @@
     transform: translateY(8px);
   }
 }
+
+/* ---------- Загрузка ---------- */
+.boot {
+  left: 200px;
+  right: 200px;
+  top: 128px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.boot__logo {
+  height: 40px;
+  user-select: none;
+  pointer-events: none;
+}
+
+.boot__bar {
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: rgb(255 255 255 / 0.12);
+  overflow: hidden;
+}
+
+.boot__fill {
+  height: 100%;
+  background: var(--ui-accent);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform var(--ui-fast) var(--ui-ease);
+}
+
+.boot__row {
+  width: 100%;
+  margin-top: -12px; /* подписи ближе к полосе, чем полоса к логотипу */
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: #aaa398;
+}
+
+.boot__percent {
+  font-variant-numeric: tabular-nums;
+  color: #8a847a;
+}
+
+.boot__status--ready {
+  width: 100%;
+  text-align: center;
+  font-size: 14px;
+  color: #efe9de;
+  animation: ui-wait 2s var(--ui-ease) infinite alternate;
+}
+
+.boot__credits {
+  left: 0;
+  right: 0;
+  top: auto;
+  bottom: 16px;
+  text-align: center;
+  font-family: var(--font-ui);
+  font-size: 9px;
+  color: #8a847a;
+}
+
+/* Ожидание клика — единственная повторяющаяся анимация: экран ждёт игрока. */
+@keyframes ui-wait {
+  to {
+    opacity: 0.55;
+  }
+}
