@@ -12,13 +12,13 @@
   "wheels": {
     "rear": {
       "x": 63,
-      "y": 72.5
+      "y": 73
     },
     "front": {
-      "x": 221,
-      "y": 72.5
+      "x": 228,
+      "y": 73
     },
-    "radius": 19.5
+    "radius": 19
   },
   "wheelFrame": {
     "width": 48,
@@ -26,8 +26,8 @@
     "frames": 16
   },
   "headlight": {
-    "x": 281,
-    "y": 52
+    "x": 276,
+    "y": 53
   },
   "tires": {
     "wheels_stock": "stock",
