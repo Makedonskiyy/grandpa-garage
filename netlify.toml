@@ -1,0 +1,7 @@
+# Выкладка на Netlify (ТЗ 8.6): сборка из main, публикуется папка dist.
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"

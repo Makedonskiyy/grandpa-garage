@@ -1,0 +1,36 @@
+{
+  "defaults": { "paint": "silver", "rim": "silver", "headlight": "warm", "neon": "off" },
+  "paint": [
+    { "id": "cherry", "name": "Вишнёвый", "hex": "#8b1a2b" },
+    { "id": "darkgreen", "name": "Тёмно-зелёный", "hex": "#1f4d2b" },
+    { "id": "blue", "name": "Синий", "hex": "#1f3f8f" },
+    { "id": "white", "name": "Белый", "hex": "#e8e8e0" },
+    { "id": "graphite", "name": "Графит", "hex": "#3a3d42" },
+    { "id": "yellow", "name": "Жёлтый", "hex": "#e0b022" },
+    { "id": "orange", "name": "Оранжевый", "hex": "#d9641e" },
+    { "id": "silver", "name": "Серебристый", "hex": "#a8adb3" }
+  ],
+  "rim": [
+    { "id": "silver", "name": "Серебро", "hex": "#c0c4c8" },
+    { "id": "black", "name": "Чёрный", "hex": "#1c1c1f" },
+    { "id": "gold", "name": "Золото", "hex": "#c9a23a" },
+    { "id": "red", "name": "Красный", "hex": "#b0222a" },
+    { "id": "blue", "name": "Синий", "hex": "#2a52b0" },
+    { "id": "white", "name": "Белый", "hex": "#f0f0ea" }
+  ],
+  "headlight": [
+    { "id": "warm", "name": "Тёплый белый", "hex": "#ffe8b0" },
+    { "id": "yellow", "name": "Жёлтый", "hex": "#ffd23a" },
+    { "id": "xenon", "name": "Ксенон", "hex": "#e6f0ff" },
+    { "id": "lightblue", "name": "Голубой", "hex": "#8fc8ff" },
+    { "id": "green", "name": "Зелёный", "hex": "#9fffb0" }
+  ],
+  "neon": [
+    { "id": "off", "name": "Выключена", "hex": null },
+    { "id": "blue", "name": "Синяя", "hex": "#2f7bff" },
+    { "id": "green", "name": "Зелёная", "hex": "#2fff6a" },
+    { "id": "pink", "name": "Розовая", "hex": "#ff4fc3" },
+    { "id": "red", "name": "Красная", "hex": "#ff2f3f" },
+    { "id": "violet", "name": "Фиолетовая", "hex": "#9a4fff" }
+  ]
+}

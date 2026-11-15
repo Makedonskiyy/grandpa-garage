@@ -1,0 +1,169 @@
+{
+  "speakers": {
+    "grandson": { "name": "Внук", "portrait": "portrait_grandson" },
+    "grandpa": { "name": "Дед", "portrait": "portrait_grandpa_note" },
+    "palych": { "name": "Палыч", "portrait": "portrait_palych" },
+    "narrator": { "name": "", "portrait": null }
+  },
+  "sequences": {
+    "intro": 1,
+    "garageIntro": 9,
+    "palych": 11,
+    "preRace": 15,
+    "ending": 16,
+    "raceLose": 20
+  },
+  "lines": [
+    {
+      "id": 1,
+      "who": "narrator",
+      "kind": "date",
+      "text": "22 ноября 2004 года. Гаражный кооператив «Заря»",
+      "next": 2
+    },
+    {
+      "id": 2,
+      "who": "grandson",
+      "kind": "speech",
+      "text": "Дед насовсем уехал на дачу, в другой город. Остались гараж №7 и его японка.",
+      "next": 3
+    },
+    {
+      "id": 3,
+      "who": "grandson",
+      "kind": "speech",
+      "text": "На верстаке записка. Его почерк.",
+      "next": 4
+    },
+    {
+      "id": 4,
+      "who": "grandpa",
+      "kind": "note",
+      "text": "Внучок. Двигатель живой, остальное сам смотри.",
+      "next": 5
+    },
+    {
+      "id": 5,
+      "who": "grandpa",
+      "kind": "note",
+      "text": "Одиннадцать лет я ездил против Палыча и ни разу не обогнал.",
+      "next": 6
+    },
+    {
+      "id": 6,
+      "who": "grandpa",
+      "kind": "note",
+      "text": "Не обижайся на него. Соперника лучше у меня не было.",
+      "next": 7
+    },
+    {
+      "id": 7,
+      "who": "grandpa",
+      "kind": "note",
+      "text": "Собери её. Хоть раз за нас обоих.",
+      "next": 8
+    },
+    {
+      "id": 8,
+      "who": "grandson",
+      "kind": "speech",
+      "text": "Ладно, дед. Сначала проверю, на чём она поедет.",
+      "next": null
+    },
+    {
+      "id": 9,
+      "who": "grandson",
+      "kind": "speech",
+      "text": "Нужно собрать машину так, чтобы обогнать Палыча.",
+      "next": 10
+    },
+    {
+      "id": 10,
+      "who": "grandson",
+      "kind": "speech",
+      "text": "Дорога за гаражами раскисла. Здесь решают цепление и прочность.",
+      "next": null
+    },
+    {
+      "id": 11,
+      "who": "palych",
+      "kind": "speech",
+      "text": "Слышу, мотор у деда ожил. Как он там, на даче, внучок?",
+      "next": 12
+    },
+    {
+      "id": 12,
+      "who": "palych",
+      "kind": "speech",
+      "text": "Мы с ним по этой дороге гоняли одиннадцать лет.",
+      "next": 13
+    },
+    {
+      "id": 13,
+      "who": "palych",
+      "kind": "speech",
+      "text": "Давай по-честному. Раз на раз, четыреста метров. Я на своей девятке.",
+      "next": 14
+    },
+    {
+      "id": 14,
+      "who": "grandson",
+      "kind": "speech",
+      "text": "Давай. Сегодня вечером, на пустыре за заводом.",
+      "next": null
+    },
+    {
+      "id": 15,
+      "who": "palych",
+      "kind": "speech",
+      "text": "Ровно четыреста. По сигналу.",
+      "next": null
+    },
+    {
+      "id": 16,
+      "who": "palych",
+      "kind": "speech",
+      "text": "Обогнал. Дед твой каждую осень говорил: внук подрастёт и уделает тебя.",
+      "next": 17
+    },
+    {
+      "id": 17,
+      "who": "grandson",
+      "kind": "speech",
+      "text": "Он знал.",
+      "next": 18
+    },
+    {
+      "id": 18,
+      "who": "palych",
+      "kind": "speech",
+      "text": "Конечно знал. Позвони ему, обрадуй. Потом заходи, чаю налью.",
+      "next": 19
+    },
+    {
+      "id": 19,
+      "who": "narrator",
+      "kind": "caption",
+      "text": "Внук набрал деда: «Я обогнал Палыча». В трубке долго молчали, потом засмеялись.",
+      "next": null
+    },
+    {
+      "id": 20,
+      "who": "palych",
+      "kind": "speech",
+      "text": "Не сегодня. Подкрути что-нибудь и приезжай ещё.",
+      "next": null
+    }
+  ],
+  "lore": [
+    { "id": "photo", "label": "Фотография", "text": "Девяностый год. Мы ещё молоды." },
+    {
+      "id": "calendar",
+      "label": "Календарь",
+      "text": "Кружок на 22 ноября. Дед всё ждал этот день."
+    },
+    { "id": "phone", "label": "Телефон", "text": "Номер дачи записан мелом. Звонить пока рано." },
+    { "id": "radio", "label": "Радио", "text": null, "action": "toggleMusic" },
+    { "id": "tools", "label": "Инструменты", "text": "Дед держал их в порядке лучше, чем себя." }
+  ]
+}
