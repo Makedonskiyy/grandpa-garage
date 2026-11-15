@@ -36,6 +36,7 @@ export class RaceScene extends BaseScene {
       y: cfg.playerLaneY,
       scale: 0.5,
       night: true,
+      dirty: gameState.car.dirty,
     });
     this.rival = buildRivalCar(this, {
       x: cfg.trackStartX,
@@ -128,7 +129,10 @@ export class RaceScene extends BaseScene {
   }
 
   update(_time, delta) {
-    if (this.state !== 'running') return;
+    if (this.state !== 'running') {
+      this.player.step(delta / 1000); // подвеска успокаивается до старта и после финиша
+      return;
+    }
     this.s += delta / 1000;
 
     const me = raceTelemetry(this.result.details.accel, this.s);
@@ -142,7 +146,15 @@ export class RaceScene extends BaseScene {
       const x = this.#xFor(
         brokenStop && car === this.player ? Math.min(tel.distance, 200) : tel.distance,
       );
-      spinWheels(car, x - car.x);
+      if (car === this.player) {
+        // Пока разгоняется — приседает на задние колёса (ускорение из расчёта заезда).
+        car.step(delta / 1000, {
+          distance: x - car.x,
+          accel: tel.finished ? 0 : this.result.details.accel,
+        });
+      } else {
+        spinWheels(car, x - car.x);
+      }
       car.x = x;
       car.nameplate.x = x;
     }

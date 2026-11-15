@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import config from '../../data/config.json';
 import { BaseScene } from './BaseScene.js';
 import { SCENES, MUSIC, SFX } from '../config/constants.js';
-import { buildCar, spinWheels } from '../systems/buildCar.js';
+import { buildCar } from '../systems/buildCar.js';
 import { evaluateTrial, getTest } from '../systems/simulate.js';
 import { audio } from '../systems/AudioManager.js';
 import { gameState, recordResult } from '../gameState.js';
@@ -11,6 +11,9 @@ import { button } from '../ui/components.js';
 import { t } from '../systems/strings.js';
 
 const GROUND_Y = 300;
+const CAR_START_X = 170; // машина почти в центре, дорога едет под ней
+const CAR_TRAVEL = 300;
+const BUMPS_PER_SEC = 2.5; // кочки грунтовки
 
 /**
  * Обкатка (ТЗ 3.7): днём, раскисшая грунтовка, параллакс в 3 слоя, 12–15 с,
@@ -36,10 +39,11 @@ export class TrialScene extends BaseScene {
 
     this.#createParallax();
     this.car = buildCar(this, gameState.build, gameState.cosmetics, {
-      x: 80,
+      x: CAR_START_X,
       y: GROUND_Y,
-      scale: 0.6,
+      dirty: gameState.car.dirty,
     });
+    this.spinInPlace = false;
     this.engine = audio.loopSfx(SFX.ENGINE);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.engine?.destroy());
 
@@ -94,15 +98,25 @@ export class TrialScene extends BaseScene {
   }
 
   update(_time, delta) {
-    if (this.done) return;
+    if (this.done) {
+      // После остановки подвеска успокаивается; при пробуксовке колёса крутятся на месте.
+      this.car.step(delta / 1000, { distance: this.spinInPlace ? delta * 0.5 : 0 });
+      return;
+    }
     const dt = delta * this.speed;
     this.elapsed += dt;
     const progress = Math.min(this.elapsed / this.duration, this.stopAt);
 
     const dx = dt * 0.08 * (progress < this.stopAt ? 1 : 0);
-    for (const l of this.layers) l.sprite.tilePositionX += dx * l.k * 3;
-    this.car.x = 80 + progress * 480;
-    spinWheels(this.car, dx * 4);
+    const roadShift = dx * 3;
+    for (const l of this.layers) l.sprite.tilePositionX += roadShift * l.k;
+    const prevX = this.car.x;
+    this.car.x = CAR_START_X + progress * CAR_TRAVEL;
+    if (Math.random() < (dt / 1000) * BUMPS_PER_SEC) this.car.bump(20 + Math.random() * 20);
+    this.car.step(dt / 1000, {
+      distance: roadShift + (this.car.x - prevX),
+      accel: progress < 0.12 ? 2.5 : 0,
+    });
     this.engine?.setRate?.(0.8 + progress * 0.6);
 
     this.$path.style.width = `${progress * 100}%`;
@@ -119,12 +133,14 @@ export class TrialScene extends BaseScene {
     const { reasonKey } = this.result;
     if (reasonKey === 'broken') {
       this.cameras.main.shake(400, 0.01);
-      this.#puff(0x777777, this.car.x + 50, this.car.y - 40);
+      this.car.drop(60);
+      this.#puff(0x777777, this.car.x + 110, this.car.y - 50);
     } else if (reasonKey === 'traction') {
-      this.#puff(0x5a4630, this.car.x - 60, this.car.y - 6);
+      this.spinInPlace = true;
+      this.#puff(0x5a4630, this.car.x - 82, this.car.y - 6);
     } else if (this.result.ok) {
-      this.add.rectangle(this.car.x + 80, GROUND_Y - 30, 4, 60, 0xffffff);
-      this.add.rectangle(this.car.x + 92, GROUND_Y - 52, 20, 14, 0xd9533f);
+      this.add.rectangle(this.car.x + 160, GROUND_Y - 30, 4, 60, 0xffffff);
+      this.add.rectangle(this.car.x + 172, GROUND_Y - 52, 20, 14, 0xd9533f);
     }
     audio.playSfx(this.result.ok ? SFX.SUCCESS : SFX.FAIL);
 

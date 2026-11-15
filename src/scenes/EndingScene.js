@@ -21,7 +21,11 @@ export class EndingScene extends BaseScene {
     this.enter();
     audio.playMusic(MUSIC.ENDING);
     drawGarageInterior(this, { doorOpen: true });
-    buildCar(this, gameState.build, gameState.cosmetics, { x: 320, y: FLOOR_Y - 6 });
+    buildCar(this, gameState.build, gameState.cosmetics, {
+      x: 320,
+      y: FLOOR_Y - 6,
+      dirty: gameState.car.dirty,
+    });
 
     await new DialogSystem(this).play('ending');
 
