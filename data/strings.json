@@ -48,19 +48,19 @@
       "looks": "Внешний вид"
     },
     "looks": {
-      "paint": "Цвет кузова",
-      "rim": "Цвет дисков",
-      "headlight": "Цвет фар",
+      "paint": "Кузов",
+      "rim": "Диски",
+      "headlight": "Фары",
       "neon": "Неон"
     },
     "stats": {
       "power": "Мощность",
       "mass": "Масса",
-      "grip": "Сцепление ({surface})",
+      "grip": "Сцепление, {surface}",
+      "downforce": "Прижим, асфальт",
       "durability": "Прочность",
       "need": "Нужно",
-      "have": "Есть",
-      "downforce": "Прижимная сила"
+      "have": "Есть"
     },
     "units": {
       "hp": "л.с.",
@@ -73,10 +73,22 @@
       "medium": "средний",
       "heavy": "тяжёлый"
     },
-    "noteDefault": "Дед: «Двигатель живой, остальное сам смотри».",
-    "wash": "Помыть машину",
+    "noteDefault": "Двигатель живой, остальное сам смотри.",
+    "wash": "Помыть",
     "washed": "Чистая",
-    "noSpoiler": "Без спойлера"
+    "noSpoiler": "Без спойлера",
+    "testChip": "{name} · {n} из {total}",
+    "installed": "Стоит",
+    "noteTitle": "Записка деда",
+    "verdict": {
+      "trialNeed": "Нужная тяга",
+      "trialHave": "Тяга сейчас",
+      "raceNeed": "Время Палыча",
+      "raceHave": "Твоё время",
+      "durabilityNeed": "Прочность от {min}"
+    },
+    "deltaNone": "Без изменений",
+    "missingWheels": "Поставь колёса — машина на кирпичах"
   },
   "trial": {
     "speedUp": "Ускорить ×2",
