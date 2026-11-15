@@ -1,0 +1,51 @@
+{
+  "$comment": "Сгенерировано tools/build-car.mjs (npm run car) — не править руками. Пиксели спрайта; привязка — середина низа (земля).",
+  "size": {
+    "width": 288,
+    "height": 96
+  },
+  "anchor": {
+    "x": 144,
+    "y": 92
+  },
+  "wheels": {
+    "rear": {
+      "x": 62,
+      "y": 72
+    },
+    "front": {
+      "x": 222,
+      "y": 72
+    },
+    "radius": 20
+  },
+  "wheelFrame": {
+    "width": 48,
+    "height": 48,
+    "frames": 16
+  },
+  "headlight": {
+    "x": 280,
+    "y": 55
+  },
+  "tires": {
+    "wheels_stock": "stock",
+    "wheels_studded": "studded",
+    "wheels_slicks": "slicks",
+    "none": "old"
+  },
+  "overlays": {
+    "body_rusty": "rust",
+    "body_cage": "cage",
+    "body_light": "light"
+  },
+  "spoilers": {
+    "spoiler_lip": {
+      "paint": "car_spoiler_lip_paint"
+    },
+    "spoiler_wing": {
+      "paint": "car_spoiler_wing_paint",
+      "base": "car_spoiler_wing_base"
+    }
+  }
+}
