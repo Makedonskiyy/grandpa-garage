@@ -3,8 +3,8 @@ import partsData from '../../data/parts.json';
 import cosmetics from '../../data/cosmetics.json';
 import config from '../../data/config.json';
 import { BaseScene } from './BaseScene.js';
-import { SCENES, MUSIC, TEST_IDS, WORLD } from '../config/constants.js';
-import { buildCar } from '../systems/buildCar.js';
+import { SCENES, MUSIC, TEST_IDS } from '../config/constants.js';
+import { drawGarageRoom, placeGarageCar } from './garageBackdrop.js';
 import { DialogSystem } from '../systems/DialogSystem.js';
 import { audio } from '../systems/AudioManager.js';
 import {
@@ -55,13 +55,13 @@ export class GarageScene extends BaseScene {
     this.activeTab = this.activeTab ?? 'wheels';
     this.preview = null; // сборка «если поставить» при наведении на карточку
 
-    this.#drawRoom();
-    const opts = { x: cfg.carX, y: cfg.groundY, dirty: gameState.car.dirty, scale: cfg.carScale };
-    this.reflection = buildCar(this, gameState.build, gameState.cosmetics, opts)
-      .setScale(cfg.carScale, -cfg.carScale)
-      .setAlpha(cfg.reflectionAlpha);
-    this.#drawFloorFade();
-    this.car = buildCar(this, gameState.build, gameState.cosmetics, opts);
+    drawGarageRoom(this, { lampX: cfg.carX, groundY: cfg.groundY });
+    ({ car: this.car, reflection: this.reflection } = placeGarageCar(this, {
+      x: cfg.carX,
+      groundY: cfg.groundY,
+      scale: cfg.carScale,
+      reflectionAlpha: cfg.reflectionAlpha,
+    }));
     this.lastBuild = JSON.stringify(gameState.build);
 
     this.alive = true;
@@ -87,56 +87,6 @@ export class GarageScene extends BaseScene {
     this.ui.style.visibility = 'hidden';
     await new DialogSystem(this).play('garageIntro');
     this.ui.style.visibility = '';
-  }
-
-  // ---------- Комната: стена, лампа, пол ----------
-
-  #drawRoom() {
-    const { width, height } = WORLD;
-    const floor = cfg.groundY;
-    const g = this.add.graphics();
-    // Стена: тёмные доски, к потолку темнее (ступенями — пиксельно).
-    const wall = [0x15130f, 0x1a1713, 0x1f1b16, 0x231f19];
-    wall.forEach((c, i) =>
-      g.fillStyle(c).fillRect(0, (floor * i) / wall.length, width, floor / wall.length + 1),
-    );
-    for (let x = 0; x < width; x += 32) g.fillStyle(0x000000, 0.18).fillRect(x, 0, 1, floor);
-    // Плинтус и пол.
-    g.fillStyle(0x0e0c0a).fillRect(0, floor - 2, width, 3);
-    g.fillStyle(0x2a2622).fillRect(0, floor + 1, width, height - floor);
-    for (let y = floor + 8; y < height; y += 14)
-      g.fillStyle(0x000000, 0.12).fillRect(0, y, width, 1);
-
-    // Лампа над машиной и свет на неё — ступенчатые слои с режимом ADD.
-    const x = cfg.carX;
-    g.fillStyle(0x0b0a08).fillRect(x - 1, 0, 2, 26);
-    g.fillStyle(0x3a352e).fillRect(x - 10, 26, 20, 5);
-    g.fillStyle(0xffe2a8).fillRect(x - 4, 31, 8, 3);
-    const light = this.add.graphics().setBlendMode(Phaser.BlendModes.ADD);
-    [
-      [200, 0.035],
-      [160, 0.04],
-      [120, 0.05],
-    ].forEach(([w, a]) =>
-      light
-        .fillStyle(0xffd9a0, a)
-        .fillTriangle(x - 10, 32, x + 10, 32, x + w, floor)
-        .fillTriangle(x - 10, 32, x - w, floor, x + w, floor),
-    );
-    [
-      [320, 22, 0.06],
-      [240, 16, 0.07],
-      [150, 10, 0.08],
-    ].forEach(([w, h, a]) => light.fillStyle(0xffd9a0, a).fillEllipse(x, floor + 4, w, h));
-  }
-
-  /** Пол гасит отражение книзу. */
-  #drawFloorFade() {
-    const { width, height } = WORLD;
-    const g = this.add.graphics();
-    const c = 0x2a2622;
-    g.fillGradientStyle(c, c, c, c, 0, 0, 1, 1);
-    g.fillRect(0, cfg.groundY + 1, width, height - cfg.groundY);
   }
 
   // ---------- HTML-интерфейс ----------

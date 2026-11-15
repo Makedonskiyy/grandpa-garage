@@ -98,9 +98,12 @@
     "you": "Ты",
     "rival": "Палыч",
     "preStart": "Ждём сигнала",
-    "tacho": "об/мин",
-    "speedo": "км/ч",
-    "timer": "Время"
+    "tacho": "Обороты",
+    "speedo": "Скорость",
+    "timer": "Время",
+    "rpmUnit": "об/мин",
+    "kmh": "км/ч",
+    "gear": "{n}-я передача"
   },
   "result": {
     "success": "Успех",
@@ -110,12 +113,24 @@
     "toMenu": "В меню",
     "time": "Время",
     "diff": "Разница с Палычем",
-    "durabilityLeft": "Прочность"
+    "durabilityLeft": "Прочность",
+    "rival": "Палыч",
+    "diffLabel": "Разница",
+    "durability": "Прочность",
+    "durabilityValue": "{have} при нужных {min}",
+    "hintTitle": "Совет",
+    "titleOk": "{name}: пройдено",
+    "titleFail": "{name}: не вышло"
   },
   "ending": {
     "attempts": "Попыток: обкатка {trial}, заезд {race}",
     "raceTime": "Время заезда: {time} с",
     "winningParts": "Победная сборка: {parts}",
-    "playAgain": "Играть снова"
+    "playAgain": "Играть снова",
+    "title": "Палыч обогнан",
+    "attemptsLabel": "Попытки",
+    "attemptsValue": "обкатка {trial} · заезд {race}",
+    "timeLabel": "Время заезда",
+    "partsLabel": "Сборка"
   }
 }
