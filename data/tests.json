@@ -1,0 +1,74 @@
+{
+  "tests": [
+    {
+      "id": "trial",
+      "order": 1,
+      "name": "Обкатка",
+      "scene": "TrialRun",
+      "surface": "clay",
+      "surfaceName": "грунт",
+      "type": "traction",
+      "goal": "Проехать по раскисшей грунтовке, не застряв и не сломавшись",
+      "startButton": "Начать обкатку",
+      "formula": {
+        "powerFactor": 10,
+        "gripFactor": 13,
+        "resistancePerMass": 3.2
+      },
+      "minDurability": 3,
+      "durationSec": { "min": 12, "max": 15 },
+      "reasons": {
+        "broken": "Сломалась деталь: {part}",
+        "power": "Не хватило мощности",
+        "traction": "Колёса буксуют в грязи"
+      },
+      "resultHints": {
+        "broken": "Самая хрупкая деталь не выдержала колей. Нужна прочнее.",
+        "power": "Мотор не вытягивает вес по глине. Нужно больше лошадей.",
+        "traction": "Колёса не цепляют грязь. Нужны другие колёса."
+      },
+      "grandpaHint": "Внучок, на глине шипы держат лучше всего. Ставь шипованную, не прогадаешь."
+    },
+    {
+      "id": "race",
+      "order": 2,
+      "name": "Заезд с Палычем",
+      "scene": "Race",
+      "surface": "asphalt",
+      "surfaceName": "асфальт",
+      "type": "drag",
+      "goal": "Проехать 400 м быстрее Палыча (13,0 с)",
+      "startButton": "Начать заезд с Палычем",
+      "formula": {
+        "powerFactor": 10,
+        "gripFactor": 14,
+        "distance": 400
+      },
+      "rivalTime": 13.0,
+      "minDurability": 2,
+      "heavyMass": 17,
+      "christmasTree": { "ambers": 3, "intervalSec": 0.6 },
+      "gauges": {
+        "speedToKmh": 3.6,
+        "speedDisplayFactor": 0.8,
+        "gears": 5,
+        "idleRpm": 900,
+        "redlineRpm": 7000
+      },
+      "reasons": {
+        "broken": "Сломалась деталь: {part}",
+        "traction": "Колёса не держат асфальт",
+        "power": "Мотору не хватает мощности",
+        "heavySuffix": " и машина тяжёлая",
+        "slower": "Медленнее Палыча на {diff} с",
+        "faster": "Быстрее Палыча на {diff} с"
+      },
+      "resultHints": {
+        "broken": "Деталь не выдержала разгона. Нужна прочнее.",
+        "traction": "Колёса проворачиваются на старте. Нужна резина для асфальта.",
+        "power": "Не хватает тяги. Мотор мощнее или кузов легче."
+      },
+      "grandpaHint": "На асфальте нужны слики. Шипы и родные там только мешают."
+    }
+  ]
+}

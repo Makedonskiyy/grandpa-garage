@@ -1,0 +1,123 @@
+{
+  "units": {
+    "hpPerPowerPoint": 20,
+    "kgPerMassPoint": 50,
+    "massBars": { "light": 4, "heavy": 7 }
+  },
+  "slots": [
+    { "id": "wheels", "name": "Колёса", "icon": "slot_wheels.png" },
+    { "id": "engine", "name": "Двигатель", "icon": "slot_engine.png" },
+    { "id": "body", "name": "Кузов", "icon": "slot_body.png" }
+  ],
+  "initialBuild": { "wheels": "wheels_stock", "engine": "engine_stock", "body": "body_rusty" },
+  "parts": [
+    {
+      "id": "wheels_studded",
+      "slot": "wheels",
+      "name": "Зимняя шипованная",
+      "description": "Цепко держит грязь и лёд. На асфальте шумит и скользит.",
+      "mass": 4,
+      "power": 0,
+      "grip": { "clay": 8, "asphalt": 4 },
+      "durability": 6,
+      "icon": "wheels_studded.png",
+      "sprite": "tire_studded"
+    },
+    {
+      "id": "wheels_stock",
+      "slot": "wheels",
+      "name": "Дедовы родные",
+      "description": "Всесезонка деда. Везде средне, зато надёжно.",
+      "mass": 4,
+      "power": 0,
+      "grip": { "clay": 5, "asphalt": 5 },
+      "durability": 5,
+      "icon": "wheels_stock.png",
+      "sprite": "tire_stock"
+    },
+    {
+      "id": "wheels_slicks",
+      "slot": "wheels",
+      "name": "Слики",
+      "description": "Лысая гоночная резина. Асфальт — её стихия, грязь — нет.",
+      "mass": 3,
+      "power": 0,
+      "grip": { "clay": 2, "asphalt": 9 },
+      "durability": 3,
+      "icon": "wheels_slicks.png",
+      "sprite": "tire_slicks"
+    },
+    {
+      "id": "engine_stock",
+      "slot": "engine",
+      "name": "Родной 1.3",
+      "description": "Дедов мотор. Живой, но тихий.",
+      "mass": 4,
+      "power": 4,
+      "grip": null,
+      "durability": 6,
+      "icon": "engine_stock.png",
+      "sprite": null
+    },
+    {
+      "id": "engine_tuned",
+      "slot": "engine",
+      "name": "Тюнинг 2.0",
+      "description": "Перебранный двухлитровый. Хороший баланс силы и веса.",
+      "mass": 6,
+      "power": 7,
+      "grip": null,
+      "durability": 5,
+      "icon": "engine_tuned.png",
+      "sprite": null
+    },
+    {
+      "id": "engine_turbo",
+      "slot": "engine",
+      "name": "Турбо с разборки",
+      "description": "Самый мощный, но тяжёлый и капризный.",
+      "mass": 7,
+      "power": 9,
+      "grip": null,
+      "durability": 3,
+      "icon": "engine_turbo.png",
+      "sprite": null
+    },
+    {
+      "id": "body_rusty",
+      "slot": "body",
+      "name": "Ржавый родной",
+      "description": "Родной кузов деда. Ржавчина есть, но держится.",
+      "mass": 8,
+      "power": 0,
+      "grip": null,
+      "durability": 4,
+      "icon": "body_rusty.png",
+      "sprite": "overlay_rust"
+    },
+    {
+      "id": "body_cage",
+      "slot": "body",
+      "name": "Усиленный каркас",
+      "description": "Каркас и накладки. Не убить, но очень тяжёлый.",
+      "mass": 11,
+      "power": 0,
+      "grip": null,
+      "durability": 9,
+      "icon": "body_cage.png",
+      "sprite": "overlay_cage"
+    },
+    {
+      "id": "body_light",
+      "slot": "body",
+      "name": "Облегчённый",
+      "description": "Тонкое железо и спойлер. Лёгкий, но хрупкий.",
+      "mass": 5,
+      "power": 0,
+      "grip": null,
+      "durability": 2,
+      "icon": "body_light.png",
+      "sprite": "overlay_spoiler"
+    }
+  ]
+}
