@@ -7,10 +7,11 @@
       "args": {
         "pixel": 2,
         "colors": 64,
-        "contrast": 1.15,
-        "saturation": 1.2,
-        "sharpen": 1.5,
-        "save-palette": "art/palettes/garage.json"
+        "contrast": 1.1,
+        "saturation": 1.15,
+        "sharpen": 1.2,
+        "save-palette": "art/palettes/garage.json",
+        "brightness": 1.25
       }
     }
   ]

@@ -47,7 +47,7 @@ export class MenuScene extends BaseScene {
     this.goTo(SCENES.INTRO);
   }
 
-  /** Тёплое пиксельное свечение ламп фона; одна лампа изредка мигает (ТЗ 3.3). */
+  /** Свечение ламп фона (если заданы в data/menu.json) и мигание света (ТЗ 3.3). */
   #createLamps() {
     const { lamps, flicker } = menuConfig;
     if (!this.textures.exists('fx_glow')) this.#makeGlowTexture();
@@ -60,19 +60,21 @@ export class MenuScene extends BaseScene {
         .setBlendMode(Phaser.BlendModes.ADD),
     );
 
-    // Мигает главная лампа под потолком: короткая серия провалов света и общее затемнение.
+    // Мигание: короткая серия провалов света всей сцены и главной лампы, если она есть.
     const main = glows[0];
     const shade = this.add
       .rectangle(0, 0, this.scale.width, this.scale.height, 0x000000, 0)
       .setOrigin(0);
     const blink = () => {
-      this.tweens.add({
-        targets: main,
-        alpha: 0,
-        duration: 60,
-        yoyo: true,
-        repeat: flicker.times - 1,
-      });
+      if (main) {
+        this.tweens.add({
+          targets: main,
+          alpha: 0,
+          duration: 60,
+          yoyo: true,
+          repeat: flicker.times - 1,
+        });
+      }
       this.tweens.add({
         targets: shade,
         fillAlpha: flicker.shade,
