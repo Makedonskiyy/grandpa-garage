@@ -1,0 +1,423 @@
+/*
+ * Все размеры — в игровых пикселях (сцена 640×360).
+ * #stage масштабируется целиком через --zoom (src/systems/scale.js),
+ * поэтому шрифт 9px при масштабе 2× даёт 18px в окне (ТЗ 3.3).
+ */
+:root {
+  --c-bg: #0b0a0e;
+  --c-panel: #1a1820;
+  --c-panel-2: #24212c;
+  --c-border: #e8d9b0;
+  --c-border-dark: #5a4a2a;
+  --c-text: #f2ead6;
+  --c-muted: #a39a86;
+  --c-accent: #e6b34a;
+  --c-ok: #6fbf5a;
+  --c-bad: #d9533f;
+  --font: 'Pixel', 'Press Start 2P', monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--c-bg);
+  color: var(--c-text);
+  font-family: var(--font);
+  -webkit-font-smoothing: none;
+  font-smooth: never;
+}
+
+#stage {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) scale(var(--zoom, 1));
+  transform-origin: center center;
+  overflow: hidden;
+  background: #000;
+}
+
+#game,
+#game canvas {
+  position: absolute;
+  inset: 0;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* Оверлей пропускает клики в канвас везде, кроме своих элементов. */
+#ui-root {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  font-size: 8px;
+  line-height: 1.5;
+}
+
+#ui-root > * {
+  position: absolute;
+  inset: 0;
+}
+
+.ui-layer > * {
+  pointer-events: auto;
+}
+
+.ui-abs {
+  position: absolute;
+}
+
+/* ---------- Кнопки ---------- */
+.btn {
+  font: inherit;
+  font-size: 9px;
+  color: var(--c-text);
+  background: var(--c-panel-2);
+  border: 1px solid var(--c-border);
+  box-shadow:
+    0 2px 0 var(--c-border-dark),
+    inset 0 -2px 0 rgb(0 0 0 / 0.35);
+  padding: 5px 10px 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.btn:hover:not(:disabled) {
+  background: #34303e;
+  color: var(--c-accent);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: 0 1px 0 var(--c-border-dark);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn--primary {
+  background: #4a3a18;
+  border-color: var(--c-accent);
+}
+
+.btn--icon {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  font-size: 9px;
+}
+
+.btn:focus-visible {
+  outline: 1px solid var(--c-accent);
+  outline-offset: 2px;
+}
+
+/* ---------- Панели и модальные окна ---------- */
+.panel {
+  background: rgb(21 20 26 / 0.94);
+  border: 1px solid var(--c-border);
+  box-shadow: 0 0 0 1px var(--c-border-dark);
+  padding: 8px;
+}
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+}
+
+.modal {
+  width: 360px;
+  max-height: 320px;
+  overflow: auto;
+}
+
+.modal h2 {
+  margin: 0 0 8px;
+  font-size: 10px;
+  color: var(--c-accent);
+  font-weight: normal;
+}
+
+.modal p {
+  margin: 0 0 6px;
+}
+
+.modal__footer {
+  margin-top: 10px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.field {
+  display: grid;
+  grid-template-columns: 110px 1fr 28px;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.field select,
+.field input[type='range'] {
+  font: inherit;
+  width: 100%;
+}
+
+.field select {
+  background: var(--c-panel-2);
+  color: var(--c-text);
+  border: 1px solid var(--c-border-dark);
+}
+
+.muted {
+  color: var(--c-muted);
+}
+
+.ok {
+  color: var(--c-ok);
+}
+
+.bad {
+  color: var(--c-bad);
+}
+
+.accent {
+  color: var(--c-accent);
+}
+
+/* ---------- Меню ---------- */
+.menu {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  top: 150px;
+  left: 0;
+  right: 0;
+}
+
+.menu .btn {
+  width: 150px;
+}
+
+.version {
+  right: 6px;
+  bottom: 4px;
+  font-size: 6px;
+  color: var(--c-muted);
+}
+
+/* ---------- Гараж ---------- */
+.topbar {
+  left: 8px;
+  right: 8px;
+  top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.topbar__goal {
+  flex: 1;
+  padding: 4px 6px;
+}
+
+.stats {
+  right: 8px;
+  top: 34px;
+  width: 150px;
+}
+
+.stats__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.stats__need {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--c-border-dark);
+}
+
+.bottom {
+  left: 8px;
+  right: 8px;
+  bottom: 6px;
+  height: 104px;
+  display: grid;
+  grid-template-columns: 1fr 120px;
+  gap: 6px;
+}
+
+.tabs {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 4px;
+}
+
+.tab {
+  font: inherit;
+  font-size: 7px;
+  color: var(--c-muted);
+  background: transparent;
+  border: 1px solid var(--c-border-dark);
+  padding: 2px 6px;
+  cursor: pointer;
+}
+
+.tab--active {
+  color: var(--c-accent);
+  border-color: var(--c-accent);
+}
+
+.cards {
+  display: flex;
+  gap: 4px;
+}
+
+.card {
+  font: inherit;
+  font-size: 7px;
+  text-align: left;
+  color: var(--c-text);
+  flex: 1;
+  min-height: 70px;
+  background: var(--c-panel-2);
+  border: 1px solid var(--c-border-dark);
+  padding: 4px;
+  cursor: pointer;
+}
+
+.card:hover {
+  border-color: var(--c-border);
+}
+
+.card--selected {
+  border-color: var(--c-accent);
+  box-shadow: inset 0 0 0 1px var(--c-accent);
+}
+
+.card__name {
+  color: var(--c-accent);
+  margin-bottom: 2px;
+}
+
+.swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--c-border-dark);
+  margin: 1px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.swatch--selected {
+  outline: 1px solid var(--c-accent);
+  outline-offset: 1px;
+}
+
+.launch {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.launch__missing {
+  font-size: 7px;
+  color: var(--c-bad);
+  min-height: 10px;
+}
+
+.note {
+  left: 8px;
+  bottom: 116px;
+  width: 170px;
+  background: #efe4c4;
+  color: #2b2418;
+  padding: 5px 6px;
+  font-size: 7px;
+  box-shadow: 2px 2px 0 rgb(0 0 0 / 0.4);
+}
+
+/* ---------- Результат, финал ---------- */
+.result {
+  left: 120px;
+  right: 120px;
+  top: 40px;
+  text-align: center;
+}
+
+.result h1 {
+  font-size: 16px;
+  margin: 4px 0 10px;
+  font-weight: normal;
+}
+
+.result__actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.hud-bottom {
+  left: 8px;
+  right: 8px;
+  bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bar {
+  flex: 1;
+  height: 8px;
+  border: 1px solid var(--c-border);
+  background: #000;
+}
+
+.bar__fill {
+  height: 100%;
+  width: 0;
+  background: var(--c-accent);
+}
+
+.gauges {
+  left: 0;
+  right: 0;
+  bottom: 6px;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 16px;
+  align-items: flex-end;
+}
+
+.gauge {
+  width: 110px;
+  text-align: center;
+}
+
+.gauge__value {
+  font-size: 12px;
+  color: var(--c-accent);
+}
+
+.skip {
+  right: 8px;
+  top: 6px;
+}
