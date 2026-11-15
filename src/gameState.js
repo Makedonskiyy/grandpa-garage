@@ -13,8 +13,10 @@ const listeners = new Set();
 
 export function createInitialState() {
   return {
-    build: { wheels: null, engine: null, body: null, ...partsData.initialBuild },
+    build: { wheels: null, engine: null, body: null, spoiler: null, ...partsData.initialBuild },
     cosmetics: { ...cosmetics.defaults },
+    /** Состояние кузова вне характеристик: дед оставил машину грязной, моется в гараже. */
+    car: { dirty: true },
     attempts: { trial: 0, race: 0 },
     failStreak: { trial: 0, race: 0 },
     passed: { trial: false, race: false },
@@ -73,6 +75,12 @@ export function setCosmetic(group, id) {
     throw new Error(`Нет варианта ${group}.${id}`);
   }
   gameState.cosmetics[group] = id;
+  emit();
+}
+
+/** «Помыть машину» во вкладке «Внешний вид»: грязь не влияет на расчёт. */
+export function washCar() {
+  gameState.car.dirty = false;
   emit();
 }
 

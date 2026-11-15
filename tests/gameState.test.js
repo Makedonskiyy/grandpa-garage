@@ -8,6 +8,7 @@ import {
   getCurrentTestId,
   shouldShowGrandpaHint,
   isGameComplete,
+  washCar,
 } from '../src/gameState.js';
 import {
   sanitize,
@@ -45,6 +46,16 @@ describe('gameState', () => {
     expect(shouldShowGrandpaHint('trial')).toBe(false);
     recordResult('race', { ok: true });
     expect(isGameComplete()).toBe(true);
+  });
+
+  it('старт: колёс нет, спойлера нет, машина грязная; «Помыть» её чистит', () => {
+    expect(gameState.build.wheels).toBeNull();
+    expect(gameState.build.spoiler).toBeNull();
+    expect(gameState.car.dirty).toBe(true);
+    washCar();
+    expect(gameState.car.dirty).toBe(false);
+    resetGame();
+    expect(gameState.car.dirty).toBe(true);
   });
 
   it('косметика проверяет варианты, resetGame всё сбрасывает', () => {

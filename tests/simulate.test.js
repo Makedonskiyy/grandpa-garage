@@ -78,6 +78,54 @@ describe('все 27 сборок', () => {
   });
 });
 
+describe('спойлер: 81 сборка (27 × без спойлера, лип, крыло)', () => {
+  const SPOILERS = [null, ...getPartsBySlot('spoiler').map((p) => p.id)];
+  const WITH_SPOILER = ALL_BUILDS.flatMap((b) => SPOILERS.map((s) => ({ ...b, spoiler: s })));
+  const k4 = (b) => `${key(b)}+${b.spoiler ?? 'none'}`;
+
+  // Пересчитано при вводе спойлера (лип +2, крыло +3 к сцеплению на асфальте, оба 2 очка массы).
+  const RACE_PASS_4 = [
+    'wheels_studded+engine_turbo+body_light+spoiler_wing',
+    'wheels_stock+engine_turbo+body_light+spoiler_lip',
+    'wheels_stock+engine_turbo+body_light+spoiler_wing',
+    'wheels_slicks+engine_tuned+body_light+none',
+    'wheels_slicks+engine_turbo+body_rusty+none',
+    'wheels_slicks+engine_turbo+body_light+none',
+    'wheels_slicks+engine_turbo+body_light+spoiler_lip',
+    'wheels_slicks+engine_turbo+body_light+spoiler_wing',
+  ];
+
+  it('спойлер необязателен: без него сборка полная', () => {
+    expect(computeStats({ ...ALL_BUILDS[0], spoiler: null }).complete).toBe(true);
+  });
+
+  it('прижимная сила добавляет сцепление на асфальте, но не на грунте', () => {
+    const build = { wheels: 'wheels_stock', engine: 'engine_turbo', body: 'body_light' };
+    const base = computeStats(build);
+    const wing = computeStats({ ...build, spoiler: 'spoiler_wing' });
+    expect(wing.grip.asphalt).toBe(base.grip.asphalt + 3);
+    expect(wing.grip.clay).toBe(base.grip.clay);
+    expect(wing.mass).toBe(base.mass + 2);
+  });
+
+  it('заезд проходят ровно ожидаемые сборки', () => {
+    const passing = WITH_SPOILER.filter((b) => evaluateRace(b).ok).map(k4);
+    expect(passing.sort()).toEqual([...RACE_PASS_4].sort());
+  });
+
+  it('ни одна из 81 сборки не проходит оба заезда, на каждый — минимум две', () => {
+    expect(WITH_SPOILER.filter((b) => evaluateTrial(b).ok && evaluateRace(b).ok)).toEqual([]);
+    expect(WITH_SPOILER.filter((b) => evaluateTrial(b).ok).length).toBeGreaterThanOrEqual(2);
+    expect(WITH_SPOILER.filter((b) => evaluateRace(b).ok).length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('нет пограничных результатов: время не ближе 0,05 с к Палычу', () => {
+    for (const b of WITH_SPOILER) {
+      expect(Math.abs(evaluateRace(b).details.time - 13), k4(b)).toBeGreaterThan(0.05);
+    }
+  });
+});
+
 describe('причины провала', () => {
   it('обкатка: облегчённый кузов ломается, называется самая хрупкая деталь', () => {
     const r = evaluateTrial({

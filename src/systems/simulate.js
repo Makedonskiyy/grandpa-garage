@@ -38,33 +38,37 @@ export function getTest(testId, data = defaultData) {
  * @returns {{
  *   complete: boolean, missing: string[], parts: Record<string, object|null>,
  *   mass: number, power: number, grip: {clay: number, asphalt: number},
- *   durability: number, weakestPart: object|null,
+ *   downforce: number, durability: number, weakestPart: object|null,
  *   display: {hp: number, kg: number}
  * }}
  */
 export function computeStats(build, data = defaultData) {
-  const slotIds = getSlotIds(data);
   const parts = {};
   const missing = [];
 
-  for (const slot of slotIds) {
+  for (const { id: slot, required } of data.parts.slots) {
     const part = build?.[slot] ? getPart(build[slot], data) : null;
     if (part && part.slot !== slot) {
       throw new Error(`Деталь ${part.id} не подходит в слот ${slot}`);
     }
     parts[slot] = part;
-    if (!part) missing.push(slot);
+    // Пустой необязательный слот (спойлер) — не ошибка: машина едет без него.
+    if (!part && required !== false) missing.push(slot);
   }
 
-  const installed = slotIds.map((s) => parts[s]).filter(Boolean);
+  const installed = getSlotIds(data)
+    .map((s) => parts[s])
+    .filter(Boolean);
   const mass = installed.reduce((sum, p) => sum + p.mass, 0);
   const power = parts.engine?.power ?? 0;
+  // Прижимная сила спойлера добавляет сцепление только на асфальте: на грунте скорость мала.
+  const downforce = installed.reduce((sum, p) => sum + (p.downforce ?? 0), 0);
   const grip = {
     clay: parts.wheels?.grip?.clay ?? 0,
-    asphalt: parts.wheels?.grip?.asphalt ?? 0,
+    asphalt: (parts.wheels?.grip?.asphalt ?? 0) + downforce,
   };
 
-  // Прочность — минимум по трём деталям; при равенстве берём первую по порядку слотов.
+  // Прочность — минимум по установленным деталям; при равенстве — первая по порядку слотов.
   let weakestPart = null;
   for (const p of installed) {
     if (!weakestPart || p.durability < weakestPart.durability) weakestPart = p;
@@ -80,6 +84,7 @@ export function computeStats(build, data = defaultData) {
     mass,
     power,
     grip,
+    downforce,
     durability,
     weakestPart,
     display: { hp: power * hpPerPowerPoint, kg: mass * kgPerMassPoint },
