@@ -1,0 +1,32 @@
+# Зависимости
+node_modules/
+
+# Сборка
+dist/
+dist-ssr/
+*.local
+
+# Логи
+logs/
+*.log
+npm-debug.log*
+
+# Покрытие тестами
+coverage/
+
+# Редакторы и ОС
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Окружение
+.env
+.env.*
+!.env.example
+
+# Исходники артов (тяжёлые рабочие файлы держим вне репозитория)
+*.aseprite.bak
