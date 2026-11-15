@@ -44,6 +44,7 @@ export const STORAGE_KEY = 'dedov-garage:settings';
 /** Пиксельный шрифт с кириллицей (ТЗ 6.3); пока файла нет — системный моноширинный. */
 export const FONT_FAMILY = '"Pixel", "Press Start 2P", monospace';
 
-export const VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'dev';
+// Подставляется Vite из package.json (vite.config.js → VITE_APP_VERSION).
+export const VERSION = import.meta.env.VITE_APP_VERSION ?? 'dev';
 
 export { config };

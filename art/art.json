@@ -1,0 +1,17 @@
+{
+  "$comment": "Исходники артов → готовые пиксельные файлы игры. Пересборка всего: npm run art. Параметры — как у tools/pixelize.mjs.",
+  "items": [
+    {
+      "source": "art/source/menu_garage.jpg",
+      "output": "public/assets/images/bg/menu_garage.png",
+      "args": {
+        "pixel": 2,
+        "colors": 64,
+        "contrast": 1.15,
+        "saturation": 1.2,
+        "sharpen": 1.5,
+        "save-palette": "art/palettes/garage.json"
+      }
+    }
+  ]
+}

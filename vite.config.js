@@ -3,12 +3,12 @@ import { readFileSync } from 'node:fs';
 
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf-8'));
 
+// Версия сборки для меню: VITE_* попадает в import.meta.env и в dev, и в build, и в тестах.
+process.env.VITE_APP_VERSION = pkg.version;
+
 export default defineConfig({
   // Относительные пути: игра должна работать из dist/ без отдельного сервера (ТЗ 7.6).
   base: './',
-  define: {
-    __APP_VERSION__: JSON.stringify(pkg.version),
-  },
   server: {
     port: 5173,
     open: false,

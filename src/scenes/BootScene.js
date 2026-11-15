@@ -2,12 +2,14 @@ import Phaser from 'phaser';
 import manifest from '../../data/assets.json';
 import config from '../../data/config.json';
 import { BaseScene } from './BaseScene.js';
-import { SCENES, FONT_FAMILY } from '../config/constants.js';
+import { SCENES } from '../config/constants.js';
+import { el } from '../ui/dom.js';
 import { t } from '../systems/strings.js';
 
 /**
- * Boot (ТЗ 3.2, 7.3): «Игра загружается…», проценты, прогресс-бар по событию progress,
- * подпись команды, минимум 1,5 с, затем «Нажмите, чтобы начать» — клик разблокирует звук.
+ * Boot (ТЗ 3.2, 7.3): логотип, «Игра загружается…», проценты и полоса прогресса
+ * по событию progress загрузчика Phaser, подпись команды, минимум 1,5 с.
+ * Затем «Нажмите, чтобы начать»: клик разблокирует звук в браузере.
  */
 export class BootScene extends BaseScene {
   constructor() {
@@ -15,41 +17,33 @@ export class BootScene extends BaseScene {
   }
 
   preload() {
-    const { width, height } = this.scale;
     this.startedAt = performance.now();
 
-    this.label = this.add
-      .text(width / 2, height / 2 - 20, t('boot.loading'), {
-        fontFamily: FONT_FAMILY,
-        fontSize: '10px',
-      })
-      .setOrigin(0.5);
-    this.percent = this.add
-      .text(width / 2, height / 2 + 4, '0%', {
-        fontFamily: FONT_FAMILY,
-        fontSize: '8px',
-        color: '#a39a86',
-      })
-      .setOrigin(0.5);
+    this.$status = el('div', { class: 'boot__status', text: t('boot.loading') });
+    this.$percent = el('div', { class: 'boot__percent', text: '0%' });
+    this.$fill = el('div', { class: 'boot__fill' });
+    this.ui.append(
+      el('div', { class: 'ui-abs boot' }, [
+        el('img', {
+          class: 'boot__logo',
+          src: 'assets/images/ui/logo.svg',
+          alt: t('menu.title'),
+          draggable: 'false',
+        }),
+        el('div', { class: 'boot__bar', role: 'progressbar' }, this.$fill),
+        el('div', { class: 'boot__row' }, [this.$status, this.$percent]),
+      ]),
+      el('div', { class: 'ui-abs boot__credits', text: t('boot.credits') }),
+    );
 
-    const barY = height - 40;
-    this.add.rectangle(0, barY, width, 6, 0x24212c).setOrigin(0, 0.5);
-    const bar = this.add.rectangle(0, barY, 0, 6, 0xe6b34a).setOrigin(0, 0.5);
-
-    this.add
-      .text(width / 2, height - 20, t('boot.credits'), {
-        fontFamily: FONT_FAMILY,
-        fontSize: '6px',
-        color: '#6f6858',
-      })
-      .setOrigin(0.5);
-
-    this.load.on(Phaser.Loader.Events.PROGRESS, (p) => {
-      bar.width = width * p;
-      this.percent.setText(`${Math.round(p * 100)}%`);
-    });
-
+    this.load.on(Phaser.Loader.Events.PROGRESS, (p) => this.#setProgress(p));
     this.#queueManifest();
+  }
+
+  #setProgress(p) {
+    const pct = Math.round(p * 100);
+    this.$fill.style.transform = `scaleX(${p})`;
+    this.$percent.textContent = `${pct}%`;
   }
 
   #queueManifest() {
@@ -60,23 +54,25 @@ export class BootScene extends BaseScene {
 
   create() {
     this.enter();
+    this.#setProgress(1);
     const elapsed = performance.now() - this.startedAt;
     const wait = Math.max(0, config.boot.minDurationMs - elapsed);
     this.time.delayedCall(wait, () => this.#showPressToStart());
   }
 
   #showPressToStart() {
-    this.percent.setText('100%');
-    this.label.setText(t('boot.pressToStart'));
-    this.tweens.add({ targets: this.label, alpha: 0.3, duration: 600, yoyo: true, repeat: -1 });
+    this.$status.textContent = t('boot.pressToStart');
+    this.$status.classList.add('boot__status--ready');
+    this.$percent.hidden = true;
+
     const start = () => {
-      this.input.off('pointerdown', start);
-      this.input.keyboard?.off('keydown', start);
+      window.removeEventListener('pointerdown', start);
+      window.removeEventListener('keydown', start);
       // Клик — жест пользователя: браузер разрешает звук, музыка меню заиграет сразу.
       if (this.sound.locked) this.sound.unlock();
       this.goTo(SCENES.MENU);
     };
-    this.input.on('pointerdown', start);
-    this.input.keyboard?.on('keydown', start);
+    window.addEventListener('pointerdown', start);
+    window.addEventListener('keydown', start);
   }
 }

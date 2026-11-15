@@ -6,7 +6,7 @@
   },
   "menu": {
     "title": "Дедов гараж",
-    "play": "Играть",
+    "play": "Начать игру",
     "howTo": "Как играть",
     "settings": "Настройки",
     "version": "v{version}"

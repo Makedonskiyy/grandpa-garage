@@ -1,0 +1,10 @@
+{
+  "$comment": "Меню: координаты ламп на фоне menu_garage.png (в пикселях игры 640×360) и мигание.",
+  "lamps": [
+    { "x": 314, "y": 96, "size": 1.6, "alpha": 0.55 },
+    { "x": 378, "y": 136, "size": 1, "alpha": 0.4 },
+    { "x": 520, "y": 111, "size": 1.1, "alpha": 0.4 },
+    { "x": 27, "y": 37, "size": 1.2, "alpha": 0.3 }
+  ],
+  "flicker": { "times": 3, "shade": 0.18, "minDelayMs": 3500, "maxDelayMs": 7000 }
+}

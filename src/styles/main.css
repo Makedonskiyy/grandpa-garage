@@ -14,7 +14,12 @@
   --c-accent: #e6b34a;
   --c-ok: #6fbf5a;
   --c-bad: #d9533f;
-  --font: 'Pixel', 'Press Start 2P', monospace;
+  /* Фирменный оранжевый из логотипа и шрифт интерфейса (лежит в сборке, см. main.js). */
+  --c-brand: #eea45a;
+  --c-brand-hover: #f4b676;
+  --c-ink: #141414;
+  --font-ui: 'Literata Variable', 'Literata', Georgia, 'Times New Roman', serif;
+  --font: var(--font-ui);
 }
 
 * {
@@ -29,8 +34,7 @@ body {
   background: var(--c-bg);
   color: var(--c-text);
   font-family: var(--font);
-  -webkit-font-smoothing: none;
-  font-smooth: never;
+  -webkit-font-smoothing: antialiased;
 }
 
 #stage {
@@ -128,59 +132,6 @@ body {
   padding: 8px;
 }
 
-.modal-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgb(0 0 0 / 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: auto;
-}
-
-.modal {
-  width: 360px;
-  max-height: 320px;
-  overflow: auto;
-}
-
-.modal h2 {
-  margin: 0 0 8px;
-  font-size: 10px;
-  color: var(--c-accent);
-  font-weight: normal;
-}
-
-.modal p {
-  margin: 0 0 6px;
-}
-
-.modal__footer {
-  margin-top: 10px;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.field {
-  display: grid;
-  grid-template-columns: 110px 1fr 28px;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 6px;
-}
-
-.field select,
-.field input[type='range'] {
-  font: inherit;
-  width: 100%;
-}
-
-.field select {
-  background: var(--c-panel-2);
-  color: var(--c-text);
-  border: 1px solid var(--c-border-dark);
-}
-
 .muted {
   color: var(--c-muted);
 }
@@ -195,28 +146,6 @@ body {
 
 .accent {
   color: var(--c-accent);
-}
-
-/* ---------- Меню ---------- */
-.menu {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  top: 150px;
-  left: 0;
-  right: 0;
-}
-
-.menu .btn {
-  width: 150px;
-}
-
-.version {
-  right: 6px;
-  bottom: 4px;
-  font-size: 6px;
-  color: var(--c-muted);
 }
 
 /* ---------- Гараж ---------- */
@@ -415,9 +344,4 @@ body {
 .gauge__value {
   font-size: 12px;
   color: var(--c-accent);
-}
-
-.skip {
-  right: 8px;
-  top: 6px;
 }
