@@ -1,5 +1,6 @@
 {
-  "$comment": "Сгенерировано tools/build-car.mjs (npm run car) — не править руками. Пиксели спрайта; привязка — середина низа (земля).",
+  "$comment": "Сгенерировано tools/build-car.mjs (npm run car) — не править руками. Координаты в единицах мира; текстуры в density раз детальнее.",
+  "density": 3,
   "size": {
     "width": 288,
     "height": 96
@@ -10,14 +11,14 @@
   },
   "wheels": {
     "rear": {
-      "x": 62,
-      "y": 72
+      "x": 63,
+      "y": 72.5
     },
     "front": {
-      "x": 222,
-      "y": 72
+      "x": 221,
+      "y": 72.5
     },
-    "radius": 20
+    "radius": 19.5
   },
   "wheelFrame": {
     "width": 48,
@@ -25,8 +26,8 @@
     "frames": 16
   },
   "headlight": {
-    "x": 280,
-    "y": 55
+    "x": 281,
+    "y": 52
   },
   "tires": {
     "wheels_stock": "stock",

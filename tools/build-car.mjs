@@ -1,421 +1,586 @@
 #!/usr/bin/env node
 /**
- * build-car — генератор модульной пиксельной машины игрока («дедова японка»).
+ * build-car — генератор модульной машины игрока («дедова японка»).
  *
- * Машина описана здесь векторами (SVG) и растеризуется без сглаживания (crispEdges),
- * поэтому получается чистый пиксель-арт с ровной сеткой. Каждый слой — отдельный PNG
- * одного размера с общей точкой привязки (ТЗ 5.1), колёса — ленты кадров вращения.
+ * Пропорции — купе конца 90-х по образцу R34: длина 4,6 м, база 2,67 м, высота 1,36 м,
+ * колёса 18″. Марок, шильдиков и названий нет (ТЗ 2.1).
  *
- * Слои, которые перекрашивает игра (setTint = умножение), нарисованы в оттенках серого:
- * краска кузова и спойлера, диски, стекло фар. Тени и блики при перекраске сохраняются.
+ * Геометрия задана в единицах мира (288×96 на машину, 1 ед. ≈ 17 мм), а растеризуется
+ * в DENSITY раз детальнее — машина чётче всех остальных объектов игры. Без сглаживания
+ * (crispEdges), свет и тени — ступенями, как в пиксель-арте.
  *
- * Силуэт — обобщённое японское купе конца 90-х без марок, шильдиков и названий (ТЗ 2.1).
+ * Слои одного размера с общей привязкой (ТЗ 5.1). Краска, спойлер, диски и стекло фар —
+ * в серой шкале: игра перекрашивает их умножением (setTint), тени и блики сохраняются.
  *
  *   npm run car              — собрать в public/assets/images/car и data/car.json
- *   npm run car -- --preview — плюс превью вариантов в art/preview/car.png
+ *   npm run car -- --preview — плюс превью в art/preview/car.png
  */
 import sharp from 'sharp';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const OUT = `${ROOT}public/assets/images/car/`;
 const PREVIEW = process.argv.includes('--preview');
 
-// ---------- Геометрия: всё считается от этих опорных точек (машина смотрит вправо) ----------
+const DENSITY = 3; // пикселей текстуры на единицу мира
 const W = 288;
 const H = 96;
 const GROUND = 92;
-const WHEEL_R = 20;
-const WHEEL_Y = GROUND - WHEEL_R; // 72
-const REAR_X = 62;
-const FRONT_X = 222;
-const ARCH_R = 24;
-const SILL = 80; // низ порогов
-const BELT = 45; // линия окон
-const ROOF = 17;
-const FRAME = 48; // кадр колеса 48×48
-const FRAMES = 16; // кадров на оборот
+
+// ---------- Пропорции ----------
+const WHEEL_R = 19.5;
+const WHEEL_Y = GROUND - WHEEL_R; // 72.5
+const REAR_X = 63;
+const FRONT_X = 221;
+const ARCH_R = 22.5;
+const SILL = 84; // низ порога
+const SKIRT = 79.5; // верх юбки порога
+const FRAME = 48; // кадр колеса, ед.
+const FRAMES = 16;
+const STEP = 1 / DENSITY; // одна точка текстуры в единицах мира
 
 const C = {
-  outline: '#111216',
-  well: '#0b0b0e',
-  trim: '#1b1c21',
-  trimHi: '#2c2e35',
-  rubber: '#1f2024',
-  rubberHi: '#3a3c43',
-  glassDark: '#151c28',
-  glass: '#253149',
-  glassHi: '#4b5f7d',
-  glassShine: '#8aa0c0',
-  tail: '#a81f2a',
-  tailHi: '#e2484f',
-  marker: '#d98a2b',
-  metal: '#6d7178',
+  outline: '#0d0e12',
+  well: '#09090c',
+  trim: '#18191e',
+  trimHi: '#2a2c33',
+  trimLo: '#101115',
+  rubber: '#1b1c20',
+  rubberSide: '#25262b',
+  rubberHi: '#3b3d44',
+  glassTop: '#5d7393',
+  glassMid: '#2c3a55',
+  glassLow: '#18202f',
+  glassDeep: '#10151f',
+  glassShine: '#a9bcd6',
+  tail: '#9e1b26',
+  tailHi: '#e0454d',
+  tailLo: '#5e0f15',
+  marker: '#e08c2c',
+  metal: '#7a7e86',
+  metalHi: '#b8bcc4',
   metalDark: '#45484f',
-  brake: '#8a8d93',
+  disc: '#6f737a',
+  discHi: '#9a9ea6',
+  discDark: '#4d5056',
+  caliperRed: '#b3262c',
+  caliperRedHi: '#e04a4a',
+  caliperGrey: '#5c6067',
   brick: '#8e4a33',
+  brickHi: '#a85a3e',
   brickDark: '#5e2f21',
   mortar: '#b9a48a',
 };
-// Серая шкала для перекрашиваемых слоёв (умножается на цвет).
-const G = {
-  hi: '#ffffff',
-  light: '#eeeeee',
-  base: '#d6d6d6',
-  mid: '#b6b6b6',
-  low: '#929292',
-  dark: '#6e6e6e',
+
+/** Серая ступень для перекрашиваемых слоёв: 0…1 → #rrggbb. */
+const gray = (v) => {
+  const n = Math.round(Math.max(0, Math.min(1, v)) * 255);
+  const h = n.toString(16).padStart(2, '0');
+  return `#${h}${h}${h}`;
 };
 
-const archX = (cx, y) => Math.sqrt(ARCH_R * ARCH_R - (y - WHEEL_Y) ** 2);
-const fdx = archX(FRONT_X, SILL).toFixed(2);
-const rdx = archX(REAR_X, SILL).toFixed(2);
+// ---------- Силуэт ----------
+const arch = (cx) => {
+  const dx = Math.sqrt(ARCH_R ** 2 - (SILL - WHEEL_Y) ** 2);
+  return { a: (cx + dx).toFixed(2), b: (cx - dx).toFixed(2) };
+};
+const FA = arch(FRONT_X);
+const RA = arch(REAR_X);
 
-// Контур кузова по часовой: зад → багажник → стойка C → крыша → лобовое → капот → нос → низ с арками.
 const BODY_PATH = [
-  `M 6 ${SILL}`,
-  'L 3 62',
-  'L 4 50',
-  `L 8 ${BELT - 1}`,
-  `L 58 ${BELT - 2}`,
-  'L 92 20',
-  `L 100 ${ROOF}`,
-  `L 146 ${ROOF}`,
-  'L 153 20',
-  `L 190 ${BELT}`,
-  'L 248 48',
-  'L 274 52',
-  'L 281 57',
-  'L 283 70',
-  `L 280 ${SILL}`,
-  `L ${(FRONT_X + +fdx).toFixed(2)} ${SILL}`,
-  `A ${ARCH_R} ${ARCH_R} 0 1 0 ${(FRONT_X - fdx).toFixed(2)} ${SILL}`,
-  `L ${(REAR_X + +rdx).toFixed(2)} ${SILL}`,
-  `A ${ARCH_R} ${ARCH_R} 0 1 0 ${(REAR_X - rdx).toFixed(2)} ${SILL}`,
+  'M 12 82.5',
+  'Q 8 81 8 77', // низ заднего бампера
+  'L 7 58',
+  'L 7.5 44',
+  'Q 8 37 12 35.8', // скругление заднего торца
+  'L 44 34', // багажник — высокий и ровный
+  'L 79 15', // заднее стекло
+  'Q 81 13 86 13', // крыша
+  'L 122 13',
+  'Q 126 13 128.5 14.8',
+  'L 170 37', // лобовое
+  'L 212 40.5', // капот
+  'L 252 44.5',
+  'Q 270 46.5 276 49', // нос
+  'Q 280.5 51 281 56',
+  'L 282 70',
+  'Q 282 78 279 80.5', // передний бампер
+  `L 276 ${SILL}`,
+  `L ${FA.a} ${SILL}`,
+  `A ${ARCH_R} ${ARCH_R} 0 1 0 ${FA.b} ${SILL}`,
+  `L ${RA.a} ${SILL}`,
+  `A ${ARCH_R} ${ARCH_R} 0 1 0 ${RA.b} ${SILL}`,
+  'L 16 83.5',
   'Z',
 ].join(' ');
 
-// Стёкла: маленькая задняя форточка и дверное, между ними стойка B.
-const B_PILLAR = { x: 116, w: 4 };
-const QUARTER_GLASS = `M 82 ${BELT - 3} L 101 21 L ${B_PILLAR.x} 20 L ${B_PILLAR.x} ${BELT - 3} Z`;
-const DOOR_GLASS = `M ${B_PILLAR.x + B_PILLAR.w} 20 L 145 20 L 150 22 L 180 ${BELT - 3} L ${B_PILLAR.x + B_PILLAR.w} ${BELT - 3} Z`;
-const HEADLIGHT = 'M 258 50 L 274 53 L 280 58 L 260 58 Z';
+// Боковое остекление: дверное стекло и задняя форточка, между ними чёрная стойка.
+const DOOR_GLASS = 'M 103.5 17 L 125 16.5 Q 127.5 16.8 129 18 L 163 36.4 L 103.5 36.4 Z';
+const QUARTER_GLASS = 'M 99.5 17 L 99.5 35.2 L 80 33.4 L 74 31.2 L 82.5 19.5 Q 84 17.2 87 17 Z';
+const B_PILLAR = 'M 99.5 16.5 L 103.5 16.5 L 103.5 36.6 L 99.5 34.8 Z';
+const A_PILLAR = 'M 128.5 14.8 L 170 37 L 166 37.2 L 127 16 Z';
+const C_PILLAR_EDGE = 'M 79 15 L 44 34 L 48 34 L 81 15.6 Z';
+const HEADLIGHT =
+  'M 249 45.2 L 270 46.6 Q 277 48.4 279.8 52 L 281 57 L 254 57.4 Q 250.5 52 249 45.2 Z';
+const INTAKE = 'M 263 62 L 281.4 62 L 281.8 74 L 266 75 Q 263.5 69 263 62 Z';
+const VENT = 'M 196 50 L 206 50 L 205 59 L 197 59 Z'; // жабры за передним колесом
 
 const svg = (body, { w = W, h = H } = {}) =>
-  `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" shape-rendering="crispEdges">${body}</svg>`;
+  `<svg xmlns="http://www.w3.org/2000/svg" width="${w * DENSITY}" height="${h * DENSITY}" viewBox="0 0 ${w} ${h}" shape-rendering="crispEdges">${body}</svg>`;
+
+const rect = (x, y, w, h, fill, extra = '') =>
+  `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}" ${extra}/>`;
 
 function rng(seed) {
   let s = seed;
   return () => (s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
 }
 
-const clipBody = `<clipPath id="body"><path d="${BODY_PATH}"/></clipPath>`;
-const clipGlass = `<clipPath id="glass"><path d="${QUARTER_GLASS}"/><path d="${DOOR_GLASS}"/></clipPath>`;
-const rect = (x, y, w, h, fill) =>
-  `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}"/>`;
-
-// Всё «не краска» на кузове: стёкла, рамки, чёрные пороги, фонари. Одна функция и для
-// основы, и для маски краски — так они никогда не разъедутся.
-const NON_PAINT = (fill) => `
-  <path d="${QUARTER_GLASS}" fill="${fill ?? C.glass}" stroke="${fill ?? C.trim}" stroke-width="2"/>
-  <path d="${DOOR_GLASS}" fill="${fill ?? C.glass}" stroke="${fill ?? C.trim}" stroke-width="2"/>
-  ${rect(B_PILLAR.x, 19, B_PILLAR.w, BELT - 21, fill ?? C.trim)}
-  <path d="M 153 20 L 191 ${BELT} L 187 ${BELT} L 151 21 Z" fill="${fill ?? C.glassDark}"/>
-  <path d="M 92 20 L 58 ${BELT - 2} L 63 ${BELT - 2} L 95 21 Z" fill="${fill ?? C.glassDark}"/>
-  ${rect(0, SILL - 4, W, 10, fill ?? C.trim)}
-  ${rect(262, 66, 21, 8, fill ?? C.trim)}
-  ${rect(3, 49, 4, 8, fill ?? C.tail)}
-  ${rect(244, 60, 5, 2, fill ?? C.marker)}
-  ${rect(176, BELT - 6, 8, 5, fill ?? C.trim)}
-  ${rect(182, BELT + 1, 1, SILL - BELT - 5, fill ?? C.outline)}
-  ${rect(B_PILLAR.x + 1, BELT + 1, 1, SILL - BELT - 5, fill ?? C.outline)}
-  ${rect(160, 52, 8, 2, fill ?? C.trim)}
-  <path d="${HEADLIGHT}" fill="${fill ?? C.trim}"/>
+const defs = `
+  <clipPath id="body"><path d="${BODY_PATH}"/></clipPath>
+  <clipPath id="glass"><path d="${DOOR_GLASS}"/><path d="${QUARTER_GLASS}"/></clipPath>
 `;
 
-// ---------- Слои ----------
+/**
+ * Ступенчатый вертикальный градиент: значения в опорных точках по y, между ними —
+ * линейно, затем округление до levels ступеней (пиксельная «лестница» света).
+ */
+function stepGradient(stops, y0, y1, x0, x1, levels, color = gray) {
+  const value = (y) => {
+    for (let i = 0; i < stops.length - 1; i++) {
+      const [ya, va] = stops[i];
+      const [yb, vb] = stops[i + 1];
+      if (y >= ya && y <= yb) return va + ((vb - va) * (y - ya)) / (yb - ya || 1);
+    }
+    return y < stops[0][0] ? stops[0][1] : stops.at(-1)[1];
+  };
+  let out = '';
+  const rows = Math.round((y1 - y0) * DENSITY);
+  let start = 0;
+  let prev = Math.round(value(y0) * levels) / levels;
+  for (let i = 1; i <= rows; i++) {
+    const v = i < rows ? Math.round(value(y0 + i * STEP) * levels) / levels : null;
+    if (v !== prev) {
+      out += rect(
+        x0,
+        (y0 + start * STEP).toFixed(3),
+        x1 - x0,
+        ((i - start) * STEP).toFixed(3),
+        color(prev),
+      );
+      start = i;
+      prev = v;
+    }
+  }
+  return out;
+}
 
-/** Ниши колёс — под колёсами, чтобы в пустой арке было темно, а не фон. */
+// ---------- Слои кузова ----------
+
 function layerWells() {
-  const well = (cx) => `<circle cx="${cx}" cy="${WHEEL_Y}" r="${ARCH_R - 1}" fill="${C.well}"/>`;
+  const well = (cx) => `<circle cx="${cx}" cy="${WHEEL_Y}" r="${ARCH_R - 0.4}" fill="${C.well}"/>`;
   return svg(`
     <defs><clipPath id="above"><rect x="0" y="0" width="${W}" height="${SILL}"/></clipPath></defs>
     <g clip-path="url(#above)">${well(REAR_X)}${well(FRONT_X)}</g>
   `);
 }
 
-/** Основа: обводка, стёкла, чёрные элементы, фонари — всё, что не перекрашивается. */
+/** Всё неокрашиваемое: стёкла, стойки, чёрный пластик, фонари, решётки. */
+function nonPaint(maskFill) {
+  const f = (c) => maskFill ?? c;
+  return `
+    <path d="${DOOR_GLASS}" fill="${f(C.glassMid)}"/>
+    <path d="${QUARTER_GLASS}" fill="${f(C.glassMid)}"/>
+    <path d="${B_PILLAR}" fill="${f(C.trim)}"/>
+    <path d="${A_PILLAR}" fill="${f(C.trimLo)}"/>
+    <path d="${C_PILLAR_EDGE}" fill="${f(C.glassDeep)}"/>
+    <path d="${HEADLIGHT}" fill="${f(C.trim)}"/>
+    <path d="${INTAKE}" fill="${f(C.trimLo)}"/>
+    <path d="${VENT}" fill="${f(C.trimLo)}"/>
+    ${rect(7, 40, 2.6, 9, f(C.tail))}
+    ${rect(8, 74, 34, 9.5, f(C.trim))}
+    ${rect(256, 80, 26, 5, f(C.trim))}
+    ${rect(84, 82.5, 116, 2, f(C.trimLo))}
+    <path d="M 158 31.2 Q 158 29.6 160 29.6 L 166.6 30.2 Q 168.4 30.6 168.2 32.6 L 167.6 35.4 L 159 35.4 Q 158 35.4 158 33.8 Z" fill="${f(C.trim)}"/>
+    ${rect(163, 35, 3, 2, f(C.trim))}
+  `;
+}
+
 function layerBase() {
+  // Ступенчатое стекло: светлое небо сверху, тёмный салон снизу, диагональный блик.
+  const glassColors = [C.glassDeep, C.glassLow, C.glassMid, '#3f5070', C.glassTop, '#7d93b3'];
+  const glass = stepGradient(
+    [
+      [16, 0.95],
+      [22, 0.55],
+      [30, 0.2],
+      [37, 0.05],
+    ],
+    16,
+    37,
+    60,
+    170,
+    5,
+    (v) => glassColors[Math.round(v * 5)],
+  );
+  let mesh = '';
+  for (let y = 63.5; y < 74; y += 2) mesh += rect(264.5, y, 17, 0.7, C.trimHi);
+  let slats = '';
+  for (let x = 197.5; x < 205; x += 2.2) slats += rect(x, 51, 0.8, 7.2, C.trimHi);
   return svg(`
-    <defs>${clipBody}</defs>
+    <defs>${defs}</defs>
     <path d="${BODY_PATH}" fill="${C.outline}"/>
     <g clip-path="url(#body)">
-      ${NON_PAINT()}
-      <!-- решётка в бампере и губа -->
-      ${rect(264, 68, 17, 1, C.trimHi)}
-      ${rect(264, 70, 17, 1, C.trimHi)}
-      ${rect(266, SILL - 2, 16, 2, C.trimHi)}
-      <!-- блик на фонаре -->
-      ${rect(3, 50, 2, 2, C.tailHi)}
-      <!-- блики и отражения в стёклах -->
-      <path d="M 122 23 L 143 22 L 146 24 L 124 26 Z" fill="${C.glassHi}"/>
-      <path d="M 126 ${BELT - 8} L 164 ${BELT - 11} L 168 ${BELT - 9} L 128 ${BELT - 6} Z" fill="${C.glassDark}"/>
-      <path d="M 102 24 L 112 23 L 112 25 L 100 26 Z" fill="${C.glassHi}"/>
-      <path d="M 155 21 L 166 27 L 165 28 L 154 22 Z" fill="${C.glassShine}"/>
-      <!-- лючок бензобака -->
-      <rect x="38" y="49" width="9" height="6" fill="none" stroke="${C.outline}" stroke-width="1"/>
-      <!-- порог: рёбра -->
-      ${rect(88, SILL - 3, 108, 1, C.trimHi)}
+      ${nonPaint()}
+      <g clip-path="url(#glass)">
+        ${glass}
+        <path d="M 112 17 L 120 17 L 106 36 L 98 36 Z" fill="${C.glassShine}" opacity="0.35"/>
+        <path d="M 123 17 L 126 17 L 112 36 L 109 36 Z" fill="${C.glassShine}" opacity="0.25"/>
+        <!-- силуэт сиденья в салоне -->
+        <path d="M 112 36 L 113 27 Q 114 24 117 24 L 119 24 Q 121 24 120.5 27 L 119 36 Z" fill="${C.glassDeep}"/>
+      </g>
+      <!-- задний фонарь, загнутый на бок -->
+      ${rect(7, 40.6, 1.6, 3.4, C.tailHi)}
+      ${rect(7, 45.5, 2.6, 3.5, C.tailLo)}
+      <!-- решётка воздухозаборника и сплиттер -->
+      ${mesh}
+      ${rect(262, 82.3, 20, 1.2, C.trimHi)}
+      <!-- диффузор сзади -->
+      ${rect(10, 79.5, 30, 0.7, C.trimHi)}
+      <!-- жабры -->
+      ${slats}
+      <!-- зеркало: блик -->
+      ${rect(159.4, 30.4, 7.6, 0.8, C.trimHi)}
+      <!-- юбка порога: ребро -->
+      ${rect(86, 82.5, 112, 0.6, C.trimHi)}
+      <!-- боковой повторитель -->
+      ${rect(262, 58.2, 4.2, 1.6, C.marker)}
+      ${rect(262, 58.2, 4.2, 0.6, '#f6c06a')}
     </g>
-    <!-- антенна -->
-    ${rect(26, BELT - 9, 1, 8, C.trim)}
+    <path d="${BODY_PATH}" fill="none" stroke="${C.outline}" stroke-width="${STEP * 2}"/>
+    <path d="${DOOR_GLASS}" fill="none" stroke="${C.trim}" stroke-width="${STEP * 2}"/>
+    <path d="${QUARTER_GLASS}" fill="none" stroke="${C.trim}" stroke-width="${STEP * 2}"/>
   `);
 }
 
-/** Краска кузова в серой шкале: свет сверху, тень снизу, рельеф по бокам. */
+/** Краска: свет неба сверху, тень под плечом, отражение земли внизу; торцы темнее. */
 function layerPaint() {
-  const bands = [
-    [ROOF, 6, G.hi],
-    [ROOF + 6, BELT - ROOF - 8, G.light],
-    [BELT - 2, 2, G.hi],
-    [BELT, 3, G.light],
-    [BELT + 3, 9, G.base],
-    [BELT + 12, 1, G.hi], // верхняя выштамповка
-    [BELT + 13, 11, G.mid],
-    [BELT + 24, 1, G.base], // нижняя выштамповка
-    [BELT + 25, SILL - BELT - 25, G.low],
-  ];
+  const side = stepGradient(
+    [
+      [12, 0.98],
+      [16, 0.9],
+      [34, 0.88],
+      [36, 0.97],
+      [40.5, 0.95],
+      [41.2, 1],
+      [42.2, 0.74],
+      [48, 0.8],
+      [60, 0.78],
+      [70, 0.7],
+      [76, 0.66],
+      [SKIRT, 0.6],
+      [SKIRT + 0.4, 0.86],
+      [SKIRT + 1.2, 0.58],
+      [SILL, 0.5],
+    ],
+    12,
+    SILL,
+    0,
+    W,
+    14,
+  );
+  const hoodEdge = `<path d="M 170 37 L 212 40.5 L 252 44.5 Q 270 46.5 276 49 L 276 50.2 Q 270 47.8 252 45.8 L 212 41.8 L 170 38.4 Z" fill="${gray(1)}"/>`;
+  const shoulder = `<path d="M 9 40.5 L 170 40.2 L 250 44 L 270 47 L 270 47.8 L 250 45 L 170 41.4 L 9 41.6 Z" fill="${gray(1)}"/>`;
+  const streak = `<path d="M 118 43 L 150 43 L 128 79 L 96 79 Z" fill="${gray(0.83)}" opacity="0.6"/>`;
+  const ends = `
+    <rect x="0" y="34" width="5" height="52" fill="${gray(0.62)}"/>
+    <rect x="5" y="34" width="4" height="52" fill="${gray(0.7)}"/>
+    <rect x="276" y="46" width="12" height="40" fill="${gray(0.66)}"/>
+    <rect x="270" y="50" width="6" height="34" fill="${gray(0.74)}"/>
+  `;
+  const haunch = `<path d="M 36 46 Q 63 41 92 44.6 L 92 45.4 Q 63 42 36 47 Z" fill="${gray(1)}"/><path d="M 36 47 Q 63 42.2 92 45.4 L 92 47.2 Q 63 44 36 48.6 Z" fill="${gray(0.72)}"/>`;
+  const flare = (cx) => `
+    <circle cx="${cx}" cy="${WHEEL_Y}" r="${ARCH_R + 2.6}" fill="none" stroke="${gray(0.97)}" stroke-width="0.7"/>
+    <circle cx="${cx}" cy="${WHEEL_Y}" r="${ARCH_R + 1.6}" fill="none" stroke="${gray(0.6)}" stroke-width="0.9"/>
+  `;
+  const seams = `
+    <path d="M 166.5 37 L 168 44 Q 169 70 167 82.5" fill="none" stroke="${C.outline}" stroke-width="${STEP * 1.5}"/>
+    <path d="M 101.5 36.6 L 101.5 82.5" fill="none" stroke="${C.outline}" stroke-width="${STEP * 1.5}"/>
+    <path d="M 212 40.6 Q 222 46 246 47.5" fill="none" stroke="${gray(0.6)}" stroke-width="${STEP * 1.5}"/>
+    ${rect(104.5, 43.4, 7.5, 1.6, C.outline, 'rx="0.6"')}
+    ${rect(105, 43.6, 6.5, 0.6, gray(1))}
+    <rect x="22" y="38.4" width="8" height="5.5" fill="none" stroke="${C.outline}" stroke-width="${STEP * 1.5}" rx="1"/>
+  `;
   return svg(`
-    <defs>${clipBody}</defs>
+    <defs>${defs}</defs>
     <g clip-path="url(#body)">
-      ${bands.map(([y, h, f]) => rect(0, y, W, h, f)).join('')}
-      <!-- торцы темнее: объём -->
-      ${rect(0, BELT, 5, SILL - BELT, G.mid)}
-      ${rect(278, 52, 10, SILL - 52, G.mid)}
-      <!-- расширители арок: светлая кромка над колесом -->
-      <circle cx="${REAR_X}" cy="${WHEEL_Y}" r="${ARCH_R + 2}" fill="none" stroke="${G.light}" stroke-width="1"/>
-      <circle cx="${FRONT_X}" cy="${WHEEL_Y}" r="${ARCH_R + 2}" fill="none" stroke="${G.light}" stroke-width="1"/>
-      <!-- капот: длинный блик -->
-      <path d="M 192 ${BELT + 1} L 248 49 L 248 50 L 192 ${BELT + 2} Z" fill="${G.hi}"/>
+      ${side}${streak}${shoulder}${haunch}${hoodEdge}${ends}${flare(REAR_X)}${flare(FRONT_X)}${seams}
     </g>
-    <path d="${BODY_PATH}" fill="none" stroke="${C.outline}" stroke-width="2"/>
   `);
 }
 
 function layerPaintMask() {
-  return svg(`<rect width="${W}" height="${H}" fill="#fff"/>${NON_PAINT('#000')}`);
+  return svg(`<rect width="${W}" height="${H}" fill="#fff"/>${nonPaint('#000')}`);
 }
 
-/** Стекло фары (серое → цвет фар). */
 function layerHeadlight() {
   return svg(`
-    <path d="${HEADLIGHT}" fill="${G.base}"/>
-    ${rect(268, 54, 6, 2, G.hi)}
-    ${rect(262, 56, 4, 1, G.light)}
-    <path d="${HEADLIGHT}" fill="none" stroke="${C.outline}" stroke-width="1"/>
+    <path d="${HEADLIGHT}" fill="${gray(0.55)}"/>
+    <path d="M 251 47.4 L 270 48.6 L 270 55.6 L 255 55.8 Q 252.4 51.6 251 47.4 Z" fill="${gray(0.68)}"/>
+    <circle cx="275.4" cy="52.4" r="2.8" fill="${gray(0.86)}"/>
+    <circle cx="275.4" cy="52.4" r="1.3" fill="${gray(1)}"/>
+    <circle cx="264.6" cy="52.2" r="2.6" fill="${gray(0.8)}"/>
+    <circle cx="264.6" cy="52.2" r="1.2" fill="${gray(1)}"/>
+    ${rect(252, 47.2, 25, 0.8, gray(1))}
+    ${rect(256, 56, 22, 0.6, gray(0.4))}
+    <path d="${HEADLIGHT}" fill="none" stroke="${C.outline}" stroke-width="${STEP * 2}"/>
   `);
 }
 
-/** Грязь: пыль на стёклах, грязь по низу и брызги у арок. */
 function layerDirt() {
   const r = rng(7);
-  const browns = ['#5b4a37', '#6e5a42', '#7d6a50', '#4a3d2e'];
+  const browns = ['#5b4a37', '#6e5a42', '#7d6a50', '#4a3d2e', '#3d3226'];
   let dots = '';
-  for (let i = 0; i < 480; i++) {
-    const x = Math.floor(r() * W);
-    const y = BELT + 6 + Math.floor(Math.pow(r(), 0.45) * (SILL - BELT - 6));
-    if (r() < (y - BELT) / (SILL - BELT + 6)) {
-      dots += rect(x, y, r() < 0.3 ? 2 : 1, 1, browns[Math.floor(r() * 4)]);
+  for (let i = 0; i < 2600; i++) {
+    const x = r() * W;
+    const y = 48 + Math.pow(r(), 0.5) * (SILL - 48);
+    if (r() < ((y - 48) / (SILL - 48)) ** 1.4) {
+      dots += rect(
+        x.toFixed(2),
+        y.toFixed(2),
+        r() < 0.3 ? STEP * 2 : STEP,
+        STEP,
+        browns[Math.floor(r() * 5)],
+      );
     }
   }
   for (const cx of [REAR_X, FRONT_X]) {
-    for (let i = 0; i < 60; i++) {
+    for (let i = 0; i < 260; i++) {
       const a = Math.PI + r() * Math.PI;
-      const d = ARCH_R + 2 + r() * 6;
+      const d = ARCH_R + 1.5 + Math.pow(r(), 2) * 9;
       dots += rect(
-        Math.round(cx + Math.cos(a) * d),
-        Math.round(WHEEL_Y + Math.sin(a) * d),
-        1,
-        1,
-        browns[Math.floor(r() * 4)],
+        (cx + Math.cos(a) * d).toFixed(2),
+        (WHEEL_Y + Math.sin(a) * d).toFixed(2),
+        STEP,
+        STEP,
+        browns[Math.floor(r() * 5)],
       );
     }
   }
   let dust = '';
-  for (let i = 0; i < 80; i++) {
+  for (let i = 0; i < 420; i++) {
     dust += rect(
-      82 + Math.floor(r() * 100),
-      21 + Math.floor(r() * 22),
-      1 + Math.floor(r() * 3),
-      1,
-      '#8d8a80',
+      (66 + r() * 100).toFixed(2),
+      (16 + r() * 21).toFixed(2),
+      (STEP * (1 + Math.floor(r() * 4))).toFixed(3),
+      STEP,
+      r() < 0.5 ? '#8d8a80' : '#a39f94',
     );
   }
-  for (let i = 0; i < 12; i++) {
-    dust += rect(
-      14 + Math.floor(r() * 262),
-      BELT + 2 + Math.floor(r() * 8),
-      1,
-      4 + Math.floor(r() * 8),
+  let streaks = '';
+  for (let i = 0; i < 18; i++) {
+    streaks += rect(
+      (14 + r() * 260).toFixed(2),
+      (44 + r() * 6).toFixed(2),
+      STEP,
+      (3 + r() * 10).toFixed(2),
       '#6e5a42',
     );
   }
   return svg(`
-    <defs>${clipBody}${clipGlass}</defs>
-    <g clip-path="url(#body)">${dots}</g>
+    <defs>${defs}</defs>
+    <g clip-path="url(#body)">${dots}${streaks}</g>
     <g clip-path="url(#glass)">${dust}</g>
   `);
 }
 
-/** Накладки кузовов: ржавчина, каркас, карбон. */
 function layerOverlay(kind) {
   if (kind === 'rust') {
     const r = rng(21);
-    const rust = ['#7a3a1c', '#93481f', '#b25b26', '#5c2c16'];
+    const rust = ['#7a3a1c', '#93481f', '#b25b26', '#5c2c16', '#c56a2c'];
     const zones = [
-      [REAR_X - 30, SILL - 14, 22, 10],
-      [REAR_X + 10, SILL - 12, 20, 8],
-      [FRONT_X - 32, SILL - 12, 22, 8],
-      [FRONT_X + 12, SILL - 14, 20, 10],
-      [92, SILL - 9, 90, 5],
-      [6, BELT + 10, 16, 14],
+      [REAR_X - 28, SILL - 14, 16, 12],
+      [REAR_X + 16, SILL - 12, 14, 10],
+      [FRONT_X - 30, SILL - 12, 14, 10],
+      [FRONT_X + 18, SILL - 14, 14, 12],
+      [90, SKIRT - 4, 70, 6],
+      [8, 50, 10, 18],
+      [248, 46, 14, 5],
     ];
     let spots = '';
     for (const [zx, zy, zw, zh] of zones) {
-      for (let i = 0; i < zw * zh * 0.22; i++) {
-        spots += rect(
-          zx + Math.floor(r() * zw),
-          zy + Math.floor(r() * zh),
-          r() < 0.4 ? 2 : 1,
-          1,
-          rust[Math.floor(r() * 4)],
-        );
+      for (let i = 0; i < zw * zh * 2.4; i++) {
+        const x = zx + r() * zw;
+        const y = zy + r() * zh;
+        const k = 1 - Math.hypot((x - zx - zw / 2) / (zw / 2), (y - zy - zh / 2) / (zh / 2));
+        if (r() < k)
+          spots += rect(
+            x.toFixed(2),
+            y.toFixed(2),
+            r() < 0.4 ? STEP * 2 : STEP,
+            STEP,
+            rust[Math.floor(r() * 5)],
+          );
       }
     }
-    return svg(`<defs>${clipBody}</defs><g clip-path="url(#body)">${spots}</g>`);
+    return svg(`<defs>${defs}</defs><g clip-path="url(#body)">${spots}</g>`);
   }
   if (kind === 'cage') {
     return svg(`
-      <defs>${clipGlass}</defs>
+      <defs>${defs}</defs>
       <g clip-path="url(#glass)">
-        <path d="M 96 ${BELT - 3} L 132 21 L 136 21 L 100 ${BELT - 3} Z" fill="${C.metal}"/>
-        ${rect(84, 28, 96, 2, C.metal)}
-        ${rect(142, 20, 2, BELT - 22, C.metal)}
+        <path d="M 86 36 L 116 17 L 118.5 17 L 88.5 36 Z" fill="${C.metal}"/>
+        <path d="M 86.6 36 L 116.6 17 L 117.3 17 L 87.3 36 Z" fill="${C.metalHi}"/>
+        ${rect(70, 24, 96, 1.6, C.metal)}
+        ${rect(70, 24, 96, 0.5, C.metalHi)}
+        ${rect(133, 17, 1.6, 20, C.metal)}
       </g>
-      ${rect(90, SILL - 4, 106, 4, C.metalDark)}
-      ${rect(90, SILL - 4, 106, 1, C.metal)}
-      ${rect(282, 64, 3, 4, '#d14b2a')}
+      <g clip-path="url(#body)">
+        ${rect(84, SKIRT, 116, SILL - SKIRT, C.metalDark)}
+        ${rect(84, SKIRT, 116, 0.6, C.metal)}
+      </g>
+      ${rect(280.5, 64, 2.4, 3.6, '#d14b2a')}
     `);
   }
   if (kind === 'light') {
     let weave = '';
-    for (let y = BELT; y < 53; y++) {
-      for (let x = 191; x < 274; x++) {
-        const top = BELT + ((x - 190) * 7) / 84;
-        if (y < top + 1) continue;
-        weave += rect(x, y, 1, 1, (x + y) % 4 < 2 ? '#26272c' : '#34363c');
+    for (let y = 37; y < 52; y += STEP * 2) {
+      for (let x = 170; x < 276; x += STEP * 2) {
+        const odd = (Math.round(x * 1.5) + Math.round(y * 1.5)) % 2;
+        weave += rect(x.toFixed(2), y.toFixed(2), STEP * 2, STEP * 2, odd ? '#24252a' : '#34363c');
       }
     }
     return svg(`
-      <defs>${clipBody}</defs>
-      <g clip-path="url(#body)">${weave}${rect(191, 53, 83, 1, C.outline)}</g>
-      <path d="${QUARTER_GLASS}" fill="#0e131b"/>
+      <defs>${defs}
+        <clipPath id="hood"><path d="M 170 37 L 212 40.5 L 252 44.5 Q 270 46.5 276 49 L 276 52 L 170 41.5 Z"/></clipPath>
+      </defs>
+      <g clip-path="url(#hood)">${weave}</g>
+      <path d="${QUARTER_GLASS}" fill="#0b1018"/>
     `);
   }
   throw new Error(kind);
 }
 
-/** Спойлеры: краска (перекрашивается вместе с кузовом) и чёрные стойки. */
 function layerSpoiler(kind, part) {
   if (kind === 'lip') {
-    const lip = `M 7 ${BELT - 1} L 40 ${BELT - 3} L 46 ${BELT - 6} L 9 ${BELT - 4} Z`;
+    const lip = 'M 10 35.8 L 36 34.4 L 41 32.2 Q 40 31.6 38 31.8 L 12 33.4 Q 9.5 34 10 35.8 Z';
     return part === 'paint'
       ? svg(
-          `<path d="${lip}" fill="${G.light}"/><path d="${lip}" fill="none" stroke="${C.outline}" stroke-width="1"/>`,
+          `<path d="${lip}" fill="${gray(0.9)}"/>${rect(12, 33.4, 26, 0.6, gray(1))}<path d="${lip}" fill="none" stroke="${C.outline}" stroke-width="${STEP * 2}"/>`,
         )
       : svg('');
   }
-  const blade = `M 2 31 L 50 28 L 52 32 L 4 35 Z`;
   if (part === 'base') {
     return svg(`
-      <path d="M 16 ${BELT - 1} L 21 ${BELT - 1} L 23 33 L 19 33 Z" fill="${C.trim}"/>
-      <path d="M 40 ${BELT - 2} L 45 ${BELT - 2} L 45 31 L 41 31 Z" fill="${C.trim}"/>
+      <path d="M 14.5 35.6 L 19 35.4 L 21 25 L 17.5 25 Z" fill="${C.trim}"/>
+      <path d="M 33.5 34.6 L 38 34.4 L 38.5 24.5 L 35 24.5 Z" fill="${C.trim}"/>
+      ${rect(17.8, 25.5, 0.6, 9.5, C.trimHi)}
+      ${rect(35.6, 25, 0.6, 9.2, C.trimHi)}
     `);
   }
+  const blade = 'M 4 22.5 Q 24 20.2 45 20.4 Q 47 21 46.5 23.2 L 46 25.2 Q 25 24.6 5 26.6 Z';
   return svg(`
-    <path d="${blade}" fill="${G.light}"/>
-    ${rect(4, 33, 47, 1, G.mid)}
-    <path d="${blade}" fill="none" stroke="${C.outline}" stroke-width="1"/>
-    <rect x="1" y="27" width="3" height="10" fill="${G.base}" stroke="${C.outline}" stroke-width="1"/>
+    <path d="${blade}" fill="${gray(0.86)}"/>
+    <path d="M 4.4 22.6 Q 24 20.4 45 20.6 L 45 21.6 Q 24 21.3 4.6 23.6 Z" fill="${gray(1)}"/>
+    <path d="M 5 25.4 Q 25 23.6 46 24.2 L 46 25.2 Q 25 24.6 5 26.6 Z" fill="${gray(0.6)}"/>
+    <path d="${blade}" fill="none" stroke="${C.outline}" stroke-width="${STEP * 2}"/>
+    <rect x="2.6" y="19" width="3" height="10" rx="0.6" fill="${gray(0.8)}" stroke="${C.outline}" stroke-width="${STEP * 2}"/>
   `);
 }
 
-/** Кирпичи под передней ступицей и голый тормозной диск, пока колёс нет. */
+function brickRow(x, y, w, offset = false) {
+  const bw = 9;
+  let s =
+    rect(x, y, w, 8, C.brick) + rect(x, y, w, 1, C.brickHi) + rect(x, y + 7.4, w, 0.6, C.brickDark);
+  for (let bx = x + (offset ? bw / 2 : bw); bx < x + w; bx += bw)
+    s += rect(bx, y, 0.8, 8, C.mortar);
+  s += rect(x, y + 7.2, w, 0.8, C.mortar);
+  return (
+    s +
+    `<rect x="${x}" y="${y}" width="${w}" height="8" fill="none" stroke="${C.brickDark}" stroke-width="${STEP * 2}"/>`
+  );
+}
+
 function layerBricks() {
   const cx = FRONT_X;
+  const cy = WHEEL_Y;
+  let holes = '';
+  for (let i = 0; i < 12; i++) {
+    const a = (i * Math.PI) / 6;
+    holes += `<circle cx="${(cx + Math.cos(a) * 9.5).toFixed(2)}" cy="${(cy + Math.sin(a) * 9.5).toFixed(2)}" r="0.6" fill="${C.discDark}"/>`;
+  }
+  let studs = '';
+  for (let i = 0; i < 5; i++) {
+    const a = (i * 2 * Math.PI) / 5;
+    studs += `<circle cx="${(cx + Math.cos(a) * 2.8).toFixed(2)}" cy="${(cy + Math.sin(a) * 2.8).toFixed(2)}" r="0.6" fill="${C.metalHi}"/>`;
+  }
   return svg(`
-    <circle cx="${cx}" cy="${WHEEL_Y}" r="10" fill="${C.metalDark}"/>
-    <circle cx="${cx}" cy="${WHEEL_Y}" r="9" fill="${C.brake}"/>
-    <circle cx="${cx}" cy="${WHEEL_Y}" r="4" fill="${C.metal}"/>
-    ${rect(cx - 1, WHEEL_Y - 1, 2, 2, C.metalDark)}
-    ${rect(cx - 13, GROUND - 14, 26, 7, C.brick)}
-    ${rect(cx - 13, GROUND - 7, 26, 7, C.brick)}
-    ${rect(cx - 13, GROUND - 8, 26, 1, C.mortar)}
-    ${rect(cx, GROUND - 14, 1, 6, C.mortar)}
-    ${rect(cx - 7, GROUND - 7, 1, 7, C.mortar)}
-    ${rect(cx + 6, GROUND - 7, 1, 7, C.mortar)}
-    <rect x="${cx - 13}" y="${GROUND - 14}" width="26" height="14" fill="none" stroke="${C.brickDark}" stroke-width="1"/>
+    <circle cx="${cx}" cy="${cy}" r="13" fill="${C.discDark}"/>
+    <circle cx="${cx}" cy="${cy}" r="12.2" fill="${C.disc}"/>
+    ${holes}
+    <circle cx="${cx}" cy="${cy}" r="6" fill="${C.metalDark}"/>
+    <circle cx="${cx}" cy="${cy}" r="4.2" fill="${C.metal}"/>
+    ${studs}
+    <path d="M ${cx - 16} ${cy - 8} Q ${cx - 18} ${cy} ${cx - 15} ${cy + 6} L ${cx - 10} ${cy + 4} Q ${cx - 12} ${cy} ${cx - 10} ${cy - 6} Z" fill="${C.caliperGrey}"/>
+    ${brickRow(cx - 14, GROUND - 16, 28)}
+    ${brickRow(cx - 14, GROUND - 8, 28, true)}
   `);
 }
 
-// ---------- Колёса: шина (не перекрашивается) + диск (серый). 16 кадров на оборот ----------
+// ---------- Колёса: шина + тормоз (не перекрашиваются) и диск (серый) ----------
 
 const TIRES = {
-  stock: { r: WHEEL_R, rim: 12, spokes: 6, style: 'holes' },
-  studded: { r: WHEEL_R, rim: 11, spokes: 8, style: 'steel', studs: true },
-  slicks: { r: WHEEL_R, rim: 14, spokes: 5, style: 'sport' },
-  old: { r: WHEEL_R, rim: 11, spokes: 4, style: 'steel', flat: true },
+  stock: { rim: 12.8, style: 'twin5', caliper: C.caliperGrey },
+  studded: { rim: 11.8, style: 'steel', caliper: C.caliperGrey, studs: true },
+  slicks: { rim: 13.6, style: 'six', caliper: C.caliperRed },
+  old: { rim: 11.8, style: 'steelOld', caliper: C.caliperGrey, flat: true },
+};
+
+const polar = (c, r, deg) => {
+  const a = (deg * Math.PI) / 180;
+  return [c + Math.cos(a) * r, c + Math.sin(a) * r];
 };
 
 function tireSvg(t, angle) {
   const c = FRAME / 2;
+  const R = WHEEL_R;
   let marks = '';
-  for (let i = 0; i < 4; i++) {
-    const a = ((angle + i * 90) * Math.PI) / 180;
-    const rr = (t.r + t.rim) / 2 + 1;
-    marks += rect(
-      Math.round(c + Math.cos(a) * rr - 1),
-      Math.round(c + Math.sin(a) * rr - 1),
-      2,
-      2,
-      C.rubberHi,
-    );
+  for (let i = 0; i < 6; i++) {
+    const [x, y] = polar(c, (R + t.rim) / 2 + 0.6, angle + i * 60);
+    marks += `<rect x="${(x - 1.4).toFixed(2)}" y="${(y - 0.35).toFixed(2)}" width="2.8" height="0.7" fill="${C.rubberHi}" transform="rotate(${angle + i * 60 + 90} ${x.toFixed(2)} ${y.toFixed(2)})"/>`;
   }
   let studs = '';
   if (t.studs) {
-    for (let i = 0; i < 16; i++) {
-      const a = ((angle + i * 22.5) * Math.PI) / 180;
-      studs += rect(
-        Math.round(c + Math.cos(a) * (t.r - 1)),
-        Math.round(c + Math.sin(a) * (t.r - 1)),
-        1,
-        1,
-        '#c9ced6',
-      );
+    for (let i = 0; i < 28; i++) {
+      const [x, y] = polar(c, R - 0.8, angle + (i * 360) / 28);
+      studs += rect((x - 0.35).toFixed(2), (y - 0.35).toFixed(2), 0.7, 0.7, '#cfd4dc');
     }
   }
-  // Спущенное колесо: низ сплющен.
-  const squash = t.flat
-    ? `<rect x="${c - t.r + 4}" y="${c + t.r - 2}" width="${t.r * 2 - 8}" height="2" fill="${C.rubber}"/>`
+  let holes = '';
+  for (let i = 0; i < 12; i++) {
+    const [x, y] = polar(c, t.rim - 3.2, angle + i * 30);
+    holes += `<circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="0.45" fill="${C.discDark}"/>`;
+  }
+  const hi = t.caliper === C.caliperRed ? C.caliperRedHi : C.metal;
+  // Суппорт неподвижен: сзади сверху от оси (машина едет вправо).
+  const caliper = `<g transform="rotate(205 ${c} ${c})"><rect x="${c + t.rim - 6.4}" y="${c - 4.2}" width="4.4" height="8.4" rx="1.2" fill="${t.caliper}"/><rect x="${c + t.rim - 6.4}" y="${c - 4.2}" width="1.2" height="8.4" rx="0.6" fill="${hi}"/></g>`;
+  const flat = t.flat
+    ? `<path d="M ${c - R + 3} ${c + R - 2.4} Q ${c} ${c + R + 1.4} ${c + R - 3} ${c + R - 2.4} L ${c + R - 1} ${c + R - 0.6} Q ${c} ${c + R + 1.8} ${c - R + 1} ${c + R - 0.6} Z" fill="${C.rubber}"/>`
     : '';
   return svg(
     `
-    <circle cx="${c}" cy="${c}" r="${t.r}" fill="${C.outline}"/>
-    <circle cx="${c}" cy="${c}" r="${t.r - 1}" fill="${C.rubber}"/>
-    ${squash}
-    <circle cx="${c}" cy="${c}" r="${t.rim + 2}" fill="${C.outline}"/>
-    ${marks}${studs}
+    <circle cx="${c}" cy="${c}" r="${R}" fill="${C.outline}"/>
+    <circle cx="${c}" cy="${c}" r="${R - 0.6}" fill="${C.rubber}"/>
+    <circle cx="${c}" cy="${c}" r="${R - 1.6}" fill="${C.rubberSide}"/>
+    <circle cx="${c}" cy="${c}" r="${t.rim + 1.4}" fill="${C.rubber}"/>
+    ${flat}${marks}${studs}
+    <circle cx="${c}" cy="${c}" r="${t.rim + 0.3}" fill="${C.outline}"/>
+    <circle cx="${c}" cy="${c}" r="${t.rim - 1.2}" fill="${C.disc}"/>
+    <circle cx="${c}" cy="${c}" r="${t.rim - 1.2}" fill="none" stroke="${C.discHi}" stroke-width="0.5"/>
+    ${holes}
+    <circle cx="${c}" cy="${c}" r="${t.rim - 5.5}" fill="${C.discDark}"/>
+    ${caliper}
   `,
     { w: FRAME, h: FRAME },
   );
@@ -424,30 +589,47 @@ function tireSvg(t, angle) {
 function rimSvg(t, angle) {
   const c = FRAME / 2;
   const R = t.rim;
-  let spokes = '';
-  const step = 360 / t.spokes;
-  for (let i = 0; i < t.spokes; i++) {
-    const a = angle + i * step;
-    if (t.style === 'sport') {
-      spokes += `<g transform="rotate(${a} ${c} ${c})"><path d="M ${c - 1.5} ${c - 3} L ${c + 1.5} ${c - 3} L ${c + 3} ${c - R + 1} L ${c - 3} ${c - R + 1} Z" fill="${G.light}"/>${rect(c - 1, c - R + 2, 1, R - 5, G.hi)}</g>`;
-    } else if (t.style === 'holes') {
-      spokes += `<g transform="rotate(${a} ${c} ${c})"><circle cx="${c}" cy="${c - R * 0.6}" r="2.6" fill="${C.outline}"/></g>`;
-    } else {
-      spokes += `<g transform="rotate(${a} ${c} ${c})">${rect(c - 1, c - R + 3, 2, 3, C.outline)}</g>`;
+  const lip = `
+    <circle cx="${c}" cy="${c}" r="${R}" fill="none" stroke="${gray(0.75)}" stroke-width="1.6"/>
+    <circle cx="${c}" cy="${c}" r="${R + 0.3}" fill="none" stroke="${gray(1)}" stroke-width="0.5"/>
+    <path d="M ${(c - R + 1.4).toFixed(2)} ${(c - 3).toFixed(2)} A ${R - 1.4} ${R - 1.4} 0 0 1 ${(c - 3).toFixed(2)} ${(c - R + 1.4).toFixed(2)}" fill="none" stroke="${gray(1)}" stroke-width="0.5"/>
+  `;
+  const nuts = (n, r) =>
+    Array.from({ length: n }, (_, i) => {
+      const [x, y] = polar(c, r, angle + (i * 360) / n + 36);
+      return `<circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="0.65" fill="${gray(0.45)}"/><circle cx="${(x - 0.2).toFixed(2)}" cy="${(y - 0.2).toFixed(2)}" r="0.3" fill="${gray(1)}"/>`;
+    }).join('');
+  let face = '';
+  if (t.style === 'six') {
+    for (let i = 0; i < 6; i++) {
+      face += `<g transform="rotate(${angle + i * 60} ${c} ${c})">
+        <path d="M ${c - 1.6} ${c - 3.4} L ${c + 1.6} ${c - 3.4} L ${c + 3.4} ${c - R + 1.2} L ${c - 3.4} ${c - R + 1.2} Z" fill="${gray(0.86)}"/>
+        <path d="M ${c - 1.6} ${c - 3.4} L ${c - 0.4} ${c - 3.4} L ${c - 1.4} ${c - R + 1.2} L ${c - 3.4} ${c - R + 1.2} Z" fill="${gray(1)}"/>
+        <path d="M ${c + 1} ${c - 3.4} L ${c + 1.6} ${c - 3.4} L ${c + 3.4} ${c - R + 1.2} L ${c + 2.4} ${c - R + 1.2} Z" fill="${gray(0.6)}"/>
+      </g>`;
     }
+    face += `<circle cx="${c}" cy="${c}" r="4.6" fill="${gray(0.8)}"/><circle cx="${c}" cy="${c}" r="2" fill="${gray(0.55)}"/>${nuts(6, 3.4)}`;
+  } else if (t.style === 'twin5') {
+    for (let i = 0; i < 5; i++) {
+      for (const off of [-5.5, 5.5]) {
+        face += `<g transform="rotate(${angle + i * 72 + off} ${c} ${c})">
+          <path d="M ${c - 0.9} ${c - 4} L ${c + 0.9} ${c - 4} L ${c + 1.3} ${c - R + 1.2} L ${c - 1.3} ${c - R + 1.2} Z" fill="${gray(0.9)}"/>
+          <path d="M ${c - 0.9} ${c - 4} L ${c - 0.2} ${c - 4} L ${c - 0.5} ${c - R + 1.2} L ${c - 1.3} ${c - R + 1.2} Z" fill="${gray(1)}"/>
+        </g>`;
+      }
+    }
+    face += `<circle cx="${c}" cy="${c}" r="5" fill="${gray(0.82)}"/><circle cx="${c}" cy="${c}" r="2.2" fill="${gray(0.6)}"/>${nuts(5, 3.6)}`;
+  } else {
+    const base = t.style === 'steelOld' ? 0.62 : 0.8;
+    face += `<circle cx="${c}" cy="${c}" r="${R - 0.8}" fill="${gray(base)}"/>`;
+    for (let i = 0; i < 8; i++) {
+      const [x, y] = polar(c, R * 0.62, angle + i * 45);
+      face += `<ellipse cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" rx="1.9" ry="1.2" transform="rotate(${angle + i * 45 + 90} ${x.toFixed(2)} ${y.toFixed(2)})" fill="${C.discDark}"/>`;
+    }
+    face += `<circle cx="${c}" cy="${c}" r="${R * 0.45}" fill="none" stroke="${gray(base + 0.15)}" stroke-width="0.6"/>
+      <circle cx="${c}" cy="${c}" r="3.6" fill="${gray(base - 0.15)}"/>${nuts(5, 2.6)}`;
   }
-  const face = t.style === 'sport' ? C.outline : G.base;
-  return svg(
-    `
-    <circle cx="${c}" cy="${c}" r="${R}" fill="${G.mid}"/>
-    <circle cx="${c}" cy="${c}" r="${R - 1}" fill="${face}"/>
-    ${spokes}
-    <circle cx="${c}" cy="${c}" r="${t.style === 'sport' ? 3 : 4}" fill="${G.low}"/>
-    ${rect(c - 1, c - 1, 2, 2, G.hi)}
-    <path d="M ${c - R + 2} ${c - 4} A ${R - 2} ${R - 2} 0 0 1 ${c - 4} ${c - R + 2}" fill="none" stroke="${G.hi}" stroke-width="1"/>
-  `,
-    { w: FRAME, h: FRAME },
-  );
+  return svg(`${face}${lip}`, { w: FRAME, h: FRAME });
 }
 
 // ---------- Растеризация ----------
@@ -463,7 +645,7 @@ async function applyMask(png, maskSvg) {
     .toBuffer();
 }
 
-/** Жёсткая альфа: без полупрозрачных краёв, чтобы пиксели оставались чёткими. */
+/** Жёсткая альфа: без полупрозрачных краёв, чтобы точки оставались чёткими. */
 async function hardAlpha(png) {
   const { data, info } = await sharp(png).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   for (let i = 3; i < data.length; i += 4) data[i] = data[i] < 110 ? 0 : 255;
@@ -473,22 +655,24 @@ async function hardAlpha(png) {
 }
 
 async function strip(makeSvg) {
+  const size = FRAME * DENSITY;
   const frames = [];
   for (let i = 0; i < FRAMES; i++) frames.push(await render(makeSvg((i * 360) / FRAMES)));
   return sharp({
     create: {
-      width: FRAME * FRAMES,
-      height: FRAME,
+      width: size * FRAMES,
+      height: size,
       channels: 4,
       background: { r: 0, g: 0, b: 0, alpha: 0 },
     },
   })
-    .composite(frames.map((input, i) => ({ input, left: i * FRAME, top: 0 })))
+    .composite(frames.map((input, i) => ({ input, left: i * size, top: 0 })))
     .png()
     .toBuffer();
 }
 
 async function main() {
+  rmSync(OUT, { recursive: true, force: true });
   mkdirSync(OUT, { recursive: true });
   const files = {};
   const save = async (name, buf) => {
@@ -515,16 +699,13 @@ async function main() {
 
   const meta = {
     $comment:
-      'Сгенерировано tools/build-car.mjs (npm run car) — не править руками. Пиксели спрайта; привязка — середина низа (земля).',
+      'Сгенерировано tools/build-car.mjs (npm run car) — не править руками. Координаты в единицах мира; текстуры в density раз детальнее.',
+    density: DENSITY,
     size: { width: W, height: H },
     anchor: { x: W / 2, y: GROUND },
-    wheels: {
-      rear: { x: REAR_X, y: WHEEL_Y },
-      front: { x: FRONT_X, y: WHEEL_Y },
-      radius: WHEEL_R,
-    },
+    wheels: { rear: { x: REAR_X, y: WHEEL_Y }, front: { x: FRONT_X, y: WHEEL_Y }, radius: WHEEL_R },
     wheelFrame: { width: FRAME, height: FRAME, frames: FRAMES },
-    headlight: { x: 280, y: 55 },
+    headlight: { x: 281, y: 52 },
     tires: {
       wheels_stock: 'stock',
       wheels_studded: 'studded',
@@ -542,8 +723,8 @@ async function main() {
   if (PREVIEW) await preview(files);
 }
 
-/** Превью: несколько сборок и цветов рядом, увеличено ×3. */
 async function preview(files) {
+  const D = DENSITY;
   const tint = async (buf, hex) => {
     const { data, info } = await sharp(buf)
       .ensureAlpha()
@@ -558,57 +739,58 @@ async function preview(files) {
       .png()
       .toBuffer();
   };
-  const frame0 = (buf) =>
-    sharp(buf).extract({ left: 0, top: 0, width: FRAME, height: FRAME }).png().toBuffer();
-  const wheel = async (type, rimHex) => [
-    await frame0(files[`wheel_tire_${type}`]),
-    await tint(await frame0(files[`wheel_rim_${type}`]), rimHex),
+  const F = FRAME * D;
+  const frame = (buf, i = 0) =>
+    sharp(buf)
+      .extract({ left: i * F, top: 0, width: F, height: F })
+      .png()
+      .toBuffer();
+  const wheel = async (type, rimHex, i) => [
+    await frame(files[`wheel_tire_${type}`], i),
+    await tint(await frame(files[`wheel_rim_${type}`], i), rimHex),
   ];
 
   const variants = [
     { paint: '#a8adb3', tire: null, overlay: 'rust', dirt: true },
-    { paint: '#a8adb3', tire: 'studded', overlay: 'rust', rim: '#c0c4c8', spoiler: 'lip' },
-    { paint: '#1f3f8f', tire: 'slicks', overlay: 'light', rim: '#c9a23a', spoiler: 'wing' },
-    { paint: '#8b1a2b', tire: 'stock', overlay: 'cage', rim: '#1c1c1f' },
-    { paint: '#e8e8e0', tire: 'slicks', overlay: 'light', rim: '#c0c4c8', spoiler: 'wing' },
+    { paint: '#e8e8e0', tire: 'stock', overlay: null, rim: '#c0c4c8' },
+    { paint: '#1f3f8f', tire: 'slicks', overlay: 'light', rim: '#3a3c42', spoiler: 'wing' },
+    { paint: '#8b1a2b', tire: 'studded', overlay: 'cage', rim: '#c0c4c8', spoiler: 'lip' },
   ];
   const rows = [];
-  for (const v of variants) {
+  for (const [vi, v] of variants.entries()) {
     const layers = [];
-    const add = (input, left = 0, top = 0) => layers.push({ input, left, top });
+    const add = (input, left = 0, top = 0) =>
+      layers.push({ input, left: Math.round(left), top: Math.round(top) });
     add(files.car_wells);
-    const at = (x) => [x - FRAME / 2, WHEEL_Y - FRAME / 2];
+    const pos = (x) => [(x - FRAME / 2) * D, (WHEEL_Y - FRAME / 2) * D];
     if (v.tire) {
       for (const x of [REAR_X, FRONT_X])
-        for (const b of await wheel(v.tire, v.rim)) add(b, ...at(x));
+        for (const b of await wheel(v.tire, v.rim, vi * 3)) add(b, ...pos(x));
     } else {
-      for (const b of await wheel('old', '#7a7f86')) add(b, ...at(REAR_X));
+      for (const b of await wheel('old', '#9a9ea6', 0)) add(b, ...pos(REAR_X));
       add(files.car_bricks);
     }
     if (v.spoiler === 'wing') add(files.car_spoiler_wing_base);
     add(files.car_base);
     add(await tint(files.car_paint, v.paint));
-    add(files[`car_overlay_${v.overlay}`]);
+    if (v.overlay) add(files[`car_overlay_${v.overlay}`]);
     if (v.spoiler === 'lip') add(await tint(files.car_spoiler_lip_paint, v.paint));
     if (v.spoiler === 'wing') add(await tint(files.car_spoiler_wing_paint, v.paint));
     add(await tint(files.car_headlight, '#ffe8b0'));
     if (v.dirt) add(files.car_dirt);
     rows.push(
-      await sharp({ create: { width: W, height: H, channels: 4, background: '#2a2724' } })
+      await sharp({ create: { width: W * D, height: H * D, channels: 4, background: '#2a2724' } })
         .composite(layers)
         .png()
         .toBuffer(),
     );
   }
   mkdirSync(`${ROOT}art/preview`, { recursive: true });
-  const sheet = await sharp({
-    create: { width: W, height: H * rows.length, channels: 4, background: '#2a2724' },
+  await sharp({
+    create: { width: W * D, height: H * D * rows.length, channels: 4, background: '#2a2724' },
   })
-    .composite(rows.map((input, i) => ({ input, left: 0, top: i * H })))
+    .composite(rows.map((input, i) => ({ input, left: 0, top: i * H * D })))
     .png()
-    .toBuffer();
-  await sharp(sheet)
-    .resize(W * 3, H * rows.length * 3, { kernel: 'nearest' })
     .toFile(`${ROOT}art/preview/car.png`);
   console.log('✓ превью art/preview/car.png');
 }

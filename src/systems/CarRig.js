@@ -26,7 +26,10 @@ const AX = car.anchor.x;
 const AY = car.anchor.y;
 const PIVOT_Y = car.wheels.rear.y - AY; // кузов качается вокруг высоты осей
 const TIRE_TYPES = [...new Set(Object.values(car.tires))];
-const OLD_RIM_COLOR = 0x7a7f86;
+const OLD_RIM_COLOR = 0x9a9ea6;
+// Текстуры машины в DENSITY раз детальнее мира: показываем в масштабе 1/DENSITY.
+const DENSITY = car.density ?? 1;
+const TEX = 1 / DENSITY;
 
 const IMAGES = [
   'car_wells',
@@ -42,11 +45,23 @@ const IMAGES = [
 /** Ставит все слои машины в очередь загрузчика (вызывается в BootScene). */
 export function preloadCar(scene) {
   for (const key of new Set(IMAGES)) scene.load.image(key, `${PATH}${key}.png`);
-  const frame = { frameWidth: car.wheelFrame.width, frameHeight: car.wheelFrame.height };
+  const frame = {
+    frameWidth: car.wheelFrame.width * DENSITY,
+    frameHeight: car.wheelFrame.height * DENSITY,
+  };
   for (const t of TIRE_TYPES) {
     scene.load.spritesheet(`wheel_tire_${t}`, `${PATH}wheel_tire_${t}.png`, frame);
     scene.load.spritesheet(`wheel_rim_${t}`, `${PATH}wheel_rim_${t}.png`, frame);
   }
+  // Детальные текстуры сглаживаем при уменьшении: при любом размере окна машина остаётся
+  // чёткой, а пиксельные фоны вокруг — крупными (у них остаётся фильтр NEAREST).
+  scene.load.once(Phaser.Loader.Events.COMPLETE, () => {
+    const keys = [
+      ...new Set(IMAGES),
+      ...TIRE_TYPES.flatMap((t) => [`wheel_tire_${t}`, `wheel_rim_${t}`]),
+    ];
+    for (const key of keys) scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+  });
 }
 
 const colorOf = (group, id) => {
@@ -68,7 +83,11 @@ export class CarRig extends Phaser.GameObjects.Container {
     this.suspension = createSuspension();
     this.wheelAngle = 0;
 
-    const img = (key) => scene.add.image(-AX, -AY - PIVOT_Y, key).setOrigin(0);
+    const img = (key) =>
+      scene.add
+        .image(-AX, -AY - PIVOT_Y, key)
+        .setOrigin(0)
+        .setScale(TEX);
 
     // Тень на земле.
     this.shadow = scene.add.ellipse(0, -1, car.size.width - 30, 8, 0x000000, 0.45);
@@ -112,12 +131,12 @@ export class CarRig extends Phaser.GameObjects.Container {
       const x = w.x - AX;
       const yy = w.y - AY;
       return {
-        tire: scene.add.sprite(x, yy, 'wheel_tire_stock', 0),
-        rim: scene.add.sprite(x, yy, 'wheel_rim_stock', 0),
+        tire: scene.add.sprite(x, yy, 'wheel_tire_stock', 0).setScale(TEX),
+        rim: scene.add.sprite(x, yy, 'wheel_rim_stock', 0).setScale(TEX),
       };
     };
     this.wheels = { rear: wheel(car.wheels.rear), front: wheel(car.wheels.front) };
-    this.bricks = scene.add.image(-AX, -AY, 'car_bricks').setOrigin(0);
+    this.bricks = scene.add.image(-AX, -AY, 'car_bricks').setOrigin(0).setScale(TEX);
 
     this.add([
       this.shadow,
