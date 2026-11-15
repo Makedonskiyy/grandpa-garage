@@ -1,5 +1,5 @@
 import { BaseScene } from './BaseScene.js';
-import { SCENES, MUSIC } from '../config/constants.js';
+import { SCENES, MUSIC, WORLD } from '../config/constants.js';
 import { DialogSystem } from '../systems/DialogSystem.js';
 import { audio } from '../systems/AudioManager.js';
 import { webButton } from '../ui/components.js';
@@ -19,7 +19,7 @@ export class IntroScene extends BaseScene {
     this.enter();
     audio.playMusic(MUSIC.INTRO);
 
-    const { width, height } = this.scale;
+    const { width, height } = WORLD;
     this.add.image(0, 0, 'bg_menu').setOrigin(0);
     this.add.rectangle(0, 0, width, height, 0x000000, 0.5).setOrigin(0);
 

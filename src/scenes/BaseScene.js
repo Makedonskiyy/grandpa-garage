@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import config from '../../data/config.json';
 import { createLayer } from '../ui/overlay.js';
+import { fitCamera } from '../systems/scale.js';
 
 /**
  * Общая база сцен: HTML-слой интерфейса и переход с затемнением.
@@ -18,6 +19,7 @@ export class BaseScene extends Phaser.Scene {
     this._leaving = false;
     this._ui = null;
     this.input.enabled = true;
+    fitCamera(this.cameras.main); // мир 640×360 на весь холст
     this.cameras.main.fadeIn(config.sceneFadeMs, 0, 0, 0);
   }
 

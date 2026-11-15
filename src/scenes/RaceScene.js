@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import config from '../../data/config.json';
 import { BaseScene } from './BaseScene.js';
-import { SCENES, MUSIC, SFX, FONT_FAMILY } from '../config/constants.js';
+import { SCENES, MUSIC, SFX, FONT_FAMILY, WORLD } from '../config/constants.js';
 import { buildCar, buildRivalCar, spinWheels } from '../systems/buildCar.js';
 import { evaluateRace, getTest, raceTelemetry, formatSeconds } from '../systems/simulate.js';
 import { DialogSystem } from '../systems/DialogSystem.js';
@@ -77,7 +77,7 @@ export class RaceScene extends BaseScene {
   }
 
   #drawNight() {
-    const { width, height } = this.scale;
+    const { width, height } = WORLD;
     const g = this.add.graphics();
     g.fillStyle(0x0b0d18).fillRect(0, 0, width, height);
     g.fillStyle(0x161a26).fillRect(0, 150, width, 30);
@@ -96,7 +96,7 @@ export class RaceScene extends BaseScene {
   }
 
   #drawTree() {
-    const x = this.scale.width - 24;
+    const x = WORLD.width - 24;
     this.add.rectangle(x, 120, 18, 100, 0x111111).setStrokeStyle(1, 0x444444);
     const ambers = [];
     for (let i = 0; i < this.test.christmasTree.ambers; i++) {

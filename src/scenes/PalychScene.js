@@ -1,5 +1,5 @@
 import { BaseScene } from './BaseScene.js';
-import { SCENES, MUSIC } from '../config/constants.js';
+import { SCENES, MUSIC, WORLD } from '../config/constants.js';
 import { buildRivalCar } from '../systems/buildCar.js';
 import { DialogSystem } from '../systems/DialogSystem.js';
 import { audio } from '../systems/AudioManager.js';
@@ -14,7 +14,7 @@ export class PalychScene extends BaseScene {
   async create() {
     this.enter();
     audio.playMusic(MUSIC.GARAGE);
-    const { width, height } = this.scale;
+    const { width, height } = WORLD;
 
     // Заглушка: внешний вид гаражного ряда.
     const g = this.add.graphics();

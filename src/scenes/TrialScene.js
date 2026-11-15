@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import config from '../../data/config.json';
 import { BaseScene } from './BaseScene.js';
-import { SCENES, MUSIC, SFX } from '../config/constants.js';
+import { SCENES, MUSIC, SFX, WORLD } from '../config/constants.js';
 import { buildCar } from '../systems/buildCar.js';
 import { evaluateTrial, getTest } from '../systems/simulate.js';
 import { audio } from '../systems/AudioManager.js';
@@ -54,7 +54,7 @@ export class TrialScene extends BaseScene {
         t('trial.distance'),
         el('div', { class: 'bar' }, this.$path),
         t('trial.durability'),
-        el('div', { class: 'bar', style: { flex: '0 0 80px' } }, this.$dur),
+        el('div', { class: 'bar', style: { flex: '0 0 240px' } }, this.$dur),
         button(t('trial.speedUp'), (e) => {
           this.speed = this.speed === 1 ? config.trial.speedUpFactor : 1;
           e.currentTarget.classList.toggle('btn--primary', this.speed !== 1);
@@ -65,7 +65,7 @@ export class TrialScene extends BaseScene {
 
   /** Заглушка параллакса до арта: 3 слоя, сгенерированные текстуры. */
   #createParallax() {
-    const { width, height } = this.scale;
+    const { width, height } = WORLD;
     const make = (key, draw) => {
       if (this.textures.exists(key)) return;
       const g = this.make.graphics({ x: 0, y: 0 }, false);

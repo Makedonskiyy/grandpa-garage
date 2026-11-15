@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { BaseScene } from './BaseScene.js';
-import { SCENES, MUSIC, VERSION } from '../config/constants.js';
+import { SCENES, MUSIC, VERSION, WORLD } from '../config/constants.js';
 import menuConfig from '../../data/menu.json';
 import { el } from '../ui/dom.js';
 import { webButton } from '../ui/components.js';
@@ -62,9 +62,7 @@ export class MenuScene extends BaseScene {
 
     // Мигание: короткая серия провалов света всей сцены и главной лампы, если она есть.
     const main = glows[0];
-    const shade = this.add
-      .rectangle(0, 0, this.scale.width, this.scale.height, 0x000000, 0)
-      .setOrigin(0);
+    const shade = this.add.rectangle(0, 0, WORLD.width, WORLD.height, 0x000000, 0).setOrigin(0);
     const blink = () => {
       if (main) {
         this.tweens.add({

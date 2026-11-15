@@ -3,7 +3,7 @@ import partsData from '../../data/parts.json';
 import cosmetics from '../../data/cosmetics.json';
 import config from '../../data/config.json';
 import { BaseScene } from './BaseScene.js';
-import { SCENES, MUSIC, TEST_IDS } from '../config/constants.js';
+import { SCENES, MUSIC, TEST_IDS, WORLD } from '../config/constants.js';
 import { buildCar } from '../systems/buildCar.js';
 import { DialogSystem } from '../systems/DialogSystem.js';
 import { audio } from '../systems/AudioManager.js';
@@ -92,7 +92,7 @@ export class GarageScene extends BaseScene {
   // ---------- Комната: стена, лампа, пол ----------
 
   #drawRoom() {
-    const { width, height } = this.scale;
+    const { width, height } = WORLD;
     const floor = cfg.groundY;
     const g = this.add.graphics();
     // Стена: тёмные доски, к потолку темнее (ступенями — пиксельно).
@@ -132,7 +132,7 @@ export class GarageScene extends BaseScene {
 
   /** Пол гасит отражение книзу. */
   #drawFloorFade() {
-    const { width, height } = this.scale;
+    const { width, height } = WORLD;
     const g = this.add.graphics();
     const c = 0x2a2622;
     g.fillGradientStyle(c, c, c, c, 0, 0, 1, 1);

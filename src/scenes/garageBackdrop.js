@@ -2,10 +2,12 @@
  * Интерьер гаража — заглушка кодом до появления арта (ТЗ 6.3: «пол в клетку рисуется кодом»).
  * Используется в интро, гараже и финале.
  */
+import { WORLD } from '../config/constants.js';
+
 export const FLOOR_Y = 250;
 
 export function drawGarageInterior(scene, { dim = 0, doorOpen = false } = {}) {
-  const { width, height } = scene.scale;
+  const { width, height } = WORLD;
   const g = scene.add.graphics().setDepth(-10);
 
   g.fillStyle(doorOpen ? 0x6b7f99 : 0x2b2930).fillRect(0, 0, width, FLOOR_Y);

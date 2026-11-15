@@ -1,5 +1,5 @@
 import { BaseScene } from './BaseScene.js';
-import { SCENES, SFX } from '../config/constants.js';
+import { SCENES, SFX, WORLD } from '../config/constants.js';
 import { DialogSystem } from '../systems/DialogSystem.js';
 import { audio } from '../systems/AudioManager.js';
 import { formatSeconds, getTest } from '../systems/simulate.js';
@@ -19,7 +19,7 @@ export class ResultScene extends BaseScene {
 
   async create() {
     this.enter();
-    this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0x0e0d12).setOrigin(0);
+    this.add.rectangle(0, 0, WORLD.width, WORLD.height, 0x0e0d12).setOrigin(0);
 
     const r = gameState.lastResult;
     if (!r) {

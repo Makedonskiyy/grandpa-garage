@@ -1,7 +1,7 @@
 /*
  * Веб-интерфейс нового стиля (макет меню): обычные кнопки, Literata, оранжевый из логотипа.
- * Пиксельным остаётся только арт. Размеры — в пикселях игры (640×360) на сетке 4 px;
- * весь #stage масштабируется целиком, поэтому 20px здесь = 40px в окне при масштабе 2×.
+ * Пиксельным остаётся только арт. Размеры — в пикселях Full HD (1920×1080), сетка 8 px;
+ * #stage вписывается в окно целиком (src/systems/scale.js).
  */
 :root {
   /* Тёплая нейтральная шкала (гараж, дерево, бумага) и один акцент. */
@@ -24,18 +24,18 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  height: 44px;
-  padding: 0 20px;
+  gap: 24px;
+  height: 132px;
+  padding: 0 60px;
   border: 0;
-  border-radius: 10px;
+  border-radius: 30px;
   font-family: var(--font-ui);
-  font-size: 18px;
+  font-size: 54px;
   font-weight: 500;
   line-height: 1;
   color: var(--ui-ink);
   background: var(--ui-paper);
-  box-shadow: 0 4px 12px rgb(0 0 0 / 0.28);
+  box-shadow: 0 12px 36px rgb(0 0 0 / 0.28);
   cursor: pointer;
   user-select: none;
   white-space: nowrap;
@@ -65,8 +65,8 @@
 }
 
 .wbtn:focus-visible {
-  outline: 2px solid var(--ui-paper);
-  outline-offset: 2px;
+  outline: 6px solid var(--ui-paper);
+  outline-offset: 6px;
 }
 
 .wbtn:disabled {
@@ -75,10 +75,10 @@
 }
 
 .wbtn--small {
-  height: 32px;
-  padding: 0 16px;
-  border-radius: 8px;
-  font-size: 13px;
+  height: 96px;
+  padding: 0 48px;
+  border-radius: 24px;
+  font-size: 39px;
   box-shadow: none;
 }
 
@@ -86,8 +86,8 @@
 .icon {
   display: inline-flex;
   flex: none;
-  width: 20px;
-  height: 20px;
+  width: 60px;
+  height: 60px;
 }
 
 .icon svg {
@@ -98,28 +98,28 @@
 
 /* ---------- Меню ---------- */
 .menu-logo {
-  /* Край ушанки в SVG отстоит от края файла на 3px: сдвиг выравнивает её по краю кнопок. */
-  left: 29px;
-  top: 32px;
-  height: 32px;
+  /* Край ушанки в SVG отстоит от края файла на 9px: сдвиг выравнивает её по краю кнопок. */
+  left: 87px;
+  top: 96px;
+  height: 96px;
   user-select: none;
   pointer-events: none;
-  filter: drop-shadow(0 2px 4px rgb(0 0 0 / 0.5));
+  filter: drop-shadow(0 6px 12px rgb(0 0 0 / 0.5));
 }
 
 .menu-actions {
-  left: 32px;
-  bottom: 32px;
+  left: 96px;
+  bottom: 96px;
   display: grid;
-  grid-template-columns: repeat(3, 176px);
-  gap: 12px;
+  grid-template-columns: repeat(3, 528px);
+  gap: 36px;
 }
 
 .version {
-  right: 8px;
-  bottom: 8px;
+  right: 24px;
+  bottom: 24px;
   font-family: var(--font-ui);
-  font-size: 8px;
+  font-size: 24px;
   font-variant-numeric: tabular-nums;
   color: rgb(255 255 255 / 0.4);
 }
@@ -137,34 +137,34 @@
 }
 
 .modal {
-  width: 376px;
-  max-height: 320px;
+  width: 1128px;
+  max-height: 960px;
   overflow: auto;
-  padding: 20px 24px;
-  border-radius: 14px;
+  padding: 60px 72px;
+  border-radius: 42px;
   background: var(--ui-paper);
   color: var(--ui-ink);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 0.35);
+  box-shadow: 0 24px 72px rgb(0 0 0 / 0.35);
   font-family: var(--font-ui);
-  font-size: 12px;
+  font-size: 36px;
   line-height: 1.5;
   animation: ui-rise var(--ui-enter) var(--ui-ease);
 }
 
 .modal h2 {
-  margin: 0 0 16px;
-  font-size: 20px;
+  margin: 0 0 48px;
+  font-size: 60px;
   font-weight: 500;
   line-height: 1.2;
 }
 
 .modal p {
-  margin: 0 0 8px;
+  margin: 0 0 24px;
   color: var(--ui-ink-2);
 }
 
 .modal__footer {
-  margin-top: 20px;
+  margin-top: 60px;
   display: flex;
   justify-content: flex-end;
 }
@@ -172,18 +172,18 @@
 /* Поле настроек: подпись | контрол | значение — три выровненные колонки. */
 .field {
   display: grid;
-  grid-template-columns: 112px 1fr 24px;
+  grid-template-columns: 336px 1fr 72px;
   align-items: center;
-  gap: 12px;
-  min-height: 28px;
-  margin-bottom: 8px;
+  gap: 36px;
+  min-height: 84px;
+  margin-bottom: 24px;
 }
 
 .field select {
-  height: 28px;
-  padding: 0 8px;
-  border: 1px solid var(--ui-hairline);
-  border-radius: 8px;
+  height: 84px;
+  padding: 0 24px;
+  border: 3px solid var(--ui-hairline);
+  border-radius: 24px;
   font: inherit;
   color: var(--ui-ink);
   background: var(--ui-paper-raised);
@@ -196,8 +196,8 @@
 }
 
 .field input[type='checkbox'] {
-  width: 16px;
-  height: 16px;
+  width: 48px;
+  height: 48px;
   margin: 0;
   accent-color: var(--ui-accent);
 }
@@ -205,7 +205,7 @@
 /* Ползунок в цветах интерфейса вместо системного. */
 .field input[type='range'] {
   width: 100%;
-  height: 16px;
+  height: 48px;
   margin: 0;
   background: transparent;
   appearance: none;
@@ -214,8 +214,8 @@
 
 .field input[type='range']::-webkit-slider-runnable-track {
   /* Пройденная часть — акцентом: --fill выставляет SettingsPanel.js. */
-  height: 4px;
-  border-radius: 2px;
+  height: 12px;
+  border-radius: 6px;
   background: linear-gradient(
     to right,
     var(--ui-accent) 0 var(--fill, 50%),
@@ -224,39 +224,39 @@
 }
 
 .field input[type='range']::-moz-range-track {
-  height: 4px;
-  border-radius: 2px;
+  height: 12px;
+  border-radius: 6px;
   background: var(--ui-paper-raised);
 }
 
 .field input[type='range']::-moz-range-progress {
-  height: 4px;
-  border-radius: 2px;
+  height: 12px;
+  border-radius: 6px;
   background: var(--ui-accent);
 }
 
 .field input[type='range']::-webkit-slider-thumb {
   appearance: none;
-  width: 16px;
-  height: 16px;
-  margin-top: -6px;
+  width: 48px;
+  height: 48px;
+  margin-top: -18px;
   border: 0;
   border-radius: 50%;
   background: var(--ui-accent);
 }
 
 .field input[type='range']::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
+  width: 48px;
+  height: 48px;
   border: 0;
   border-radius: 50%;
   background: var(--ui-accent);
 }
 
 .field input[type='range']:focus-visible {
-  outline: 2px solid var(--ui-accent);
-  outline-offset: 4px;
-  border-radius: 4px;
+  outline: 6px solid var(--ui-accent);
+  outline-offset: 12px;
+  border-radius: 12px;
 }
 
 @keyframes ui-fade {
@@ -268,31 +268,31 @@
 @keyframes ui-rise {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(24px);
   }
 }
 
 /* ---------- Загрузка ---------- */
 .boot {
-  left: 200px;
-  right: 200px;
-  top: 128px;
+  left: 600px;
+  right: 600px;
+  top: 384px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 24px;
+  gap: 72px;
 }
 
 .boot__logo {
-  height: 40px;
+  height: 120px;
   user-select: none;
   pointer-events: none;
 }
 
 .boot__bar {
   width: 100%;
-  height: 4px;
-  border-radius: 2px;
+  height: 12px;
+  border-radius: 6px;
   background: rgb(255 255 255 / 0.12);
   overflow: hidden;
 }
@@ -307,11 +307,11 @@
 
 .boot__row {
   width: 100%;
-  margin-top: -12px; /* подписи ближе к полосе, чем полоса к логотипу */
+  margin-top: -36px; /* подписи ближе к полосе, чем полоса к логотипу */
   display: flex;
   justify-content: space-between;
   font-family: var(--font-ui);
-  font-size: 12px;
+  font-size: 36px;
   color: #aaa398;
 }
 
@@ -323,7 +323,7 @@
 .boot__status--ready {
   width: 100%;
   text-align: center;
-  font-size: 14px;
+  font-size: 42px;
   color: #efe9de;
   animation: ui-wait 2s var(--ui-ease) infinite alternate;
 }
@@ -332,10 +332,10 @@
   left: 0;
   right: 0;
   top: auto;
-  bottom: 16px;
+  bottom: 48px;
   text-align: center;
   font-family: var(--font-ui);
-  font-size: 9px;
+  font-size: 27px;
   color: #8a847a;
 }
 
@@ -358,34 +358,34 @@
 }
 
 .dlg {
-  left: 24px;
-  right: 24px;
-  bottom: 24px;
-  height: 96px;
+  left: 72px;
+  right: 72px;
+  bottom: 72px;
+  height: 288px;
   display: flex;
   align-items: flex-start;
-  gap: 16px;
-  padding: 16px;
-  border-radius: 14px;
+  gap: 48px;
+  padding: 48px;
+  border-radius: 42px;
   background: rgb(22 21 19 / 0.94);
   box-shadow:
-    inset 0 0 0 1px rgb(239 233 222 / 0.08),
-    0 8px 24px rgb(0 0 0 / 0.4);
+    inset 0 0 0 3px rgb(239 233 222 / 0.08),
+    0 24px 72px rgb(0 0 0 / 0.4);
   font-family: var(--font-ui);
   color: #efe9de;
 }
 
 .dlg__portrait {
   flex: none;
-  width: 64px;
-  height: 64px;
-  border-radius: 8px;
+  width: 192px;
+  height: 192px;
+  border-radius: 24px;
   overflow: hidden;
   display: grid;
   place-items: center;
   background: #262421;
-  box-shadow: inset 0 0 0 1px rgb(239 233 222 / 0.08);
-  font-size: 28px;
+  box-shadow: inset 0 0 0 3px rgb(239 233 222 / 0.08);
+  font-size: 84px;
   font-weight: 500;
   color: #8a847a;
 }
@@ -402,29 +402,29 @@
 }
 
 .dlg__name {
-  margin-bottom: 4px;
-  font-size: 12px;
+  margin-bottom: 12px;
+  font-size: 36px;
   font-weight: 500;
-  line-height: 16px;
+  line-height: 48px;
   color: var(--ui-accent);
 }
 
 .dlg__text {
-  font-size: 15px;
-  line-height: 22px;
+  font-size: 45px;
+  line-height: 66px;
   white-space: pre-wrap;
 }
 
 /* «Дальше»: маленький треугольник в углу, появляется, когда реплика допечатана. */
 .dlg__next {
   position: absolute;
-  right: 16px;
-  bottom: 14px;
+  right: 48px;
+  bottom: 42px;
   width: 0;
   height: 0;
-  border-left: 5px solid transparent;
-  border-right: 5px solid transparent;
-  border-top: 6px solid currentColor;
+  border-left: 15px solid transparent;
+  border-right: 15px solid transparent;
+  border-top: 18px solid currentColor;
   opacity: 0;
   transition: opacity var(--ui-fast) var(--ui-ease);
 }
@@ -443,9 +443,9 @@
 }
 
 .dlg-date .dlg__text {
-  max-width: 440px;
-  font-size: 20px;
-  line-height: 28px;
+  max-width: 1320px;
+  font-size: 60px;
+  line-height: 84px;
   text-align: center;
 }
 
@@ -459,9 +459,9 @@
 }
 
 .dlg-caption .dlg__text {
-  max-width: 440px;
-  font-size: 16px;
-  line-height: 24px;
+  max-width: 1320px;
+  font-size: 48px;
+  line-height: 72px;
   text-align: center;
 }
 
@@ -475,23 +475,23 @@
 
 .dlg-note__sheet {
   position: relative;
-  width: 352px;
-  min-height: 160px;
-  padding: 24px 28px 32px;
-  border-radius: 2px;
+  width: 1056px;
+  min-height: 480px;
+  padding: 72px 84px 96px;
+  border-radius: 6px;
   background:
-    repeating-linear-gradient(to bottom, transparent 0 27px, rgb(70 96 140 / 0.22) 27px 28px),
+    repeating-linear-gradient(to bottom, transparent 0 81px, rgb(70 96 140 / 0.22) 81px 84px),
     #f3ead7;
-  background-position: 0 24px; /* линейки — под строками почерка */
-  box-shadow: 0 10px 24px rgb(0 0 0 / 0.5);
+  background-position: 0 72px; /* линейки — под строками почерка */
+  box-shadow: 0 30px 72px rgb(0 0 0 / 0.5);
   transform: rotate(-1.2deg);
   font-family: 'Caveat Variable', 'Caveat', cursive;
   color: #2a3348;
 }
 
 .dlg-note .dlg__text {
-  font-size: 24px;
-  line-height: 28px;
+  font-size: 72px;
+  line-height: 84px;
 }
 
 .dlg-note .dlg__next {
@@ -509,18 +509,18 @@
 
 /* Кнопка «Пропустить» над диалогом. */
 .skip {
-  top: 16px;
-  right: 16px;
+  top: 48px;
+  right: 48px;
   z-index: 2;
 }
 
 /* ---------- Гараж: тюнинг ---------- */
 /* Компактная кнопка-иконка (помощь, настройки в верхней панели). */
 .wbtn--icon {
-  width: 32px;
-  height: 32px;
+  width: 96px;
+  height: 96px;
   padding: 0;
-  border-radius: 8px;
+  border-radius: 24px;
   box-shadow: none;
 }
 
@@ -529,8 +529,8 @@
 }
 
 .wbtn--icon .icon {
-  width: 18px;
-  height: 18px;
+  width: 54px;
+  height: 54px;
 }
 
 /* Общий вид панелей гаража: тёмная тёплая поверхность и волосная рамка. */
@@ -539,47 +539,47 @@
 .gtabs,
 .gtop__goal {
   background: rgb(22 21 19 / 0.9);
-  box-shadow: inset 0 0 0 1px rgb(239 233 222 / 0.08);
+  box-shadow: inset 0 0 0 3px rgb(239 233 222 / 0.08);
   color: #efe9de;
   font-family: var(--font-ui);
 }
 
 .gtop {
-  left: 12px;
-  right: 12px;
-  top: 12px;
+  left: 36px;
+  right: 36px;
+  top: 36px;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: 36px;
 }
 
 .gtop__goal {
   display: flex;
   align-items: center;
-  gap: 12px;
-  height: 32px;
-  padding: 0 12px 0 4px;
-  border-radius: 8px;
+  gap: 36px;
+  height: 96px;
+  padding: 0 36px 0 12px;
+  border-radius: 24px;
   flex: 1;
   min-width: 0;
 }
 
 .gtop__chip {
   flex: none;
-  height: 24px;
-  padding: 0 8px;
-  border-radius: 6px;
+  height: 72px;
+  padding: 0 24px;
+  border-radius: 18px;
   display: flex;
   align-items: center;
   background: var(--ui-accent);
   color: var(--ui-ink);
-  font-size: 11px;
+  font-size: 33px;
   font-weight: 500;
 }
 
 .gtop__text {
-  font-size: 11px;
+  font-size: 33px;
   color: #aaa398;
   white-space: nowrap;
   overflow: hidden;
@@ -588,39 +588,39 @@
 
 .gtop__actions {
   display: flex;
-  gap: 8px;
+  gap: 24px;
 }
 
 /* Левая колонка: характеристики и записка деда. */
 .gside {
-  left: 12px;
-  top: 56px;
-  bottom: 12px;
-  width: 168px;
+  left: 36px;
+  top: 168px;
+  bottom: 36px;
+  width: 504px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 24px;
 }
 
 .gpanel {
-  padding: 12px;
-  border-radius: 12px;
+  padding: 36px;
+  border-radius: 36px;
 }
 
 .gstats {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 24px;
 }
 
 .gstat__head {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  gap: 8px;
-  margin-bottom: 4px;
-  font-size: 10px;
-  line-height: 12px;
+  gap: 24px;
+  margin-bottom: 12px;
+  font-size: 30px;
+  line-height: 36px;
 }
 
 .gstat__label {
@@ -644,12 +644,12 @@
 .gbar {
   display: grid;
   grid-template-columns: repeat(12, 1fr);
-  gap: 2px;
+  gap: 6px;
 }
 
 .gbar__seg {
-  height: 4px;
-  border-radius: 1px;
+  height: 12px;
+  border-radius: 3px;
   background: rgb(239 233 222 / 0.1);
 }
 
@@ -667,7 +667,7 @@
 
 .gbar__seg.is-removed {
   background: transparent;
-  box-shadow: inset 0 0 0 1px currentColor;
+  box-shadow: inset 0 0 0 3px currentColor;
 }
 
 .gbar__seg.is-up.is-removed {
@@ -679,14 +679,14 @@
 }
 
 .gverdict {
-  margin-top: 12px;
-  padding-top: 8px;
-  border-top: 1px solid rgb(239 233 222 / 0.08);
+  margin-top: 36px;
+  padding-top: 24px;
+  border-top: 3px solid rgb(239 233 222 / 0.08);
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  font-size: 10px;
-  line-height: 14px;
+  gap: 12px;
+  font-size: 30px;
+  line-height: 42px;
 }
 
 .gverdict__row {
@@ -715,25 +715,25 @@
 /* Записка деда: та же бумага и почерк, что в интро. */
 .gnote {
   margin-top: auto;
-  padding: 8px 12px 12px;
-  border-radius: 2px;
+  padding: 24px 36px 36px;
+  border-radius: 6px;
   background: #f3ead7;
   color: #2a3348;
-  box-shadow: 0 6px 16px rgb(0 0 0 / 0.45);
+  box-shadow: 0 18px 48px rgb(0 0 0 / 0.45);
   transform: rotate(-1deg);
 }
 
 .gnote__title {
   font-family: var(--font-ui);
-  font-size: 9px;
+  font-size: 27px;
   color: #7b7266;
-  margin-bottom: 2px;
+  margin-bottom: 6px;
 }
 
 .gnote__text {
   font-family: 'Caveat Variable', 'Caveat', cursive;
-  font-size: 15px;
-  line-height: 17px;
+  font-size: 45px;
+  line-height: 51px;
 }
 
 /*
@@ -741,24 +741,24 @@
  * под ним вкладки (h 40) и кнопка запуска (h 40). Машина стоит выше, на y 236.
  */
 .gtray {
-  left: 192px;
-  right: 12px;
-  bottom: 60px;
-  height: 48px;
-  padding: 6px;
-  border-radius: 12px;
+  left: 576px;
+  right: 36px;
+  bottom: 180px;
+  height: 144px;
+  padding: 18px;
+  border-radius: 36px;
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: 1fr;
-  gap: 6px;
+  gap: 18px;
 }
 
 .gtray.is-looks {
   grid-auto-columns: auto;
   justify-content: space-between;
   align-items: center;
-  gap: 8px;
-  padding: 2px 10px;
+  gap: 24px;
+  padding: 6px 30px;
 }
 
 .gcard {
@@ -766,12 +766,12 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 4px;
-  padding: 0 10px;
+  gap: 12px;
+  padding: 0 30px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 24px;
   background: #262421;
-  box-shadow: inset 0 0 0 1px rgb(239 233 222 / 0.06);
+  box-shadow: inset 0 0 0 3px rgb(239 233 222 / 0.06);
   color: #efe9de;
   font-family: var(--font-ui);
   text-align: left;
@@ -787,25 +787,25 @@
 
 .gcard.is-selected {
   background: #2e2b27;
-  box-shadow: inset 0 0 0 1px var(--ui-accent);
+  box-shadow: inset 0 0 0 3px var(--ui-accent);
 }
 
 .gcard:focus-visible {
-  outline: 2px solid var(--ui-accent);
-  outline-offset: 2px;
+  outline: 6px solid var(--ui-accent);
+  outline-offset: 6px;
 }
 
 .gcard__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 4px;
+  gap: 12px;
 }
 
 .gcard__name {
-  font-size: 11px;
+  font-size: 33px;
   font-weight: 500;
-  line-height: 14px;
+  line-height: 42px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -815,20 +815,20 @@
   flex: none;
   display: inline-flex;
   align-items: center;
-  gap: 2px;
-  font-size: 9px;
+  gap: 6px;
+  font-size: 27px;
   color: var(--ui-accent);
 }
 
 .gcard__tag .icon {
-  width: 10px;
-  height: 10px;
+  width: 30px;
+  height: 30px;
 }
 
 .gcard__desc,
 .gcard__delta {
-  font-size: 9px;
-  line-height: 12px;
+  font-size: 27px;
+  line-height: 36px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -840,7 +840,7 @@
 
 .gcard__delta {
   display: flex;
-  gap: 6px;
+  gap: 18px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -860,63 +860,63 @@
 .gswatches {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 6px;
 }
 
 .gswatches__label {
   font-family: var(--font-ui);
-  font-size: 9px;
-  line-height: 10px;
+  font-size: 27px;
+  line-height: 30px;
   color: #aaa398;
 }
 
 .gswatches__row {
   display: grid;
-  grid-template-columns: repeat(4, 14px);
-  gap: 4px;
+  grid-template-columns: repeat(4, 42px);
+  gap: 12px;
 }
 
 .gswatch {
-  width: 14px;
-  height: 14px;
+  width: 42px;
+  height: 42px;
   padding: 0;
   border: 0;
-  border-radius: 4px;
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.15);
+  border-radius: 12px;
+  box-shadow: inset 0 0 0 3px rgb(255 255 255 / 0.15);
   cursor: pointer;
 }
 
 .gswatch.is-off {
-  background: repeating-linear-gradient(135deg, #3a3631 0 2px, #26241f 2px 4px);
+  background: repeating-linear-gradient(135deg, #3a3631 0 6px, #26241f 6px 12px);
 }
 
 .gswatch.is-selected {
-  outline: 2px solid var(--ui-accent);
-  outline-offset: 1px;
+  outline: 6px solid var(--ui-accent);
+  outline-offset: 3px;
 }
 
 .gwash {
-  height: 28px;
-  padding: 0 10px;
-  font-size: 11px;
+  height: 84px;
+  padding: 0 30px;
+  font-size: 33px;
 }
 
 .gwash .icon {
-  width: 14px;
-  height: 14px;
+  width: 42px;
+  height: 42px;
 }
 
 /* Вкладки: иконка над подписью. */
 .gtabs {
-  left: 192px;
-  width: 260px;
-  bottom: 12px;
-  height: 40px;
-  padding: 4px;
-  border-radius: 12px;
+  left: 576px;
+  width: 780px;
+  bottom: 36px;
+  height: 120px;
+  padding: 12px;
+  border-radius: 36px;
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 4px;
+  gap: 12px;
 }
 
 .gtab {
@@ -924,14 +924,14 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 6px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 24px;
   background: transparent;
   color: #8a847a;
   font-family: var(--font-ui);
-  font-size: 8px;
-  line-height: 9px;
+  font-size: 24px;
+  line-height: 27px;
   cursor: pointer;
   transition:
     background-color var(--ui-fast) var(--ui-ease),
@@ -939,8 +939,8 @@
 }
 
 .gtab .icon {
-  width: 16px;
-  height: 16px;
+  width: 48px;
+  height: 48px;
 }
 
 .gtab:hover {
@@ -951,35 +951,35 @@
 .gtab.is-active {
   color: #efe9de;
   background: #2e2b27;
-  box-shadow: inset 0 0 0 1px rgb(239 233 222 / 0.1);
+  box-shadow: inset 0 0 0 3px rgb(239 233 222 / 0.1);
 }
 
 .gtab:focus-visible {
-  outline: 2px solid var(--ui-accent);
-  outline-offset: 1px;
+  outline: 6px solid var(--ui-accent);
+  outline-offset: 3px;
 }
 
 /* Запуск: справа от вкладок, той же высоты. */
 .glaunch {
-  left: 460px;
-  right: 12px;
-  bottom: 12px;
-  height: 40px;
+  left: 1380px;
+  right: 36px;
+  bottom: 36px;
+  height: 120px;
 }
 
 .glaunch__btn {
   width: 100%;
-  height: 40px;
-  padding: 0 12px;
-  font-size: 12px;
+  height: 120px;
+  padding: 0 36px;
+  font-size: 36px;
 }
 
 .glaunch__missing {
   position: absolute;
   right: 0;
-  bottom: 44px;
+  bottom: 132px;
   font-family: var(--font-ui);
-  font-size: 9px;
+  font-size: 27px;
   color: #e2766b;
   white-space: nowrap;
   pointer-events: none;
