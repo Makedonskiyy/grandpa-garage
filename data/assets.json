@@ -1,6 +1,11 @@
 {
   "$comment": "Манифест для BootScene. Добавили файл в public/assets — добавьте строку сюда и в docs/RESOURCES.md. Пути относительно public/.",
-  "images": [],
+  "images": [
+    {
+      "key": "bg_menu",
+      "path": "assets/images/bg/menu_garage.png"
+    }
+  ],
   "spritesheets": [],
   "audio": [],
   "fonts": []

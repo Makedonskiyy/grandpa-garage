@@ -43,7 +43,9 @@ export function openModal(build, { id } = {}) {
   backdrop.addEventListener('pointerdown', (e) => {
     if (e.target === backdrop) close();
   });
-  backdrop.append(el('div', { class: 'panel modal', role: 'dialog' }, build(close)));
+  backdrop.append(
+    el('div', { class: 'modal', role: 'dialog', 'aria-modal': 'true' }, build(close)),
+  );
   modalHost().append(backdrop);
   openModals.push({ id, backdrop, close });
   return close;

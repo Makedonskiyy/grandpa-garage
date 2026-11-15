@@ -1,14 +1,19 @@
+import Phaser from 'phaser';
 import { BaseScene } from './BaseScene.js';
-import { SCENES, MUSIC, FONT_FAMILY, VERSION } from '../config/constants.js';
+import { SCENES, MUSIC, VERSION } from '../config/constants.js';
+import menuConfig from '../../data/menu.json';
 import { el } from '../ui/dom.js';
-import { button } from '../ui/components.js';
+import { webButton } from '../ui/components.js';
 import { openSettings } from '../ui/SettingsPanel.js';
 import { openHowTo } from '../ui/HowToPanel.js';
 import { audio } from '../systems/AudioManager.js';
 import { resetGame } from '../gameState.js';
 import { t } from '../systems/strings.js';
 
-/** Меню (ТЗ 3.3): ворота «ГАРАЖ №7», мигающая лампочка, три кнопки, версия в углу. */
+/**
+ * Меню (ТЗ 3.3, макет): пиксельный фон гаража, логотип слева вверху,
+ * три веб-кнопки снизу, лампочка изредка мигает, версия сборки в углу.
+ */
 export class MenuScene extends BaseScene {
   constructor() {
     super(SCENES.MENU);
@@ -17,13 +22,21 @@ export class MenuScene extends BaseScene {
   create() {
     this.enter();
     audio.playMusic(MUSIC.MENU);
-    this.#drawBackground();
+
+    this.add.image(0, 0, 'bg_menu').setOrigin(0);
+    this.#createLamps();
 
     this.ui.append(
-      el('div', { class: 'ui-abs menu' }, [
-        button(t('menu.play'), () => this.#play(), { variant: 'primary' }),
-        button(t('menu.howTo'), () => openHowTo()),
-        button(t('menu.settings'), () => openSettings()),
+      el('img', {
+        class: 'ui-abs menu-logo',
+        src: 'assets/images/ui/logo.svg',
+        alt: t('menu.title'),
+        draggable: 'false',
+      }),
+      el('div', { class: 'ui-abs menu-actions' }, [
+        webButton(t('menu.play'), () => this.#play(), { variant: 'primary', icon: 'play' }),
+        webButton(t('menu.howTo'), () => openHowTo(), { icon: 'help' }),
+        webButton(t('menu.settings'), () => openSettings(), { icon: 'gear' }),
       ]),
       el('div', { class: 'ui-abs version', text: t('menu.version', { version: VERSION }) }),
     );
@@ -34,37 +47,55 @@ export class MenuScene extends BaseScene {
     this.goTo(SCENES.INTRO);
   }
 
-  /** Заглушка фона до появления арта: ворота гаража кодом. */
-  #drawBackground() {
-    const { width, height } = this.scale;
-    const g = this.add.graphics();
-    g.fillStyle(0x1b1a22).fillRect(0, 0, width, height);
-    g.fillStyle(0x2a2833).fillRect(0, height - 50, width, 50);
-    g.fillStyle(0x3b3f48).fillRect(150, 70, 340, 240);
-    for (let y = 104; y < 300; y += 14) g.fillStyle(0x30333b).fillRect(156, y, 328, 4);
-    g.fillStyle(0x0f0e13).fillRect(140, 60, 360, 10);
+  /** Тёплое пиксельное свечение ламп фона; одна лампа изредка мигает (ТЗ 3.3). */
+  #createLamps() {
+    const { lamps, flicker } = menuConfig;
+    if (!this.textures.exists('fx_glow')) this.#makeGlowTexture();
 
-    this.add
-      .text(width / 2, 88, 'ГАРАЖ №7', {
-        fontFamily: FONT_FAMILY,
-        fontSize: '10px',
-        color: '#d8d0bc',
-      })
-      .setOrigin(0.5);
-    this.add
-      .text(width / 2, 28, t('menu.title'), {
-        fontFamily: FONT_FAMILY,
-        fontSize: '20px',
-        color: '#e6b34a',
-      })
-      .setOrigin(0.5);
+    const glows = lamps.map((l) =>
+      this.add
+        .image(l.x, l.y, 'fx_glow')
+        .setScale(l.size)
+        .setAlpha(l.alpha)
+        .setBlendMode(Phaser.BlendModes.ADD),
+    );
 
-    const lamp = this.add.circle(width / 2, 52, 4, 0xffe8b0);
-    this.time.addEvent({
-      delay: 3200,
-      loop: true,
-      callback: () =>
-        this.tweens.add({ targets: lamp, alpha: 0.15, duration: 80, yoyo: true, repeat: 2 }),
-    });
+    // Мигает главная лампа под потолком: короткая серия провалов света и общее затемнение.
+    const main = glows[0];
+    const shade = this.add
+      .rectangle(0, 0, this.scale.width, this.scale.height, 0x000000, 0)
+      .setOrigin(0);
+    const blink = () => {
+      this.tweens.add({
+        targets: main,
+        alpha: 0,
+        duration: 60,
+        yoyo: true,
+        repeat: flicker.times - 1,
+      });
+      this.tweens.add({
+        targets: shade,
+        fillAlpha: flicker.shade,
+        duration: 60,
+        yoyo: true,
+        repeat: flicker.times - 1,
+      });
+      this.time.delayedCall(Phaser.Math.Between(flicker.minDelayMs, flicker.maxDelayMs), blink);
+    };
+    this.time.delayedCall(flicker.minDelayMs, blink);
+  }
+
+  /** Свечение ступенями, без плавного градиента — чтобы оставалось пиксельным. */
+  #makeGlowTexture() {
+    const g = this.make.graphics({ x: 0, y: 0 }, false);
+    const steps = [
+      [16, 0.12],
+      [12, 0.2],
+      [8, 0.35],
+      [4, 0.6],
+    ];
+    for (const [r, a] of steps) g.fillStyle(0xffc070, a).fillCircle(16, 16, r);
+    g.generateTexture('fx_glow', 32, 32);
+    g.destroy();
   }
 }
