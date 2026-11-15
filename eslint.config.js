@@ -23,5 +23,10 @@ export default [
     files: ['tests/**/*.js', '*.config.js', 'tools/**/*.mjs'],
     languageOptions: { globals: { ...globals.node } },
   },
+  {
+    // Консольные утилиты пишут результат в терминал.
+    files: ['tools/**/*.mjs'],
+    rules: { 'no-console': 'off' },
+  },
   prettier,
 ];
