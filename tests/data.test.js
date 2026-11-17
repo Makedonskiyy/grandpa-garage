@@ -98,10 +98,12 @@ describe('story.json: постановка сцен', () => {
     }
   });
 
-  it('временные фоны — из известных, у каждого фона есть описание для генерации', () => {
+  it('временные фоны и атмосфера — из известных, у каждого фона есть описание для генерации', () => {
     const FALLBACKS = ['black', 'garage_cover', 'garage_room', 'workbench', null];
     for (const [key, bg] of Object.entries(storyBackgrounds.backgrounds)) {
       expect(FALLBACKS, key).toContain(bg.fallback);
+      expect([undefined, 'snow', 'dust'], key).toContain(bg.ambience);
+      if (bg.ambienceArea) expect(bg.ambienceArea[0], key).toBeLessThan(bg.ambienceArea[1]);
       expect(bg.description.length, key).toBeGreaterThan(20);
       expect(bg.prompt.length, key).toBeGreaterThan(20);
     }

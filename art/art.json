@@ -46,6 +46,15 @@
     },
     "garage7_cover": {
       "brightness": 1.05
+    },
+    "zarya_entrance": {
+      "brightness": 0.82
+    },
+    "back_road": {
+      "brightness": 0.85
+    },
+    "palych_arrival": {
+      "brightness": 0.85
     }
   }
 }

@@ -2,10 +2,13 @@
  * StoryStage — сцены истории как в визуальной новелле (ТЗ 3.5, 7.5).
  *
  * Что на экране:
- *   • фон истории (Phaser) — сменяется плавно, медленно «дышит» камерой;
+ *   • фон истории (Phaser) — сменяется плавным наплывом, камера медленно едет по нему
+ *     (каждый новый фон — в другую сторону); поверх — атмосфера: снег на улице, пыль в луче
+ *     света в гараже;
  *     у реплик без фона остаётся сцена, поверх которой идёт разговор (гараж, заезд);
  *   • персонажи (HTML) — слева и справа, по пояс; говорящий ярче и ближе, второй приглушён;
  *     выход на сцену, дыхание, моргание, рот двигается, пока печатается реплика;
+ *     вступая в разговор, персонаж чуть подпрыгивает, пока говорит — покачивается;
  *     дед — старая выцветшая фотография в рамке (по ТЗ он уехал, его голос — записка);
  *   • окно реплики с именем говорящего; записка деда — бумага и почерк;
  *     дата — на чёрном экране, надпись — по центру.
@@ -28,7 +31,8 @@ const cfg = config.dialog;
 const byId = new Map(story.lines.map((l) => [l.id, l]));
 const FRAME = Object.fromEntries(characters.frames.map((f, i) => [f, i]));
 const MOUTH_MS = 110;
-const BG_FADE_MS = 500;
+const BG_FADE_MS = 800;
+const KEN_BURNS_MS = 18000;
 
 export function getSequenceStart(name) {
   const id = story.sequences[name];
@@ -66,6 +70,47 @@ const FALLBACKS = {
   },
 };
 
+/** Текстуры частиц атмосферы — один раз на игру. */
+function ensureFxTextures(scene) {
+  if (scene.textures.exists('fx_snow')) return;
+  const g = scene.make.graphics({ x: 0, y: 0 }, false);
+  g.fillStyle(0xffffff, 1).fillRect(0, 0, 2, 2);
+  g.generateTexture('fx_snow', 2, 2);
+  g.clear().fillStyle(0xffffff, 1).fillRect(0, 0, 1, 1);
+  g.generateTexture('fx_dust', 1, 1);
+  g.destroy();
+}
+
+/**
+ * Снег или пыль поверх фона; эмиттер живёт в контейнере фона и исчезает вместе с ним.
+ * Второй аргумент — полоса по горизонтали в координатах мира (ambienceArea фона), например
+ * проём ворот, если снаружи идёт снег, а камера в гараже.
+ */
+const AMBIENCE = {
+  snow: (scene, [x0, x1] = [-60, WORLD.width + 20]) =>
+    scene.add.particles(0, -6, 'fx_snow', {
+      x: { min: x0, max: x1 },
+      lifespan: 11000,
+      speedY: { min: 14, max: 34 },
+      speedX: { min: 2, max: 14 },
+      scale: { min: 0.75, max: 1.5 },
+      alpha: { min: 0.35, max: 0.85 },
+      frequency: 32,
+    }),
+  dust: (scene, [x0, x1] = [120, 520]) =>
+    scene.add.particles(0, 0, 'fx_dust', {
+      x: { min: x0, max: x1 },
+      y: { min: 30, max: 300 },
+      lifespan: { min: 5000, max: 9000 },
+      speedX: { min: -4, max: 4 },
+      speedY: { min: -3, max: 2 },
+      tint: 0xffe2b0,
+      blendMode: 'ADD',
+      alpha: { onEmit: () => 0, onUpdate: (p, k, t) => Math.sin(t * Math.PI) * 0.75 },
+      frequency: 140,
+    }),
+};
+
 export class StoryStage {
   /** @param {Phaser.Scene} scene */
   constructor(scene) {
@@ -74,6 +119,7 @@ export class StoryStage {
     this.layer.classList.add('story-layer');
     this.line = null;
     this.bgKey = undefined;
+    this.panDir = 1;
     this.cast = { left: null, right: null };
     this.actors = { left: null, right: null };
     this.timers = [];
@@ -142,6 +188,7 @@ export class StoryStage {
     this.bgKey = undefined;
     clear(this.$box);
     clear(this.$center);
+    this.boxLook = null;
     const r = this.resolve;
     this.resolve = null;
     if (callResolve) r?.();
@@ -183,7 +230,15 @@ export class StoryStage {
     }
     const speaker = story.speakers[line.who];
     const side = this.#sideOf(line.who) ?? 'left';
+    const look = `${side}:${line.kind}`;
     this.$box.className = `ui-abs story__box story__box--${side}${line.kind === 'note' ? ' is-note' : ''}`;
+    if (look !== this.boxLook) {
+      // Другой говорящий или вид реплики — окно въезжает заново.
+      this.$box.style.animation = 'none';
+      void this.$box.offsetWidth;
+      this.$box.style.animation = '';
+      this.boxLook = look;
+    }
     this.$box.append(
       el('div', {
         class: 'story__name',
@@ -220,18 +275,35 @@ export class StoryStage {
     } else {
       this.$shade.classList.remove('is-on');
       const c = this.scene.add.container(0, 0).setDepth(900).setAlpha(0);
-      draw(this.scene, c);
+      const art = this.scene.add.container(0, 0);
+      draw(this.scene, art);
+      c.add(art);
+      const { ambience, ambienceArea } = storyBackgrounds.backgrounds[key] ?? {};
+      if (ambience) {
+        ensureFxTextures(this.scene);
+        const fx = AMBIENCE[ambience](this.scene, ambienceArea);
+        fx.fastForward(8000); // снег уже идёт, а не начинается с верхнего края
+        c.add(fx);
+      }
       this.bg = c;
       this.scene.tweens.add({ targets: c, alpha: 1, duration: BG_FADE_MS, ease: 'Sine.easeOut' });
-      // Медленный наезд камеры по фону — сцена живёт, пока идут реплики.
-      c.setScale(1);
+      // Камера медленно наезжает и едет вбок — каждый новый фон в другую сторону.
+      const dir = (this.panDir = -this.panDir);
+      const pan = { t: 0 };
+      const place = () => {
+        const scale = 1.08 - 0.05 * pan.t;
+        const drift = (pan.t - 0.5) * 0.04 * dir;
+        art.setScale(scale);
+        art.x = -((scale - 1) * WORLD.width) / 2 + drift * WORLD.width;
+        art.y = -((scale - 1) * WORLD.height) / 2;
+      };
+      place();
       this.scene.tweens.add({
-        targets: c,
-        scale: 1.04,
-        x: -WORLD.width * 0.02,
-        y: -WORLD.height * 0.02,
-        duration: 14000,
-        ease: 'Sine.easeInOut',
+        targets: pan,
+        t: 1,
+        duration: KEN_BURNS_MS,
+        ease: 'Sine.easeOut',
+        onUpdate: place,
       });
     }
     if (old) {
@@ -302,9 +374,20 @@ export class StoryStage {
     for (const side of ['left', 'right']) {
       const a = this.actors[side];
       if (!a) continue;
-      a.root.classList.toggle('is-speaking', a.id === who);
-      a.root.classList.toggle('is-listening', a.id !== who);
+      const speaking = a.id === who;
+      if (speaking && !a.root.classList.contains('is-speaking')) this.#hop(a);
+      a.root.classList.toggle('is-speaking', speaking);
+      a.root.classList.toggle('is-listening', !speaking);
     }
+  }
+
+  /** Короткий подскок — персонаж вступил в разговор. */
+  #hop(actor) {
+    if (!actor.root.classList.contains('is-in')) return; // только что вышел — ему хватит выхода
+    const body = actor.root.firstChild;
+    body.classList.remove('is-hop');
+    void body.offsetWidth; // перезапуск анимации
+    body.classList.add('is-hop');
   }
 
   #frame(actor, index) {
@@ -326,6 +409,7 @@ export class StoryStage {
     const actor = this.#speaker();
     if (actor && this.line.kind === 'speech') {
       actor.talking = true;
+      actor.root.classList.add('is-talking');
       let open = false;
       this.mouth = setInterval(() => {
         open = !open;
@@ -352,6 +436,7 @@ export class StoryStage {
     for (const a of Object.values(this.actors)) {
       if (!a) continue;
       a.talking = false;
+      a.root.classList.remove('is-talking');
       this.#frame(a, FRAME.idle);
     }
     this.typing = false;
