@@ -28,7 +28,7 @@
       "id": 1,
       "who": "narrator",
       "kind": "date",
-      "bg": "black",
+      "bg": "zarya_entrance",
       "cast": {
         "left": null,
         "right": null
@@ -40,7 +40,7 @@
       "id": 2,
       "who": "grandson",
       "kind": "speech",
-      "bg": "garage_cover",
+      "bg": "garage7_cover",
       "cast": {
         "left": "grandson"
       },
@@ -59,6 +59,7 @@
       "id": 4,
       "who": "grandpa",
       "kind": "note",
+      "bg": "note_closeup",
       "cast": {
         "right": "grandpa"
       },
@@ -90,7 +91,7 @@
       "id": 8,
       "who": "grandson",
       "kind": "speech",
-      "bg": "garage_cover",
+      "bg": "garage7_cover",
       "cast": {
         "right": null
       },
@@ -101,7 +102,7 @@
       "id": 9,
       "who": "grandson",
       "kind": "speech",
-      "bg": null,
+      "bg": "back_road",
       "cast": {
         "left": "grandson",
         "right": null
@@ -120,7 +121,7 @@
       "id": 11,
       "who": "palych",
       "kind": "speech",
-      "bg": null,
+      "bg": "palych_arrival",
       "cast": {
         "left": "grandson",
         "right": "palych"
@@ -153,7 +154,7 @@
       "id": 15,
       "who": "palych",
       "kind": "speech",
-      "bg": null,
+      "bg": "wasteland_night",
       "cast": {
         "left": null,
         "right": "palych"
@@ -165,7 +166,7 @@
       "id": 16,
       "who": "palych",
       "kind": "speech",
-      "bg": null,
+      "bg": "finish_night",
       "cast": {
         "left": "grandson",
         "right": "palych"
@@ -191,6 +192,7 @@
       "id": 19,
       "who": "narrator",
       "kind": "caption",
+      "bg": "garage_dawn",
       "cast": {
         "left": "grandson",
         "right": "grandpa"
@@ -202,7 +204,7 @@
       "id": 20,
       "who": "palych",
       "kind": "speech",
-      "bg": null,
+      "bg": "wasteland_after",
       "cast": {
         "left": null,
         "right": "palych"
@@ -239,5 +241,5 @@
       "text": "Дед держал их в порядке лучше, чем себя."
     }
   ],
-  "$comment": "Сценарий. bg — фон истории (null — разговор поверх текущей сцены), cast — кто слева и справа; без поля остаётся как в прошлой реплике. Первая реплика каждой последовательности задаёт bg и cast."
+  "$comment": "Сценарий. bg — фон истории из data/story-backgrounds.json, cast — кто слева и справа; без поля остаётся как в прошлой реплике. Первая реплика каждой последовательности задаёт bg и cast."
 }

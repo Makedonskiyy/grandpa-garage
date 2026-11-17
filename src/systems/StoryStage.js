@@ -18,6 +18,7 @@ import Phaser from 'phaser';
 import story from '../../data/story.json';
 import config from '../../data/config.json';
 import characters from '../../data/characters.json';
+import storyBackgrounds from '../../data/story-backgrounds.json';
 import { SFX, WORLD } from '../config/constants.js';
 import { audio } from './AudioManager.js';
 import { createLayer } from '../ui/overlay.js';
@@ -47,8 +48,11 @@ export function getSequenceLines(name) {
   return lines;
 }
 
-/** Фоны истории: ключ из story.json → как нарисовать его в контейнере. */
-const BACKGROUNDS = {
+/**
+ * Временные фоны — пока для сцены нет своего (data/story-backgrounds.json → fallback).
+ * Свой фон — пиксельная картинка story_<ключ>, её собирает npm run art.
+ */
+const FALLBACKS = {
   black: (scene, c) =>
     c.add(scene.add.rectangle(0, 0, WORLD.width, WORLD.height, 0x000000).setOrigin(0)),
   // Гараж деда: машина под чехлом в свете лампы.
@@ -192,18 +196,29 @@ export class StoryStage {
 
   // ---------- Фон ----------
 
+  /** Как нарисовать фон: своя картинка, иначе временный фон, иначе null — поверх сцены. */
+  #resolveBackground(key) {
+    if (key === null) return null;
+    const own = `story_${key}`;
+    if (this.scene.textures.exists(own)) {
+      return (scene, c) => c.add(scene.add.image(0, 0, own).setOrigin(0));
+    }
+    const def = storyBackgrounds.backgrounds[key];
+    if (!def) throw new Error(`Нет фона истории: ${key}`);
+    return def.fallback === null ? null : FALLBACKS[def.fallback];
+  }
+
   #setBackground(key) {
     if (key === this.bgKey) return;
     this.bgKey = key;
     const old = this.bg;
-    if (key === null) {
+    const draw = this.#resolveBackground(key);
+    if (draw === null) {
       // Без своего фона: разговор поверх сцены, сцена приглушена.
       this.bg = null;
       this.$shade.classList.add('is-on');
     } else {
       this.$shade.classList.remove('is-on');
-      const draw = BACKGROUNDS[key];
-      if (!draw) throw new Error(`Нет фона истории: ${key}`);
       const c = this.scene.add.container(0, 0).setDepth(900).setAlpha(0);
       draw(this.scene, c);
       this.bg = c;
@@ -224,7 +239,7 @@ export class StoryStage {
         targets: old,
         alpha: 0,
         duration: BG_FADE_MS,
-        delay: key === null ? 0 : BG_FADE_MS / 2,
+        delay: draw === null ? 0 : BG_FADE_MS / 2,
         onComplete: () => old.destroy(),
       });
     }

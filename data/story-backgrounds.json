@@ -1,0 +1,76 @@
+{
+  "$comment": "Фоны сцен истории. Исходник кладётся в art/source/story/<ключ>.jpg (16:9, от 2400×1350), затем npm run art делает пиксельный фон и подключает его к игре. Пока исходника нет, показывается fallback: старый фон или сама сцена (null).",
+  "rules": "Общее для всех: 16:9, не меньше 2400×1350; Россия, ноябрь 2004 года; без людей, без надписей, марок, логотипов и номеров машин. Главное — в центре кадра: по бокам будут стоять персонажи (примерно по трети ширины слева и справа), нижняя треть уйдёт под окно реплики — там не должно быть важного.",
+  "backgrounds": {
+    "zarya_entrance": {
+      "title": "Въезд в кооператив «Заря»",
+      "lines": [1],
+      "fallback": "black",
+      "description": "Утро, пасмурно, мокрый снег. Въезд в гаражный кооператив: ряды кирпичных гаражей с железными воротами уходят вдаль, будка сторожа, шлагбаум, лужи на разбитом асфальте, голые деревья.",
+      "prompt": "Russian garage cooperative entrance, rows of old brick garages with painted metal gates, guard booth and boom barrier, wet snow, puddles on broken asphalt, bare trees, overcast November morning, 2004, no people, no text, cinematic wide shot, muted cold colors"
+    },
+    "garage7_cover": {
+      "title": "Гараж №7: машина под чехлом",
+      "lines": [2, 8],
+      "fallback": "garage_cover",
+      "description": "Внутри гаража деда: ворота приоткрыты, из щели падает полоса дневного света на машину под тёмным чехлом. Полки с банками, шины, канистры по стенам, пыль в луче света.",
+      "prompt": "inside a cluttered Soviet-era brick garage, a car hidden under a dark dusty cover, metal gate slightly open, a beam of daylight falling on the car, shelves with jars, tires and canisters along the walls, dust in the light beam, 2004 Russia, no people, cinematic, warm and cold contrast"
+    },
+    "workbench": {
+      "title": "Верстак деда",
+      "lines": [3],
+      "fallback": "workbench",
+      "description": "Деревянный верстак у стены: тиски, гаечные ключи на щите с инструментами, переноска с жёлтым светом, на верстаке листок бумаги, прижатый ключом.",
+      "prompt": "old wooden workbench in a Russian garage, vise, wrenches hanging on a tool board, yellow work lamp, a folded handwritten note on the bench held down by a wrench, warm lamp light, cozy and nostalgic, 2004, no people, no readable text"
+    },
+    "note_closeup": {
+      "title": "Записка и старая фотография",
+      "lines": [4, 5, 6, 7],
+      "fallback": "workbench",
+      "description": "Ближе к верстаку: исписанный листок, карандаш, рядом старая выцветшая фотография двух мужчин у машин (лица мелко, без деталей), настенный календарь с обведённой датой. Тёплый свет лампы.",
+      "prompt": "close-up of a garage workbench, handwritten note on lined paper, pencil, an old faded photo of two men standing by their cars (small, faces not detailed), wall calendar with a circled date, warm lamp light, nostalgic mood, no readable text"
+    },
+    "back_road": {
+      "title": "Дорога за гаражами",
+      "lines": [9, 10],
+      "fallback": "garage_room",
+      "description": "Вид из ворот гаража наружу: за гаражами раскисшая грунтовка — глубокие колеи, лужи, грязь, снег по обочинам, серое небо.",
+      "prompt": "view from an open garage gate onto a muddy dirt road behind rows of garages, deep ruts, puddles, slush, snow along the edges, grey November sky, Russia 2004, no people, no cars, cinematic"
+    },
+    "palych_arrival": {
+      "title": "Палыч у ворот",
+      "lines": [11, 12, 13, 14],
+      "fallback": null,
+      "description": "Проезд кооператива днём у ворот гаража №7. У соседних ворот стоит вишнёвый хэтчбек 90-х (без марки и значков), из выхлопа пар. Снег на крышах гаражей.",
+      "prompt": "alley between rows of brick garages in a Russian garage cooperative, daytime, a cherry-red 1990s hatchback parked near a garage gate, no logos, exhaust steam, snow on garage roofs, slush on the ground, overcast, 2004, no people"
+    },
+    "wasteland_night": {
+      "title": "Пустырь за заводом, старт",
+      "lines": [15],
+      "fallback": null,
+      "description": "Ночь. Пустырь за заводом: прожектор на столбе, длинная асфальтовая полоса, лента старта поперёк, вдали заводские корпуса и трубы с огоньками.",
+      "prompt": "night, empty asphalt lot behind a Soviet factory, a floodlight on a pole lighting a long straight strip, start line taped across the road, factory buildings and chimneys with small lights in the distance, wet asphalt reflections, cold blue and warm sodium light, no people, no cars"
+    },
+    "wasteland_after": {
+      "title": "Пустырь после заезда",
+      "lines": [20],
+      "fallback": null,
+      "description": "Та же ночь у финиша: свет фар в тумане и паре, мокрый асфальт, клетчатая лента финиша, холодный свет прожектора.",
+      "prompt": "night, end of a drag strip on a wet asphalt lot behind a factory, checkered finish tape, car headlights glowing through mist and exhaust steam, cold floodlight, moody, no people, cars only as light glow"
+    },
+    "finish_night": {
+      "title": "Финиш, разговор",
+      "lines": [16, 17, 18],
+      "fallback": null,
+      "description": "У финиша после заезда: две машины стоят рядом под прожектором — силуэтами, без деталей, горят фары, пар от выхлопа, тихо.",
+      "prompt": "night, two cars parked side by side at the finish of a drag strip under a single floodlight, seen as silhouettes with headlights on, exhaust steam, calm and warm after the race, wet asphalt, factory in the background, no people, no logos"
+    },
+    "garage_dawn": {
+      "title": "Гараж на рассвете",
+      "lines": [19],
+      "fallback": null,
+      "description": "Гараж №7 с распахнутыми воротами на рассвете: тёплый розово-золотой свет, внутри стоит машина, на снегу следы шин. Спокойно и светло.",
+      "prompt": "dawn, a brick garage with its gates wide open, a car inside, warm pink and golden sunrise light, fresh snow with tire tracks leading in, quiet hopeful mood, Russian garage cooperative, 2004, no people"
+    }
+  }
+}

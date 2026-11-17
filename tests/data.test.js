@@ -4,6 +4,7 @@ import tests from '../data/tests.json';
 import story from '../data/story.json';
 import cosmetics from '../data/cosmetics.json';
 import characters from '../data/characters.json';
+import storyBackgrounds from '../data/story-backgrounds.json';
 
 const MAX_LINE = 90; // ТЗ 2.3: реплика влезает в две строки диалогового окна
 
@@ -85,7 +86,7 @@ describe('story.json', () => {
 });
 
 describe('story.json: постановка сцен', () => {
-  const BACKGROUNDS = ['black', 'garage_cover', 'garage_room', 'workbench', null];
+  const BACKGROUNDS = Object.keys(storyBackgrounds.backgrounds);
   const byId = new Map(story.lines.map((l) => [l.id, l]));
 
   it('фоны и персонажи из известного списка', () => {
@@ -94,6 +95,15 @@ describe('story.json: постановка сцен', () => {
       for (const id of Object.values(l.cast ?? {})) {
         if (id !== null) expect(characters.characters, `персонаж реплики ${l.id}`).toContain(id);
       }
+    }
+  });
+
+  it('временные фоны — из известных, у каждого фона есть описание для генерации', () => {
+    const FALLBACKS = ['black', 'garage_cover', 'garage_room', 'workbench', null];
+    for (const [key, bg] of Object.entries(storyBackgrounds.backgrounds)) {
+      expect(FALLBACKS, key).toContain(bg.fallback);
+      expect(bg.description.length, key).toBeGreaterThan(20);
+      expect(bg.prompt.length, key).toBeGreaterThan(20);
     }
   });
 
