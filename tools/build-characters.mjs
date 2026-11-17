@@ -5,7 +5,11 @@
  * Каждый персонаж — бюст по пояс в три четверти, лицом вправо, 120×160 пикселей арта.
  * Кадры в одной ленте: 0 — молчит, 1 — говорит (рот открыт), 2 — моргает.
  * Персонажа справа экрана игра отражает по горизонтали, чтобы он смотрел на собеседника.
- * Растеризация без сглаживания (crispEdges): чистый пиксель-арт с обводкой.
+ *
+ * Порядок слоёв у всех одинаковый, чтобы ничего не «налезало»:
+ *   задний ворот → туловище с руками → видимая в вороте одежда → шея → голова → волосы/шапка
+ *   → передний ворот и отвороты.
+ * Свет сверху справа: правые края светлее, дальняя (левая) сторона лица и тела в тени.
  *
  *   npm run characters              — собрать в public/assets/images/characters
  *   npm run characters -- --preview — плюс превью в art/preview/characters.png
@@ -19,218 +23,253 @@ const OUT = `${ROOT}public/assets/images/characters/`;
 const W = 120;
 const H = 160;
 const FRAMES = ['idle', 'talk', 'blink'];
+const OUTLINE = '#1c1512';
 
 const svg = (body) =>
   `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" shape-rendering="crispEdges">${body}</svg>`;
-const rect = (x, y, w, h, fill) =>
+const px = (x, y, w, h, fill) =>
   `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}"/>`;
-const path = (d, fill, stroke, sw = 1) =>
-  `<path d="${d}" fill="${fill}"${stroke ? ` stroke="${stroke}" stroke-width="${sw}"` : ''}/>`;
+const shape = (d, fill, outline = true) =>
+  `<path d="${d}" fill="${fill}"${outline ? ` stroke="${OUTLINE}" stroke-width="1"` : ''}/>`;
+const line = (d, color) => `<path d="${d}" fill="none" stroke="${color}" stroke-width="1"/>`;
 
-const OUTLINE = '#1a1412';
+// ---------- Каркас ----------
 
-// ---------- Общие части ----------
+/** Туловище с руками: силуэт, тень дальней стороны, свет на ближнем плече, складки у подмышек. */
+function torso(c) {
+  let s = '';
+  s += shape(
+    'M 4 160 L 7 130 Q 9 111 22 104 Q 34 98 50 95 L 70 95 Q 86 98 98 105 Q 108 112 110 130 L 112 160 Z',
+    c.base,
+  );
+  // Тень дальней (левой) стороны и руки.
+  s += shape('M 5 160 L 8 130 Q 10 112 22 105 Q 28 102 32 101 L 27 116 L 24 160 Z', c.shade, false);
+  // Свет на плече справа.
+  s += shape(
+    'M 70 96 Q 86 99 97 106 Q 106 112 108 126 L 104 127 Q 102 115 94 109 Q 84 102 70 99 Z',
+    c.hi,
+    false,
+  );
+  // Складки, отделяющие руки от туловища.
+  s += line('M 27 114 Q 29 136 28 160', c.fold);
+  s += line('M 95 113 Q 93 136 94 160', c.fold);
+  // Складки у локтя.
+  s += line('M 12 140 L 18 143', c.fold);
+  s += line('M 101 141 L 106 139', c.fold);
+  return s;
+}
 
-/** Голова в три четверти лицом вправо: овал, челюсть, нос выступает. */
+/** Голова в три четверти лицом вправо: нос лишь чуть выходит за контур. */
 const HEAD =
-  'M 46 32 Q 48 18 63 16 Q 79 16 83 30 L 84 41 L 88 51 L 84 53 L 84 58 Q 83 60 81 61 L 81 64 Q 79 71 71 74 Q 61 76 53 72 Q 46 66 45 57 Z';
-const NECK = 'M 51 66 L 68 70 L 69 88 L 50 88 Z';
-const EAR = 'M 44 44 Q 40 46 41 52 Q 42 57 47 57 L 48 46 Z';
+  'M 64 16 Q 78 16 82 28 L 83 38 L 84 44 L 86 50 L 84 54 L 83 57 Q 83 62 81 66 Q 79 72 73 74 Q 63 76 55 71 Q 48 66 46 56 L 45 40 Q 47 20 64 16 Z';
+const NECK = 'M 53 66 L 69 70 L 70 86 L 52 86 Z';
+const EAR = 'M 46 44 Q 41 45 41 51 Q 42 57 47 57 Z';
 
-function face(p, frame) {
+function head(p, frame) {
   const s = p.skin;
-  let out = '';
-  // Шея и тень от подбородка.
-  out += path(NECK, s.shade, OUTLINE);
-  out += rect(51, 74, 17, 4, s.deep);
+  let o = '';
+  // Шея: тень от подбородка сверху, мягкий свет справа.
+  o += shape(NECK, s.base);
+  o += px(53, 70, 17, 6, s.shade);
+  o += px(53, 76, 4, 10, s.shade);
+  o += px(66, 76, 3, 10, s.hi);
   // Голова.
-  out += path(HEAD, s.base, OUTLINE);
-  // Объём: дальняя щека и челюсть в тени, свет сверху справа.
-  out += path('M 46 34 Q 47 50 50 60 Q 53 68 60 73 Q 52 72 47 66 Q 45 56 46 34 Z', s.shade);
-  out += path('M 66 18 Q 77 18 81 28 L 76 26 Q 72 21 66 20 Z', s.hi);
-  out += rect(76, 44, 3, 8, s.hi); // скула
-  out += path('M 60 72 Q 70 72 78 66 L 80 64 Q 78 71 71 74 Q 64 75 60 72 Z', s.shade); // под челюстью
+  o += shape(HEAD, s.base);
+  // Дальняя щека и челюсть в тени.
+  o += shape('M 46 40 Q 47 56 50 63 Q 54 69 62 73 Q 53 72 48 66 Q 45 58 46 40 Z', s.shade, false);
+  // Свет на лбу и скуле.
+  o += shape('M 66 18 Q 77 18 80 27 L 75 25 Q 71 21 66 20 Z', s.hi, false);
+  o += px(75, 47, 3, 5, s.hi);
+  // Под челюстью.
+  o += shape('M 62 73 Q 70 73 77 69 L 79 68 Q 77 73 73 74 Q 66 75 62 73 Z', s.shade, false);
   // Ухо.
-  out += path(EAR, s.shade, OUTLINE);
-  out += rect(43, 49, 2, 4, s.deep);
-  // Нос: тень снизу, ноздря.
-  out += path('M 84 53 L 88 51 L 85 55 L 81 56 Z', s.shade);
-  out += rect(81, 54, 2, 1, s.deep);
-  // Глаза: ближний (левее) и дальний у переносицы.
+  o += shape(EAR, s.shade);
+  o += px(43, 49, 2, 5, s.deep);
+  // Нос: спинка со светом, тень с ближней стороны, ноздря и тень под носом.
+  o += px(82, 43, 1, 7, s.hi);
+  o += px(79, 46, 2, 6, s.shade);
+  o += px(80, 52, 1, 1, s.deep);
+  o += px(78, 55, 5, 1, s.shade);
+  // Глаза: ближний шире, дальний у переносицы уже; верхнее веко.
   if (frame === 'blink') {
-    out += rect(59, 45, 6, 1, OUTLINE);
-    out += rect(73, 45, 4, 1, OUTLINE);
+    o += px(60, 45, 6, 1, OUTLINE);
+    o += px(74, 45, 4, 1, OUTLINE);
   } else {
-    out += rect(59, 43, 6, 3, '#f1ebe3');
-    out += rect(62, 43, 3, 3, p.eye);
-    out += rect(63, 43, 1, 1, '#ffffff');
-    out += rect(59, 42, 6, 1, OUTLINE);
-    out += rect(73, 43, 4, 3, '#f1ebe3');
-    out += rect(75, 43, 2, 3, p.eye);
-    out += rect(73, 42, 4, 1, OUTLINE);
+    o += px(60, 43, 6, 3, '#efe8df');
+    o += px(63, 43, 2, 3, p.eye);
+    o += px(63, 43, 1, 1, '#ffffff');
+    o += px(60, 42, 6, 1, OUTLINE);
+    o += px(74, 43, 4, 3, '#efe8df');
+    o += px(76, 43, 2, 3, p.eye);
+    o += px(74, 42, 4, 1, OUTLINE);
   }
+  o += px(60, 47, 6, 1, s.shade); // нижнее веко
   // Брови.
-  out += rect(57, p.browY ?? 39, 9, 2, p.brow);
-  out += rect(72, (p.browY ?? 39) - 0, 6, 2, p.brow);
+  o += px(59, p.browY, 8, p.browH ?? 2, p.brow);
+  o += px(73, p.browY, 6, p.browH ?? 2, p.brow);
   // Рот.
   if (frame === 'talk') {
-    out += rect(70, 63, 8, 4, '#3a1e1a');
-    out += rect(71, 63, 6, 1, '#efe6dc');
-    out += rect(71, 66, 6, 1, '#8c4a42');
+    o += px(72, 62, 7, 4, '#3a1e1a');
+    o += px(73, 62, 5, 1, '#efe6dc');
+    o += px(73, 65, 5, 1, '#8c4a42');
   } else {
-    out += rect(70, 64, 8, 1, s.lip);
-    out += rect(69, 63, 1, 1, s.deep);
+    o += px(72, 63, 7, 1, s.lip);
+    o += px(71, p.smile ? 62 : 63, 1, 1, s.deep);
+    if (p.smile) o += px(79, 62, 1, 1, s.deep);
   }
-  // Возраст: морщины, носогубка.
+  // Возраст.
   if (p.age === 'old') {
-    out += rect(66, 47, 1, 3, s.deep);
-    out += rect(78, 47, 2, 1, s.deep);
-    out += rect(67, 57, 1, 5, s.deep);
-    out += rect(56, 48, 2, 1, s.deep);
-  } else {
-    out += rect(68, 59, 1, 3, s.shade);
+    o += px(66, 48, 1, 3, s.deep); // мешки под глазами
+    o += px(78, 47, 2, 1, s.deep); // гусиные лапки
+    o += px(78, 49, 2, 1, s.deep);
+    o += px(69, 56, 1, 6, s.deep); // носогубка
+    o += px(56, 47, 2, 1, s.deep);
   }
-  return out;
+  return o;
 }
 
 // ---------- Персонажи ----------
 
-/** Внук: ~25 лет, тёмные волосы, лёгкая щетина, чёрная кожанка поверх серой толстовки. */
+/** Внук: ~25 лет, тёмные волосы, лёгкая щетина; чёрная кожанка нараспашку поверх серой толстовки. */
 function grandson(frame) {
   const p = {
-    skin: { base: '#d9a17e', shade: '#b97d5d', hi: '#ecbd9c', deep: '#8e5a43', lip: '#9e5a4a' },
+    skin: { base: '#d9a17e', shade: '#ba7f5f', hi: '#ecbd9c', deep: '#8e5a43', lip: '#a05e4d' },
     eye: '#3a2a20',
     brow: '#2a211c',
     browY: 39,
   };
-  let out = '';
-  // Куртка: плечи, рукава, молния, воротник.
-  out += path(
-    'M 6 160 L 10 118 Q 16 102 40 96 L 50 92 L 70 92 L 82 95 Q 104 102 110 120 L 114 160 Z',
-    '#24222a',
-    OUTLINE,
-  );
-  out += path('M 82 95 Q 104 102 110 120 L 112 140 L 100 118 Q 94 104 82 99 Z', '#3a3842'); // свет на плече
-  out += path('M 10 118 Q 16 104 30 99 L 26 124 L 18 160 L 6 160 Z', '#16151a'); // тень дальнего плеча
-  out += rect(30, 130, 2, 30, '#16151a'); // складка рукава
-  // Толстовка и капюшон у шеи.
-  out += path('M 44 92 Q 60 104 78 94 L 80 100 Q 62 114 44 100 Z', '#6d6f75', OUTLINE);
-  out += path('M 52 100 L 66 102 L 64 160 L 54 160 Z', '#5d5f66'); // толстовка в распахнутой куртке
-  out += rect(58, 104, 1, 56, '#4a4c52');
-  // Отвороты кожанки.
-  out += path('M 46 98 L 54 104 L 50 132 L 40 112 Z', '#2f2d36', OUTLINE);
-  out += path('M 70 100 L 82 98 L 86 116 L 72 132 Z', '#2f2d36', OUTLINE);
-  out += rect(74, 112, 6, 1, '#4a4852'); // блик на коже
-  out += '<g transform="translate(0 7)">'; // голова ниже — короче шея
-  out += face(p, frame);
+  const jacket = { base: '#2a2830', shade: '#1b1a20', hi: '#403e49', fold: '#141318' };
+  let o = '';
+  // Капюшон толстовки за шеей.
+  o += shape('M 44 97 Q 60 88 78 97 L 76 102 Q 60 96 46 102 Z', '#62646b');
+  o += torso(jacket);
+  // Толстовка в распахнутой куртке.
+  o += shape('M 50 98 L 70 98 L 69 160 L 52 160 Z', '#6d6f76');
+  o += px(53, 120, 14, 1, '#5d5f66'); // карман-кенгуру
+  o += px(53, 120, 1, 14, '#5d5f66');
+  o += px(66, 120, 1, 14, '#5d5f66');
+  o += '<g transform="translate(0 12)">'; // голова на плечах
+  o += head(p, frame);
   // Щетина.
-  out += path('M 60 70 Q 70 73 79 66 L 80 64 Q 78 71 71 74 Q 64 75 60 72 Z', '#a77a5e');
+  o += shape('M 60 71 Q 70 74 79 67 L 80 65 Q 78 72 72 74 Q 65 75 60 72 Z', '#a87b5f', false);
   // Волосы: короткие, взъерошенная чёлка, висок.
-  out += path(
-    'M 44 44 Q 41 24 55 15 Q 70 10 82 18 Q 87 24 84 33 L 79 30 L 74 33 L 69 29 L 63 33 L 58 30 L 53 35 L 50 44 L 47 48 Z',
+  o += shape(
+    'M 45 44 Q 42 24 55 16 Q 70 10 82 18 Q 87 24 84 32 L 79 29 L 74 32 L 69 28 L 63 32 L 58 29 L 53 34 L 50 44 L 47 49 Z',
     '#2a211c',
-    OUTLINE,
   );
-  out += path('M 60 15 Q 72 13 80 19 L 74 21 Q 67 18 60 19 Z', '#3c2f27');
-  out += rect(48, 42, 3, 10, '#2a211c'); // висок
-  return out + '</g>';
+  o += shape('M 60 16 Q 72 13 80 19 L 74 21 Q 67 18 60 19 Z', '#3d3028', false);
+  o += px(48, 42, 3, 10, '#2a211c');
+  o += '</g>';
+  // Передний ворот толстовки и шнурки.
+  o += shape('M 50 98 Q 60 104 70 98 L 70 101 Q 60 108 50 101 Z', '#7b7d84');
+  o += px(56, 103, 1, 9, '#c9cacd');
+  o += px(64, 103, 1, 9, '#c9cacd');
+  // Отвороты кожанки и молния по краям.
+  o += shape('M 46 97 L 55 104 L 51 128 L 42 110 Z', '#34323c');
+  o += shape('M 74 98 L 84 97 L 88 112 L 70 128 Z', '#34323c');
+  o += px(76, 108, 6, 1, '#55525e'); // блик на коже
+  o += line('M 51 129 L 53 160', '#8a8d94');
+  o += line('M 70 129 L 69 160', '#8a8d94');
+  return o;
 }
 
-/** Палыч: ~60 лет, кепка-восьмиклинка, седые усы и виски, синяя рабочая куртка, клетчатая рубашка. */
+/** Палыч: ~60 лет, кепка-восьмиклинка, седые виски и усы; синяя рабочая куртка, клетчатая рубашка. */
 function palych(frame) {
   const p = {
-    skin: { base: '#d69a7a', shade: '#b47658', hi: '#e8b394', deep: '#875440', lip: '#8f5246' },
+    skin: { base: '#d69a7a', shade: '#b57759', hi: '#e8b394', deep: '#875440', lip: '#8f5246' },
     eye: '#2f3a44',
     brow: '#bdb6aa',
     browY: 39,
     age: 'old',
   };
-  let out = '';
-  // Широкие плечи, тёмно-синяя рабочая куртка с воротником.
-  out += path(
-    'M 2 160 L 6 116 Q 14 98 40 93 L 50 90 L 72 90 L 86 93 Q 110 100 116 118 L 118 160 Z',
-    '#2f3a4a',
-    OUTLINE,
-  );
-  out += path('M 86 93 Q 110 100 116 118 L 117 140 L 104 116 Q 98 102 86 97 Z', '#40506a');
-  out += path('M 6 116 Q 14 100 30 96 L 24 124 L 14 160 L 2 160 Z', '#232c39');
-  out += rect(28, 128, 2, 32, '#232c39');
+  const jacket = { base: '#2f3a4a', shade: '#222b38', hi: '#425370', fold: '#1a222d' };
+  let o = '';
+  o += torso(jacket);
   // Клетчатая рубашка в вороте.
-  out += path('M 46 92 L 72 92 L 70 160 L 50 160 Z', '#7a4c3c', OUTLINE);
-  for (let y = 94; y < 160; y += 4) out += rect(50, y, 20, 1, '#5e3a2e');
-  for (let x = 52; x < 70; x += 4) out += rect(x, 94, 1, 66, '#956050');
-  // Воротник куртки.
-  out += path('M 40 94 L 52 100 L 48 120 L 36 106 Z', '#3a4659', OUTLINE);
-  out += path('M 70 98 L 84 94 L 88 110 L 74 120 Z', '#3a4659', OUTLINE);
-  out += rect(78, 126, 10, 8, '#28323f'); // карман
-  out += rect(78, 126, 10, 1, '#4a5a74');
-  out += '<g transform="translate(0 7)">'; // голова ниже — короче шея
-  out += face(p, frame);
-  // Седые виски под кепкой.
-  out += path('M 45 34 L 52 34 L 52 50 L 47 54 L 45 46 Z', '#bdb6aa', OUTLINE);
-  out += rect(46, 40, 2, 8, '#a59e92');
+  o += shape('M 50 98 L 70 98 L 68 160 L 52 160 Z', '#7a4c3c');
+  for (let y = 101; y < 160; y += 4) o += px(52, y, 16, 1, '#5e3a2e');
+  for (let x = 54; x < 68; x += 4) o += px(x, 99, 1, 61, '#94604f');
+  o += px(59, 104, 2, 56, '#5e3a2e'); // планка с пуговицами
+  o += px(59, 110, 2, 2, '#d8c9b4');
+  o += px(59, 122, 2, 2, '#d8c9b4');
+  o += '<g transform="translate(0 12)">'; // голова на плечах
+  o += head(p, frame);
+  // Седые виски из-под кепки.
+  o += shape('M 46 35 L 53 35 L 52 50 L 48 54 L 46 47 Z', '#bdb6aa');
+  o += px(47, 40, 2, 8, '#a59e92');
   // Усы: густые, седые, свисают.
-  out += path(
-    'M 69 58 Q 76 56 84 59 L 84 62 Q 80 61 77 63 L 74 61 L 70 63 L 67 62 Z',
-    '#cfc9be',
-    OUTLINE,
-  );
-  out += rect(72, 58, 8, 1, '#e4dfd6');
+  o += shape('M 71 57 Q 77 55 84 58 L 84 61 Q 80 60 77 62 L 74 60 L 71 62 L 68 61 Z', '#cfc9be');
+  o += px(73, 57, 8, 1, '#e4dfd6');
   // Кепка-восьмиклинка с козырьком вправо.
-  out += path(
-    'M 41 36 Q 40 20 56 14 Q 74 10 86 20 Q 90 25 88 30 L 98 32 Q 98 35 94 36 L 82 35 L 46 38 Z',
+  o += shape(
+    'M 42 37 Q 41 20 57 14 Q 75 10 87 20 Q 91 25 89 30 L 99 32 Q 99 35 95 36 L 83 35 L 47 39 Z',
     '#4a4237',
-    OUTLINE,
   );
-  out += path('M 56 15 Q 70 12 82 19 L 76 22 Q 66 17 56 18 Z', '#5f5647');
-  out += path('M 82 31 L 98 32 Q 98 35 94 36 L 82 35 Z', '#38322a'); // козырёк
-  out += rect(64, 14, 2, 2, '#38322a'); // пуговка
-  out += rect(46, 35, 38, 1, '#38322a'); // тень от кепки на лбу
-  return out + '</g>';
+  o += shape('M 57 15 Q 70 12 82 19 L 76 22 Q 66 17 57 18 Z', '#5f5647', false);
+  o += shape('M 83 31 L 99 32 Q 99 35 95 36 L 83 35 Z', '#38322a', false);
+  o += px(65, 14, 2, 2, '#38322a');
+  o += px(47, 36, 38, 1, '#38322a');
+  o += '</g>';
+  // Воротник рубашки и куртки.
+  o += shape('M 50 98 L 58 104 L 55 108 L 49 101 Z', '#8a5847');
+  o += shape('M 70 98 L 62 104 L 65 108 L 71 101 Z', '#8a5847');
+  o += shape('M 44 97 L 52 102 L 47 122 L 38 108 Z', '#3a4659');
+  o += shape('M 76 98 L 86 96 L 90 110 L 73 122 Z', '#3a4659');
+  // Нагрудный карман с клапаном.
+  o += shape('M 78 128 L 90 127 L 90 138 L 78 138 Z', '#283240');
+  o += px(78, 128, 12, 2, '#4a5a74');
+  return o;
 }
 
-/** Дед: ~75 лет, ушанка со звездой (как на логотипе), очки, добрые морщины, старое пальто. */
+/** Дед: ~75 лет, лысина с седым венчиком, кустистые брови, круглые очки, усы, добрая улыбка;
+ *  вязаный свитер с узором под старым пиджаком, ворот рубашки. */
 function grandpa(frame) {
   const p = {
-    skin: { base: '#d6a283', shade: '#b47f62', hi: '#e8bb9c', deep: '#865843', lip: '#8f5a4c' },
-    eye: '#3a3a3a',
-    brow: '#d8d3ca',
-    browY: 40,
+    skin: { base: '#dca78a', shade: '#bb8467', hi: '#efc4a8', deep: '#8a5a45', lip: '#955c4d' },
+    eye: '#4a3a2e',
+    brow: '#e9e5dd',
+    browY: 38,
+    browH: 3,
     age: 'old',
+    smile: true,
   };
-  let out = '';
-  // Пальто с меховым воротником.
-  out += path(
-    'M 4 160 L 8 118 Q 16 100 40 94 L 50 90 L 70 90 L 84 94 Q 108 100 114 118 L 116 160 Z',
-    '#4b3f33',
-    OUTLINE,
-  );
-  out += path('M 84 94 Q 108 100 114 118 L 115 140 L 102 116 Q 96 102 84 98 Z', '#5e5040');
-  out += path('M 8 118 Q 16 102 30 97 L 24 124 L 16 160 L 4 160 Z', '#382f26');
-  out += path('M 38 92 Q 60 108 84 94 L 86 104 Q 60 120 36 104 Z', '#8a7a68', OUTLINE); // мех
-  for (let x = 40; x < 84; x += 3) out += rect(x, 100 + ((x * 7) % 5), 1, 2, '#a59482');
-  out += rect(58, 108, 3, 52, '#382f26'); // борт
-  out += rect(64, 120, 2, 2, '#c9b47a'); // пуговица
-  out += rect(64, 136, 2, 2, '#c9b47a');
-  out += '<g transform="translate(0 7)">'; // голова ниже — короче шея
-  out += face(p, frame);
-  // Седые усы и очки.
-  out += path('M 69 58 Q 76 57 83 59 L 82 61 L 76 62 L 70 62 Z', '#e4dfd6', OUTLINE);
-  out += `<rect x="57" y="41" width="10" height="7" fill="none" stroke="#5a4a3a" stroke-width="1"/>`;
-  out += `<rect x="71" y="41" width="8" height="7" fill="none" stroke="#5a4a3a" stroke-width="1"/>`;
-  out += rect(67, 43, 4, 1, '#5a4a3a');
-  out += rect(50, 43, 7, 1, '#5a4a3a');
-  out += rect(58, 42, 3, 1, '#ffffff');
-  // Ушанка: макушка, отворот со звездой, уши опущены.
-  out += path('M 40 40 Q 38 18 58 12 Q 78 8 88 22 L 88 32 L 42 36 Z', '#eea45a', OUTLINE);
-  out += path('M 40 30 L 88 26 L 88 34 L 42 38 Z', '#d48a42', OUTLINE); // отворот
-  out += path(
-    'M 66 24 L 68 28 L 72 28 L 69 31 L 70 35 L 66 33 L 62 35 L 63 31 L 60 28 L 64 28 Z',
-    '#1a1412',
-  ); // звезда
-  out += path('M 40 36 L 48 38 L 48 58 Q 44 62 40 58 Z', '#d48a42', OUTLINE); // ухо шапки
-  out += path('M 58 14 Q 70 11 80 16 L 74 19 Q 66 15 58 17 Z', '#f6c08a');
-  return out + '</g>';
+  const coat = { base: '#5a5146', shade: '#463f36', hi: '#70665a', fold: '#3a342c' };
+  let o = '';
+  o += torso(coat);
+  // Вязаный свитер с узором ромбами.
+  o += shape('M 49 97 L 71 97 L 70 160 L 51 160 Z', '#7a3a38');
+  for (let y = 106; y < 160; y += 8) {
+    o += px(52, y, 17, 1, '#5c2a29');
+    for (let x = 54; x < 68; x += 5) o += px(x, y + 4, 1, 1, '#a8705a');
+  }
+  o += px(52, 100, 17, 3, '#6a3030'); // резинка ворота свитера
+  o += '<g transform="translate(0 12)">'; // голова на плечах
+  o += head(p, frame);
+  // Лысина: блик на макушке.
+  o += shape('M 60 18 Q 72 15 80 22 L 75 24 Q 68 19 60 21 Z', '#f5d3bc', false);
+  // Седой венчик волос над ухом и на затылке — пушистый.
+  o += shape('M 46 44 Q 44 38 47 33 L 50 34 L 49 40 L 48 44 Z', '#e9e5dd');
+  o += px(47, 36, 1, 6, '#cfcac0');
+  // Морщины на лбу.
+  o += px(66, 29, 10, 1, p.skin.shade);
+  o += px(68, 32, 8, 1, p.skin.shade);
+  // Круглые очки на дужке.
+  o += `<circle cx="63" cy="44.5" r="4.5" fill="none" stroke="#6b5a48" stroke-width="1"/>`;
+  o += `<circle cx="76" cy="44.5" r="3.5" fill="none" stroke="#6b5a48" stroke-width="1"/>`;
+  o += px(67, 44, 5, 1, '#6b5a48');
+  o += px(47, 44, 12, 1, '#6b5a48');
+  o += px(61, 41, 2, 1, '#ffffff');
+  // Усы — белые, мягкие.
+  o += shape('M 73 57 Q 78 56 83 58 L 82 60 Q 78 59 74 60 Z', '#efebe4');
+  o += '</g>';
+  // Ворот рубашки и отвороты пиджака.
+  o += shape('M 50 97 L 58 103 L 55 107 L 48 100 Z', '#e6e0d2');
+  o += shape('M 70 97 L 62 103 L 65 107 L 72 100 Z', '#e6e0d2');
+  o += shape('M 44 97 L 52 101 L 48 128 L 38 110 Z', '#655b4f');
+  o += shape('M 76 98 L 86 96 L 90 112 L 72 128 Z', '#655b4f');
+  o += px(86, 132, 2, 2, '#b6a274'); // пуговица
+  o += px(86, 146, 2, 2, '#b6a274');
+  return o;
 }
 
 const CHARACTERS = { grandson, palych, grandpa };
@@ -270,9 +309,7 @@ async function main() {
     characters: Object.keys(CHARACTERS),
   };
   writeFileSync(`${ROOT}data/characters.json`, JSON.stringify(meta, null, 2) + '\n');
-  console.log(
-    `✓ ${Object.keys(sheets).length} персонажа в public/assets/images/characters, data/characters.json`,
-  );
+  console.log(`✓ ${Object.keys(sheets).length} персонажа в public/assets/images/characters`);
 
   if (process.argv.includes('--preview')) {
     mkdirSync(`${ROOT}art/preview`, { recursive: true });
