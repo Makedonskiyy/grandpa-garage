@@ -5,7 +5,7 @@ import config from '../../data/config.json';
 import { BaseScene } from './BaseScene.js';
 import { SCENES, MUSIC, TEST_IDS } from '../config/constants.js';
 import { drawGarageRoom, placeGarageCar } from './garageBackdrop.js';
-import { DialogSystem } from '../systems/DialogSystem.js';
+import { StoryStage } from '../systems/StoryStage.js';
 import { audio } from '../systems/AudioManager.js';
 import {
   computeStats,
@@ -83,7 +83,7 @@ export class GarageScene extends BaseScene {
   async #playGarageIntro() {
     gameState.flags.garageIntroSeen = true;
     this.ui.style.visibility = 'hidden';
-    await new DialogSystem(this).play('garageIntro');
+    await new StoryStage(this).play('garageIntro');
     this.ui.style.visibility = '';
   }
 

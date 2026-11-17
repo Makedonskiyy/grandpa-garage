@@ -1,6 +1,6 @@
 import { BaseScene } from './BaseScene.js';
 import { SCENES, SFX } from '../config/constants.js';
-import { DialogSystem } from '../systems/DialogSystem.js';
+import { StoryStage } from '../systems/StoryStage.js';
 import { audio } from '../systems/AudioManager.js';
 import { formatSeconds, getTest } from '../systems/simulate.js';
 import { gameState } from '../gameState.js';
@@ -39,7 +39,7 @@ export class ResultScene extends BaseScene {
     }));
 
     // Поражение в заезде: сначала реплика Палыча (20), потом итог.
-    if (!r.ok && r.testId === 'race') await new DialogSystem(this).play('raceLose');
+    if (!r.ok && r.testId === 'race') await new StoryStage(this).play('raceLose');
 
     const sec = t('garage.units.sec');
     const row = (label, value, cls = '') =>

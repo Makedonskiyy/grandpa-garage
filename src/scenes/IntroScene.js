@@ -1,14 +1,15 @@
 import { BaseScene } from './BaseScene.js';
-import { SCENES, MUSIC, WORLD } from '../config/constants.js';
-import { DialogSystem } from '../systems/DialogSystem.js';
+import { SCENES, MUSIC } from '../config/constants.js';
+import { StoryStage } from '../systems/StoryStage.js';
 import { audio } from '../systems/AudioManager.js';
 import { webButton } from '../ui/components.js';
 import { gameState } from '../gameState.js';
 import { t } from '../systems/strings.js';
 
 /**
- * Интро (ТЗ 3.5): дата на чёрном, затем тот же гараж, что в меню, но темнее,
- * записка деда листком (реплики 4–7) и реплики внука. «Пропустить» в углу.
+ * Интро (ТЗ 3.5) как сцена истории: дата на чёрном, гараж с машиной под чехлом,
+ * верстак с запиской — дед на старой фотографии, его голос — почерк. «Пропустить» в углу.
+ * Фоны и кто на экране — в data/story.json.
  */
 export class IntroScene extends BaseScene {
   constructor() {
@@ -18,17 +19,11 @@ export class IntroScene extends BaseScene {
   async create() {
     this.enter();
     audio.playMusic(MUSIC.INTRO);
+    this.cameras.main.setBackgroundColor('#000000');
 
-    const { width, height } = WORLD;
-    this.add.image(0, 0, 'bg_menu').setOrigin(0);
-    this.add.rectangle(0, 0, width, height, 0x000000, 0.5).setOrigin(0);
-
-    this.ui.append(
-      webButton(t('dialog.skip'), () => this.#finish(), { className: 'ui-abs skip wbtn--small' }),
-    );
-
-    this.dialog = new DialogSystem(this);
-    await this.dialog.play('intro');
+    const stage = new StoryStage(this);
+    stage.addControl(webButton(t('dialog.skip'), () => this.#finish()));
+    await stage.play('intro');
     this.#finish();
   }
 

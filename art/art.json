@@ -1,5 +1,5 @@
 {
-  "$comment": "Исходники артов → готовые пиксельные файлы игры. Пересборка всего: npm run art. Параметры — как у tools/pixelize.mjs.",
+  "$comment": "Исходники артов → готовые пиксельные файлы игры. Пересборка: npm run art. items — фоны меню и гаража; фоны сцен истории берутся из data/story-backgrounds.json (исходники в art/source/story), их параметры — storyDefaults и story.<ключ>.",
   "items": [
     {
       "source": "art/source/menu_garage.jpg",
@@ -28,5 +28,33 @@
         "sharpen": 1.2
       }
     }
-  ]
+  ],
+  "storyDefaults": {
+    "pixel": 2,
+    "colors": 64,
+    "contrast": 1.1,
+    "saturation": 1.1,
+    "sharpen": 1.2
+  },
+  "story": {
+    "workbench": {
+      "warm": 0.1
+    },
+    "note_closeup": {
+      "warm": 0.12,
+      "brightness": 0.9
+    },
+    "garage7_cover": {
+      "brightness": 1.05
+    },
+    "zarya_entrance": {
+      "brightness": 0.82
+    },
+    "back_road": {
+      "brightness": 0.85
+    },
+    "palych_arrival": {
+      "brightness": 0.85
+    }
+  }
 }

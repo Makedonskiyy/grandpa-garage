@@ -346,168 +346,390 @@
   }
 }
 
-/* ---------- Диалоги ---------- */
-/* Слой диалога пропускает клики в канвас и к кнопкам сцены; ловит их только панель. */
-.ui-layer.dialog-layer > * {
+/* ---------- Сцены истории (визуальная новелла) ----------
+ * Слой поверх сцены: затемнение, персонажи по пояс слева и справа, окно реплики внизу.
+ * Кликабельны только окно реплики и кнопки управления; клик по сцене тоже листает.
+ */
+.ui-layer.story-layer {
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    opacity 300ms var(--ui-ease),
+    visibility 0s 300ms;
+}
+
+.ui-layer.story-layer.is-open {
+  visibility: visible;
+  opacity: 1;
+  transition: opacity 400ms var(--ui-ease);
+}
+
+.ui-layer.story-layer > * {
   pointer-events: none;
 }
 
-.ui-layer.dialog-layer > .dlg {
+.ui-layer.story-layer > .story__box,
+.ui-layer.story-layer > .story__controls {
   pointer-events: auto;
-  cursor: pointer;
 }
 
-.dlg {
-  left: 72px;
-  right: 72px;
-  bottom: 72px;
-  height: 288px;
-  display: flex;
-  align-items: flex-start;
-  gap: 48px;
-  padding: 48px;
-  border-radius: 42px;
-  background: rgb(22 21 19 / 0.94);
-  box-shadow:
-    inset 0 0 0 3px rgb(239 233 222 / 0.08),
-    0 24px 72px rgb(0 0 0 / 0.4);
-  font-family: var(--font-ui);
-  color: #efe9de;
+/*
+ * Фон истории всегда чуть приглушён: виньетка по краям, тёмный верх под кнопки и низ под окно.
+ * Так белый текст и кнопки читаются даже на светлом небе. Без своего фона приглушается вся сцена.
+ */
+.story__shade {
+  inset: 0;
+  background-color: rgb(8 7 6 / 0.18);
+  background-image:
+    linear-gradient(
+      to bottom,
+      rgb(8 7 6 / 0.5) 0%,
+      transparent 20%,
+      transparent 48%,
+      rgb(8 7 6 / 0.82) 100%
+    ),
+    radial-gradient(ellipse 75% 70% at 50% 42%, transparent 55%, rgb(8 7 6 / 0.55) 100%);
+  transition: background-color var(--ui-enter) var(--ui-ease);
 }
 
-.dlg__portrait {
-  flex: none;
-  width: 192px;
-  height: 192px;
-  border-radius: 24px;
+.story__shade.is-on {
+  background-color: rgb(8 7 6 / 0.45);
+}
+
+.story__actors {
+  inset: 0;
   overflow: hidden;
-  display: grid;
-  place-items: center;
-  background: #262421;
-  box-shadow: inset 0 0 0 3px rgb(239 233 222 / 0.08);
-  font-size: 84px;
-  font-weight: 500;
-  color: #8a847a;
 }
 
-.dlg__portrait img {
+/* Персонаж: корень — выход на сцену, тело — фокус (кто говорит), спрайт — дыхание. */
+.story__actor {
+  position: absolute;
+  bottom: 136px; /* окно реплики перекрывает только низ туловища */
+  width: 600px;
+  height: 800px;
+  opacity: 0;
+  /* Выход на сцену с лёгким перелётом и возвратом — живее, чем ровный сдвиг. */
+  transition:
+    opacity 450ms var(--ui-ease),
+    transform 700ms cubic-bezier(0.34, 1.32, 0.64, 1);
+}
+
+.story__actor--left {
+  left: 140px;
+  transform: translateX(-160px);
+}
+
+.story__actor--right {
+  right: 140px;
+  transform: translateX(160px);
+}
+
+.story__actor.is-in {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.story__actor.is-in.is-leaving {
+  opacity: 0;
+  transition:
+    opacity 350ms var(--ui-ease),
+    transform 400ms cubic-bezier(0.55, 0, 1, 0.45);
+}
+
+.story__actor--left.is-leaving {
+  transform: translateX(-160px);
+}
+
+.story__actor--right.is-leaving {
+  transform: translateX(160px);
+}
+
+.story__body {
   width: 100%;
   height: 100%;
+  transform: scaleX(var(--flip, 1)) translateY(var(--lift, 0));
+  transition:
+    transform 450ms var(--ui-ease),
+    filter 450ms var(--ui-ease);
+}
+
+/* Вступил в разговор — короткий подскок (свойство translate складывается с transform). */
+.story__body.is-hop {
+  animation: story-hop 460ms var(--ui-ease);
+}
+
+@keyframes story-hop {
+  35% {
+    translate: 0 -18px;
+  }
+}
+
+/* Справа персонаж отражён — смотрит на собеседника. */
+.story__actor--right .story__body {
+  --flip: -1;
+}
+
+.story__actor.is-listening .story__body {
+  --lift: 24px;
+  filter: brightness(0.5) saturate(0.8);
+}
+
+.story__sprite {
+  width: 100%;
+  height: 100%;
+  background-repeat: no-repeat;
+  background-size: 300% 100%;
+  background-position: 0 0;
   image-rendering: pixelated;
+  animation: story-breathe 3.2s ease-in-out infinite alternate;
 }
 
-.dlg__body {
-  flex: 1;
-  min-width: 0;
+@keyframes story-breathe {
+  to {
+    transform: translateY(-4px);
+  }
 }
 
-.dlg__name {
-  margin-bottom: 12px;
-  font-size: 36px;
+/* Пока печатается реплика — говорящий чуть покачивается в такт речи. */
+.story__actor.is-talking .story__sprite {
+  animation: story-talk 280ms ease-in-out infinite alternate;
+}
+
+@keyframes story-talk {
+  from {
+    transform: translateY(-2px);
+  }
+
+  to {
+    transform: translateY(-6px) rotate(0.4deg);
+  }
+}
+
+/* Дед — выцветшая фотография в рамке над окном реплики. */
+.story__actor.is-photo {
+  bottom: 300px;
+  right: 220px;
+  width: 360px;
+  height: auto;
+  transform: translateY(-80px) rotate(-12deg);
+}
+
+/* Фотография ложится на верстак: падает сверху и докручивается. */
+.story__actor.is-photo.is-in {
+  transform: none;
+}
+
+.story__actor.is-photo.is-leaving {
+  transform: translateY(60px) rotate(8deg);
+}
+
+.story__photo {
+  padding: 20px 20px 56px;
+  background: #ede3cc;
+  box-shadow: 0 16px 40px rgb(0 0 0 / 0.55);
+  transform: rotate(-3deg);
+}
+
+.story__photo .story__sprite {
+  height: 400px;
+  background-color: #8c8172;
+  filter: sepia(0.8) contrast(1.05) brightness(0.92);
+  animation: none;
+}
+
+/* Окно реплики. */
+.story__box {
+  left: 160px;
+  right: 160px;
+  bottom: 40px;
+  min-height: 200px;
+  padding: 48px 56px 40px;
+  border-radius: 20px;
+  background: rgb(22 21 19 / 0.94);
+  box-shadow:
+    inset 0 0 0 1px rgb(239 233 222 / 0.08),
+    0 12px 32px rgb(0 0 0 / 0.45);
+  color: #efe9de;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  animation: ui-rise var(--ui-enter) var(--ui-ease);
+}
+
+.story__name {
+  position: absolute;
+  top: -24px;
+  left: 48px;
+  height: 48px;
+  padding: 0 24px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  background: var(--ui-accent);
+  color: var(--ui-ink);
+  font-size: 24px;
   font-weight: 500;
-  line-height: 48px;
-  color: var(--ui-accent);
+  animation: story-tag 380ms var(--ui-ease);
 }
 
-.dlg__text {
-  font-size: 45px;
-  line-height: 66px;
+@keyframes story-tag {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.85);
+  }
+}
+
+.story__box--right .story__name {
+  left: auto;
+  right: 48px;
+}
+
+.story__text {
+  font-size: 34px;
+  line-height: 1.45;
   white-space: pre-wrap;
 }
 
-/* «Дальше»: маленький треугольник в углу, появляется, когда реплика допечатана. */
-.dlg__next {
+.story__next {
   position: absolute;
-  right: 48px;
-  bottom: 42px;
+  right: 40px;
+  bottom: 32px;
   width: 0;
   height: 0;
-  border-left: 15px solid transparent;
-  border-right: 15px solid transparent;
-  border-top: 18px solid currentColor;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-top: 12px solid currentColor;
   opacity: 0;
   transition: opacity var(--ui-fast) var(--ui-ease);
 }
 
-.dialog-layer--done .dlg__next {
+.story-layer.is-done .story__next {
   opacity: 0.6;
+  animation: story-next 800ms ease-in-out infinite alternate;
 }
 
-.dlg-date {
-  inset: 0;
-  display: grid;
-  place-items: center;
-  background: #000;
-  font-family: var(--font-ui);
-  color: #efe9de;
+@keyframes story-next {
+  to {
+    transform: translateY(5px);
+  }
 }
 
-.dlg-date .dlg__text {
-  max-width: 1320px;
-  font-size: 60px;
-  line-height: 84px;
-  text-align: center;
-}
-
-.dlg-caption {
-  inset: 0;
-  display: grid;
-  place-items: center;
-  background: rgb(0 0 0 / 0.6);
-  font-family: var(--font-ui);
-  color: #efe9de;
-}
-
-.dlg-caption .dlg__text {
-  max-width: 1320px;
-  font-size: 48px;
-  line-height: 72px;
-  text-align: center;
-}
-
-/* Записка деда: лист в линейку, почерк, тень от лампы. */
-.dlg-note {
-  inset: 0;
-  display: grid;
-  place-items: center;
-  background: rgb(0 0 0 / 0.35);
-}
-
-.dlg-note__sheet {
-  position: relative;
-  width: 1056px;
-  min-height: 480px;
-  padding: 72px 84px 96px;
-  border-radius: 6px;
+/* Записка деда: бумага в линейку и почерк. */
+.story__box.is-note {
   background:
-    repeating-linear-gradient(to bottom, transparent 0 81px, rgb(70 96 140 / 0.22) 81px 84px),
+    repeating-linear-gradient(to bottom, transparent 0 55px, rgb(70 96 140 / 0.22) 55px 57px),
     #f3ead7;
-  background-position: 0 72px; /* линейки — под строками почерка */
-  box-shadow: 0 30px 72px rgb(0 0 0 / 0.5);
-  transform: rotate(-1.2deg);
+  background-position: 0 44px;
+  color: #2a3348;
+  transform: rotate(-0.6deg);
+  animation: story-note-in 600ms var(--ui-ease);
+}
+
+/* Записку кладут перед глазами: выезжает снизу и чуть поворачивается. */
+@keyframes story-note-in {
+  from {
+    opacity: 0;
+    transform: translateY(60px) rotate(-3deg);
+  }
+}
+
+.story__box.is-note .story__text {
   font-family: 'Caveat Variable', 'Caveat', cursive;
-  color: #2a3348;
+  font-size: 50px;
+  line-height: 1.14;
 }
 
-.dlg-note .dlg__text {
-  font-size: 72px;
-  line-height: 84px;
+.story__box.is-note .story__name {
+  background: #2a3348;
+  color: #f3ead7;
 }
 
-.dlg-note .dlg__next {
-  color: #2a3348;
+/* Дата и надписи — по центру, без окна. */
+.story-layer[data-kind='date'] .story__box,
+.story-layer[data-kind='caption'] .story__box {
+  display: none;
 }
 
-.dlg--enter {
-  animation: ui-fade var(--ui-enter) var(--ui-ease);
+.story__center {
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-ui);
+  color: #efe9de;
+  text-align: center;
+  text-shadow: 0 2px 10px rgb(0 0 0 / 0.7);
 }
 
-.dlg.dlg--enter,
-.dlg-note.dlg--enter .dlg-note__sheet {
-  animation: ui-rise var(--ui-enter) var(--ui-ease);
+/* Дата поверх фото: тёмная полоса через весь экран, чтобы текст читался и на светлом небе. */
+.story__date {
+  justify-self: stretch;
+  display: grid;
+  place-items: center;
+  margin-top: -200px;
+  padding: 48px 0;
+  background: linear-gradient(
+    to right,
+    rgb(14 13 12 / 0) 0%,
+    rgb(14 13 12 / 0.72) 24%,
+    rgb(14 13 12 / 0.72) 76%,
+    rgb(14 13 12 / 0) 100%
+  );
+  animation: story-band 900ms var(--ui-ease);
 }
 
-/* Кнопка «Пропустить» над диалогом. */
+/* Полоса под датой раскрывается от центра, текст проявляется из разреженного. */
+@keyframes story-band {
+  from {
+    clip-path: inset(0 50%);
+  }
+
+  to {
+    clip-path: inset(0 0);
+  }
+}
+
+@keyframes story-date-text {
+  from {
+    opacity: 0;
+    letter-spacing: 0.2em;
+  }
+}
+
+.story__date .story__text {
+  max-width: 1200px;
+  animation: story-date-text 1400ms var(--ui-ease);
+  text-shadow: 0 2px 8px rgb(0 0 0 / 0.6);
+  font-size: 56px;
+  line-height: 1.3;
+}
+
+.story__caption {
+  max-width: 1100px;
+  margin-top: -200px;
+  padding: 40px 56px;
+  border-radius: 20px;
+  background: rgb(22 21 19 / 0.88);
+  animation: ui-rise 500ms var(--ui-ease);
+}
+
+.story__caption .story__text {
+  font-size: 38px;
+  line-height: 1.4;
+}
+
+.story__controls {
+  top: 40px;
+  right: 40px;
+  display: flex;
+  gap: 16px;
+}
+
+.story__controls .wbtn {
+  height: 56px;
+  padding: 0 24px;
+  font-size: 20px;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.45);
+}
+
 .skip {
   top: 48px;
   right: 48px;
@@ -1292,4 +1514,94 @@
 
 .tacho__seg.is-red.is-on {
   background: #e2766b;
+}
+
+/* ---------- Переход между сценами: гаражная рольставня ----------
+ * Опускается сверху с ускорением, поднимается плавно. Рёбра ламелей, нижняя планка с ручкой
+ * и тень на сцену под кромкой.
+ */
+.shutter {
+  z-index: 50;
+  pointer-events: none;
+  transform: translateY(-104%);
+  transition: transform 560ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.shutter.is-closed {
+  pointer-events: auto;
+  transform: translateY(0);
+  transition: transform 420ms cubic-bezier(0.55, 0, 0.9, 0.55);
+}
+
+.shutter__slats {
+  position: absolute;
+  inset: 0 0 40px;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      #3b3e43 0 4px,
+      #4a4e54 4px 8px,
+      #34373c 8px 30px,
+      #23252a 30px 34px,
+      #191a1e 34px 36px
+    ),
+    #34373c;
+}
+
+/* Потёртости и грязь снизу — та же ставня, что у гаражей кооператива. */
+.shutter__slats::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to bottom, transparent 60%, rgb(74 52 34 / 0.35)),
+    radial-gradient(ellipse 30% 20% at 20% 80%, rgb(98 64 40 / 0.35), transparent),
+    radial-gradient(ellipse 25% 18% at 78% 30%, rgb(98 64 40 / 0.22), transparent);
+}
+
+.shutter__bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 40px;
+  background: linear-gradient(to bottom, #5a5e65, #2a2c31 70%, #1a1b1f);
+  box-shadow: 0 24px 48px rgb(0 0 0 / 0.7);
+}
+
+.shutter__handle {
+  position: absolute;
+  left: 50%;
+  top: 12px;
+  width: 160px;
+  height: 14px;
+  margin-left: -80px;
+  border-radius: 7px;
+  background: linear-gradient(to bottom, #8a8f97, #4a4e55);
+  box-shadow: inset 0 -2px 0 rgb(0 0 0 / 0.35);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shutter,
+  .shutter.is-closed {
+    transform: none;
+    transition: opacity 300ms linear;
+  }
+
+  .shutter {
+    opacity: 0;
+  }
+
+  .shutter.is-closed {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .story__body.is-hop,
+  .story__actor.is-talking .story__sprite,
+  .story-layer.is-done .story__next {
+    animation: none;
+  }
 }
