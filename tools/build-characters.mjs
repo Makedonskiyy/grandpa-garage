@@ -17,6 +17,7 @@
 import sharp from 'sharp';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { format } from 'prettier';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const OUT = `${ROOT}public/assets/images/characters/`;
@@ -433,7 +434,10 @@ async function main() {
     frames: FRAMES,
     characters: Object.keys(CHARACTERS),
   };
-  writeFileSync(`${ROOT}data/characters.json`, JSON.stringify(meta, null, 2) + '\n');
+  writeFileSync(
+    `${ROOT}data/characters.json`,
+    await format(JSON.stringify(meta), { parser: 'json' }),
+  );
   console.log(`✓ ${Object.keys(sheets).length} персонажа в public/assets/images/characters`);
 
   if (process.argv.includes('--preview')) {

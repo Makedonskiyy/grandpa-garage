@@ -18,6 +18,7 @@
 import sharp from 'sharp';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { format } from 'prettier';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const OUT = `${ROOT}public/assets/images/car/`;
@@ -719,7 +720,7 @@ async function main() {
       spoiler_wing: { paint: 'car_spoiler_wing_paint', base: 'car_spoiler_wing_base' },
     },
   };
-  writeFileSync(`${ROOT}data/car.json`, JSON.stringify(meta, null, 2) + '\n');
+  writeFileSync(`${ROOT}data/car.json`, await format(JSON.stringify(meta), { parser: 'json' }));
   console.log(`✓ ${Object.keys(files).length} файлов в public/assets/images/car, data/car.json`);
   if (PREVIEW) await preview(files);
 }

@@ -14,6 +14,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { format } from 'prettier';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const pixelize = fileURLToPath(new URL('./pixelize.mjs', import.meta.url));
@@ -58,7 +59,10 @@ for (const key of Object.keys(backgrounds)) {
   const path = `assets/images/story/${key}.png`;
   if (existsSync(`${root}public/${path}`)) manifest.images.push({ key: `story_${key}`, path });
 }
-writeFileSync(`${root}data/assets.json`, JSON.stringify(manifest, null, 2) + '\n');
+writeFileSync(
+  `${root}data/assets.json`,
+  await format(JSON.stringify(manifest), { parser: 'json' }),
+);
 
 if (missing.length) {
   console.log(`\nФоны истории без исходника (пока временные): ${missing.join(', ')}`);
