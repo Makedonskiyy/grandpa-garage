@@ -1,34 +1,15 @@
 {
   "$comment": "Сгенерировано tools/build-car.mjs (npm run car) — не править руками. Координаты в единицах мира; текстуры в density раз детальнее.",
   "density": 3,
-  "size": {
-    "width": 288,
-    "height": 96
-  },
-  "anchor": {
-    "x": 144,
-    "y": 92
-  },
+  "size": { "width": 288, "height": 96 },
+  "anchor": { "x": 144, "y": 92 },
   "wheels": {
-    "rear": {
-      "x": 63,
-      "y": 73
-    },
-    "front": {
-      "x": 228,
-      "y": 73
-    },
+    "rear": { "x": 63, "y": 73 },
+    "front": { "x": 228, "y": 73 },
     "radius": 19
   },
-  "wheelFrame": {
-    "width": 48,
-    "height": 48,
-    "frames": 16
-  },
-  "headlight": {
-    "x": 272,
-    "y": 52
-  },
+  "wheelFrame": { "width": 48, "height": 48, "frames": 16 },
+  "headlight": { "x": 272, "y": 52 },
   "tires": {
     "wheels_stock": "stock",
     "wheels_studded": "studded",
@@ -41,9 +22,7 @@
     "body_light": "light"
   },
   "spoilers": {
-    "spoiler_lip": {
-      "paint": "car_spoiler_lip_paint"
-    },
+    "spoiler_lip": { "paint": "car_spoiler_lip_paint" },
     "spoiler_wing": {
       "paint": "car_spoiler_wing_paint",
       "base": "car_spoiler_wing_base"
