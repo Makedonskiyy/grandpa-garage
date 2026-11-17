@@ -4,6 +4,14 @@
     "width": 120,
     "height": 160
   },
-  "frames": ["idle", "talk", "blink"],
-  "characters": ["grandson", "palych", "grandpa"]
+  "frames": [
+    "idle",
+    "talk",
+    "blink"
+  ],
+  "characters": [
+    "grandson",
+    "palych",
+    "grandpa"
+  ]
 }
