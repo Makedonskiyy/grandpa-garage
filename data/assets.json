@@ -8,6 +8,30 @@
     {
       "key": "bg_garage",
       "path": "assets/images/bg/garage_room.png"
+    },
+    {
+      "key": "story_zarya_entrance",
+      "path": "assets/images/story/zarya_entrance.png"
+    },
+    {
+      "key": "story_garage7_cover",
+      "path": "assets/images/story/garage7_cover.png"
+    },
+    {
+      "key": "story_workbench",
+      "path": "assets/images/story/workbench.png"
+    },
+    {
+      "key": "story_note_closeup",
+      "path": "assets/images/story/note_closeup.png"
+    },
+    {
+      "key": "story_back_road",
+      "path": "assets/images/story/back_road.png"
+    },
+    {
+      "key": "story_palych_arrival",
+      "path": "assets/images/story/palych_arrival.png"
     }
   ],
   "spritesheets": [],

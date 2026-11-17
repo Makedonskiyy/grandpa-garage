@@ -36,5 +36,16 @@
     "saturation": 1.1,
     "sharpen": 1.2
   },
-  "story": {}
+  "story": {
+    "workbench": {
+      "warm": 0.1
+    },
+    "note_closeup": {
+      "warm": 0.12,
+      "brightness": 0.9
+    },
+    "garage7_cover": {
+      "brightness": 1.05
+    }
+  }
 }

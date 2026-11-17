@@ -575,8 +575,25 @@
   text-align: center;
 }
 
+/* Дата поверх фото: тёмная полоса через весь экран, чтобы текст читался и на светлом небе. */
+.story__date {
+  justify-self: stretch;
+  display: grid;
+  place-items: center;
+  margin-top: -200px;
+  padding: 48px 0;
+  background: linear-gradient(
+    to right,
+    rgb(14 13 12 / 0) 0%,
+    rgb(14 13 12 / 0.72) 24%,
+    rgb(14 13 12 / 0.72) 76%,
+    rgb(14 13 12 / 0) 100%
+  );
+}
+
 .story__date .story__text {
   max-width: 1200px;
+  text-shadow: 0 2px 8px rgb(0 0 0 / 0.6);
   font-size: 56px;
   line-height: 1.3;
 }
