@@ -1,7 +1,7 @@
 import { BaseScene } from './BaseScene.js';
 import { SCENES, MUSIC, WORLD } from '../config/constants.js';
 import { buildCar, buildRivalCar, spinWheels } from '../systems/buildCar.js';
-import { DialogSystem } from '../systems/DialogSystem.js';
+import { StoryStage } from '../systems/StoryStage.js';
 import { audio } from '../systems/AudioManager.js';
 import { gameState } from '../gameState.js';
 
@@ -44,7 +44,7 @@ export class PalychScene extends BaseScene {
       }),
     );
 
-    await new DialogSystem(this).play('palych');
+    await new StoryStage(this).play('palych');
     gameState.flags.palychMet = true;
     this.goTo(SCENES.GARAGE);
   }

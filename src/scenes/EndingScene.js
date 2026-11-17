@@ -2,7 +2,7 @@ import partsData from '../../data/parts.json';
 import { BaseScene } from './BaseScene.js';
 import { SCENES, MUSIC } from '../config/constants.js';
 import { drawGarageRoom, placeGarageCar } from './garageBackdrop.js';
-import { DialogSystem } from '../systems/DialogSystem.js';
+import { StoryStage } from '../systems/StoryStage.js';
 import { audio } from '../systems/AudioManager.js';
 import { formatSeconds, getPart } from '../systems/simulate.js';
 import { gameState, resetGame } from '../gameState.js';
@@ -29,7 +29,7 @@ export class EndingScene extends BaseScene {
       scale: STAGE.scale,
     }));
 
-    await new DialogSystem(this).play('ending');
+    await new StoryStage(this).play('ending');
 
     const win = gameState.winningResult;
     const parts = partsData.slots

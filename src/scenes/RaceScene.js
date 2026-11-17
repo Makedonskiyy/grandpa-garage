@@ -4,7 +4,7 @@ import { BaseScene } from './BaseScene.js';
 import { SCENES, MUSIC, SFX, WORLD } from '../config/constants.js';
 import { buildCar, buildRivalCar, spinWheels } from '../systems/buildCar.js';
 import { evaluateRace, getTest, raceTelemetry, formatSeconds } from '../systems/simulate.js';
-import { DialogSystem } from '../systems/DialogSystem.js';
+import { StoryStage } from '../systems/StoryStage.js';
 import { audio } from '../systems/AudioManager.js';
 import { getRenderZoom } from '../systems/scale.js';
 import { gameState, recordResult } from '../gameState.js';
@@ -63,7 +63,7 @@ export class RaceScene extends BaseScene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.engine?.destroy());
 
     this.$hud.style.visibility = 'hidden';
-    await new DialogSystem(this).play('preRace');
+    await new StoryStage(this).play('preRace');
     this.$hud.style.visibility = '';
     this.#runTree();
   }

@@ -10,14 +10,7 @@
   "dialog": {
     "charsPerSecond": 30,
     "clickEveryChars": 2,
-    "dateHoldMs": 2000,
-    "box": {
-      "x": 20,
-      "y": 256,
-      "width": 600,
-      "height": 96,
-      "portraitSize": 64
-    }
+    "dateHoldMs": 2000
   },
   "audio": {
     "musicCrossfadeMs": 800
