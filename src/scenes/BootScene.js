@@ -14,7 +14,7 @@ const RING_R = 66; // радиус кольца загрузки в единиц
 const RING_LEN = 2 * Math.PI * RING_R;
 const CREDIT_FONT = '"Cormorant Garamond"';
 const LOADER_FONT = '"Inter Variable"';
-const SPLASH_WAIT_MS = 4000; // дольше картинки и шрифты не ждём — заставка идёт как есть
+const SPLASH_WAIT_MS = 4000; // дольше картинки не ждём — заставка идёт как есть
 
 /**
  * Boot (ТЗ 3.2, 7.3) — заставка и загрузка по макету.
@@ -38,16 +38,15 @@ export class BootScene extends BaseScene {
     this.#build();
     this.load.on(Phaser.Loader.Events.PROGRESS, (p) => this.#setProgress(p));
     this.#queueManifest();
-    // Заставка стартует, когда логотип и свечение уже загружены: по сети они приходят
-    // не сразу, и без ожидания свечение появлялось бы без логотипа. Шрифты подписи и строки
-    // загрузки грузим заранее, чтобы текст не сменил начертание у игрока на глазах.
-    const ready = [
-      ...[...this.$root.querySelectorAll('img')].map((img) => img.decode()),
-      document.fonts?.load(`500 72px ${CREDIT_FONT}`),
-      document.fonts?.load(`400 34px ${LOADER_FONT}`),
-    ];
+    // Шрифты подписи и строки загрузки — сразу в фоне: подпись появится через несколько
+    // секунд, к этому времени они уже придут.
+    document.fonts?.load(`500 72px ${CREDIT_FONT}`);
+    document.fonts?.load(`400 34px ${LOADER_FONT}`);
+    // Заставка стартует, когда логотип и свечение уже загружены (index.html грузит их первыми),
+    // иначе на медленной сети свечение появилось бы без логотипа.
+    const images = [...this.$root.querySelectorAll('img')].map((img) => img.decode());
     const timeout = new Promise((r) => setTimeout(r, SPLASH_WAIT_MS));
-    Promise.race([Promise.allSettled(ready), timeout]).then(() => this.#playSplash());
+    Promise.race([Promise.allSettled(images), timeout]).then(() => this.#playSplash());
   }
 
   create() {
@@ -72,10 +71,16 @@ export class BootScene extends BaseScene {
     this.$start = el('div', { class: 'boot__start' });
 
     this.$root = el('div', { class: 'ui-abs boot', 'data-stage': 'dark' }, [
-      el('img', { class: 'boot__glow', src: 'assets/images/ui/glow.svg', alt: '' }),
+      el('img', {
+        class: 'boot__glow',
+        src: 'assets/images/ui/glow.svg',
+        alt: '',
+        fetchpriority: 'high',
+      }),
       el('img', {
         class: 'boot__logo',
         src: 'assets/images/ui/logo.svg',
+        fetchpriority: 'high',
         alt: t('menu.title'),
         draggable: 'false',
       }),
