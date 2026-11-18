@@ -1,21 +1,27 @@
 /**
- * simulate.js — расчёт характеристик сборки и результатов заездов (ТЗ, раздел 4).
+ * simulate.js — характеристики сборки и итог заезда.
  *
- * Чистые функции без Phaser и DOM: одна сборка всегда даёт один результат,
- * поэтому модуль целиком покрыт тестами (tests/simulate.test.js).
- * Все коэффициенты берутся из data/parts.json и data/tests.json — в коде чисел баланса нет.
+ * Чистые функции без Phaser и DOM. Сам разгон по кадрам считает drive.js (газ, передачи,
+ * пробуксовка, грязь, удары); здесь — свод характеристик для гаража и «прогноз»:
+ * тот же заезд, который проезжает идеальный водитель (drive.js → runBot).
+ * Коэффициенты — в data/parts.json, data/tests.json, data/physics.json.
  */
 import partsData from '../../data/parts.json';
 import testsData from '../../data/tests.json';
-
-const EPS = 1e-9;
+import physicsData from '../../data/physics.json';
 
 /** Данные по умолчанию; в тестах можно подменить. */
-export const defaultData = { parts: partsData, tests: testsData };
+export const defaultData = { parts: partsData, tests: testsData, physics: physicsData };
 
-/** Слоты в фиксированном порядке: колёса, двигатель, кузов. */
+/** Состояние машины вне деталей (обслуживание в гараже). */
+export const FRESH_CONDITION = Object.freeze({ oil: 'fresh', dirty: false, damage: 0 });
+
 export function getSlotIds(data = defaultData) {
   return data.parts.slots.map((s) => s.id);
+}
+
+export function getSlot(slotId, data = defaultData) {
+  return data.parts.slots.find((s) => s.id === slotId) ?? null;
 }
 
 export function getPart(id, data = defaultData) {
@@ -32,50 +38,75 @@ export function getTest(testId, data = defaultData) {
   return test;
 }
 
+/** Кривая момента: точки [доля отсечки, доля пикового момента], между ними — прямые. */
+export function curveAt(curve, x) {
+  if (x <= curve[0][0]) return curve[0][1];
+  for (let i = 1; i < curve.length; i++) {
+    const [x1, y1] = curve[i];
+    if (x <= x1) {
+      const [x0, y0] = curve[i - 1];
+      return y0 + ((y1 - y0) * (x - x0)) / (x1 - x0);
+    }
+  }
+  return curve[curve.length - 1][1];
+}
+
+/** Пиковый момент (Н·м), при котором максимум мощности по кривой равен hp. */
+function peakTorque(hp, redline, curve) {
+  let best = 0;
+  for (let i = 1; i <= 100; i++) best = Math.max(best, curveAt(curve, i / 100) * (i / 100));
+  return (hp * 745.7) / (best * redline * ((2 * Math.PI) / 60));
+}
+
 /**
- * Общие величины сборки (ТЗ 4.1).
- * @param {{wheels?: string|null, engine?: string|null, body?: string|null}} build
- * @returns {{
- *   complete: boolean, missing: string[], parts: Record<string, object|null>,
- *   mass: number, power: number, grip: {clay: number, asphalt: number},
- *   downforce: number, durability: number, weakestPart: object|null,
- *   display: {hp: number, kg: number}
- * }}
+ * Свод характеристик сборки.
+ * @param {Record<string, string|null>} build
+ * @param {{oil?: string, damage?: number}} [condition]
  */
-export function computeStats(build, data = defaultData) {
+export function computeStats(build, condition = FRESH_CONDITION, data = defaultData) {
+  const ph = data.physics;
   const parts = {};
   const missing = [];
-
-  for (const { id: slot, required } of data.parts.slots) {
-    const part = build?.[slot] ? getPart(build[slot], data) : null;
-    if (part && part.slot !== slot) {
-      throw new Error(`Деталь ${part.id} не подходит в слот ${slot}`);
+  for (const slot of data.parts.slots) {
+    const part = build?.[slot.id] ? getPart(build[slot.id], data) : null;
+    if (part && part.slot !== slot.id) {
+      throw new Error(`Деталь ${part.id} не подходит в слот ${slot.id}`);
     }
-    parts[slot] = part;
-    // Пустой необязательный слот (спойлер) — не ошибка: машина едет без него.
-    if (!part && required !== false) missing.push(slot);
+    parts[slot.id] = part;
+    if (!part && slot.required !== false) missing.push(slot.id);
   }
-
   const installed = getSlotIds(data)
     .map((s) => parts[s])
     .filter(Boolean);
-  const mass = installed.reduce((sum, p) => sum + p.mass, 0);
-  const power = parts.engine?.power ?? 0;
-  // Прижимная сила спойлера добавляет сцепление только на асфальте: на грунте скорость мала.
-  const downforce = installed.reduce((sum, p) => sum + (p.downforce ?? 0), 0);
-  const grip = {
-    clay: parts.wheels?.grip?.clay ?? 0,
-    asphalt: (parts.wheels?.grip?.asphalt ?? 0) + downforce,
-  };
 
-  // Прочность — минимум по установленным деталям; при равенстве — первая по порядку слотов.
+  const mass = installed.reduce((sum, p) => sum + p.mass, 0);
+  const engine = parts.engine;
+  const powerMul =
+    1 +
+    installed.reduce((sum, p) => sum + (p.powerMul ?? 0), 0) -
+    (condition.oil === 'old' ? 1 - ph.oldOilPowerMul : 0);
+  const power = Math.round((engine?.power ?? 0) * powerMul);
+  const redline =
+    (engine?.redline ?? 7000) + installed.reduce((s, p) => s + (p.redlineAdd ?? 0), 0);
+  const curve = ph.engine.curves[engine?.curve ?? 'atmo'];
+  const torque = engine ? peakTorque(power, redline, curve) : 0;
+
+  const gripMul = parts.suspension?.gripMul ?? { clay: 1, asphalt: 1 };
+  const tireGrip = parts.tires?.grip ?? { clay: 0, asphalt: 0 };
+  const grip = {
+    clay: +(tireGrip.clay * gripMul.clay).toFixed(2),
+    asphalt: +(tireGrip.asphalt * gripMul.asphalt).toFixed(2),
+  };
+  const downforce = installed.reduce((sum, p) => sum + (p.downforce ?? 0), 0);
+
+  // Прочность — по самой слабой детали; при равенстве — первая по порядку слотов.
   let weakestPart = null;
   for (const p of installed) {
     if (!weakestPart || p.durability < weakestPart.durability) weakestPart = p;
   }
-  const durability = weakestPart ? weakestPart.durability : 0;
-
-  const { hpPerPowerPoint, kgPerMassPoint } = data.parts.units;
+  // Сильно побитая на колее машина теряет единицу прочности, пока её не подлатают.
+  const worn = (condition.damage ?? 0) >= 0.5 ? 1 : 0;
+  const durability = weakestPart ? Math.max(1, weakestPart.durability - worn) : 0;
 
   return {
     complete: missing.length === 0,
@@ -83,150 +114,27 @@ export function computeStats(build, data = defaultData) {
     parts,
     mass,
     power,
+    torque: Math.round(torque),
+    redline,
+    curve,
+    ratios: parts.gearbox?.ratios ?? null,
+    shiftSec: (parts.gearbox?.shiftMs ?? 250) / 1000,
+    rimMass: parts.rims?.mass ?? 0,
     grip,
     downforce,
+    impact: parts.suspension?.impact ?? 1,
     durability,
     weakestPart,
-    display: { hp: power * hpPerPowerPoint, kg: mass * kgPerMassPoint },
+    /** Килограммов на лошадиную силу — главное число разгона. */
+    kgPerHp: power ? +(mass / power).toFixed(2) : null,
   };
 }
 
-function format(template, values) {
-  return template.replace(/\{(\w+)\}/g, (_, key) => String(values[key] ?? ''));
-}
-
-function incompleteResult(stats) {
-  return { ok: false, reasonKey: 'incomplete', reason: null, stats, details: null };
-}
-
-/**
- * Заезд 1: «Обкатка» по раскисшей грунтовке (ТЗ 4.2).
- *   F = min(10·P, 13·G_грунт), N = 3,2·M. Успех: F ≥ N и D ≥ 3.
- * Причины провала по порядку: поломка → мощность (10·P ≤ 13·G) → буксование.
- */
-export function evaluateTrial(build, data = defaultData) {
-  const test = getTest('trial', data);
-  const stats = computeStats(build, data);
-  if (!stats.complete) return incompleteResult(stats);
-
-  const { powerFactor, gripFactor, resistancePerMass } = test.formula;
-  const enginePush = powerFactor * stats.power;
-  const wheelPush = gripFactor * stats.grip[test.surface];
-  const force = Math.min(enginePush, wheelPush);
-  const need = resistancePerMass * stats.mass;
-  const broken = stats.durability < test.minDurability;
-  const ok = !broken && force >= need - EPS;
-
-  let reasonKey = null;
-  if (!ok) {
-    if (broken) reasonKey = 'broken';
-    else if (enginePush <= wheelPush) reasonKey = 'power';
-    else reasonKey = 'traction';
-  }
-
-  return {
-    ok,
-    reasonKey,
-    reason: reasonKey ? format(test.reasons[reasonKey], { part: stats.weakestPart?.name }) : null,
-    hint: reasonKey ? test.resultHints[reasonKey] : null,
-    stats,
-    details: { force, need, enginePush, wheelPush },
-  };
-}
-
-/**
- * Заезд 2: драг 400 м с Палычем по сухому асфальту (ТЗ 4.3).
- *   F = min(10·P, 14·G_асфальт), a = F / M, t = √(2·400 / a). Успех: t < 13,0 и D ≥ 2.
- * Причины провала: поломка → сцепление (14·G < 10·P) → мощность; при M ≥ 17 — «и машина тяжёлая».
- */
-export function evaluateRace(build, data = defaultData) {
-  const test = getTest('race', data);
-  const stats = computeStats(build, data);
-  if (!stats.complete) return incompleteResult(stats);
-
-  const { powerFactor, gripFactor, distance } = test.formula;
-  const enginePush = powerFactor * stats.power;
-  const wheelPush = gripFactor * stats.grip[test.surface];
-  const force = Math.min(enginePush, wheelPush);
-  const accel = force / stats.mass;
-  const time = Math.sqrt((2 * distance) / accel);
-  const rivalAccel = (2 * distance) / test.rivalTime ** 2;
-  const diff = time - test.rivalTime;
-  const broken = stats.durability < test.minDurability;
-  const ok = !broken && time < test.rivalTime - EPS;
-
-  let reasonKey = null;
-  let reason = null;
-  if (!ok) {
-    if (broken) {
-      reasonKey = 'broken';
-      reason = format(test.reasons.broken, { part: stats.weakestPart?.name });
-    } else {
-      reasonKey = wheelPush < enginePush ? 'traction' : 'power';
-      reason = test.reasons[reasonKey];
-      if (stats.mass >= test.heavyMass) reason += test.reasons.heavySuffix;
-    }
-  }
-
-  const diffText = format(diff >= 0 ? test.reasons.slower : test.reasons.faster, {
-    diff: formatSeconds(Math.abs(diff)),
-  });
-
-  return {
-    ok,
-    reasonKey,
-    reason,
-    hint: reasonKey ? test.resultHints[reasonKey] : null,
-    stats,
-    details: {
-      force,
-      enginePush,
-      wheelPush,
-      accel,
-      time,
-      rivalTime: test.rivalTime,
-      rivalAccel,
-      diff,
-      diffText,
-      heavy: stats.mass >= test.heavyMass,
-    },
-  };
-}
-
-/** Универсальная точка входа по id заезда. */
-export function evaluate(testId, build, data = defaultData) {
-  if (testId === 'trial') return evaluateTrial(build, data);
-  if (testId === 'race') return evaluateRace(build, data);
-  throw new Error(`Неизвестный заезд: ${testId}`);
-}
-
-/**
- * Телеметрия для приборов в заезде (ТЗ 4.4). Только показ — на результат не влияет.
- * @param {number} accel ускорение машины, м/с²
- * @param {number} s время с начала заезда, с
- */
-export function raceTelemetry(accel, s, data = defaultData) {
-  const test = getTest('race', data);
-  const { distance } = test.formula;
-  const g = test.gauges;
-  const finishTime = Math.sqrt((2 * distance) / accel);
-  const tt = Math.min(Math.max(s, 0), finishTime);
-
-  const dist = (accel * tt * tt) / 2;
-  const speed = accel * tt;
-  const topSpeed = accel * finishTime;
-  const speedKmh = speed * g.speedToKmh * g.speedDisplayFactor;
-
-  // Тахометр декоративный: 5 передач на равные доли конечной скорости.
-  const share = topSpeed / g.gears;
-  const gear = Math.min(g.gears, Math.floor(speed / share) + 1);
-  const inGear = share > 0 ? (speed - (gear - 1) * share) / share : 0;
-  const rpm = g.idleRpm + (g.redlineRpm - g.idleRpm) * Math.min(1, inGear);
-
-  return { distance: dist, speed, speedKmh, gear, rpm, finished: s >= finishTime, finishTime };
-}
-
-/** 12.649… → «12,65» (время до сотых, ТЗ 3.9). */
+/** 12.649… → «12,65» (время до сотых). */
 export function formatSeconds(sec) {
   return sec.toFixed(2).replace('.', ',');
+}
+
+export function format(template, values) {
+  return template.replace(/\{(\w+)\}/g, (_, key) => String(values[key] ?? ''));
 }

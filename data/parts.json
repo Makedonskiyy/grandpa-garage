@@ -1,197 +1,393 @@
 {
-  "units": {
-    "hpPerPowerPoint": 20,
-    "kgPerMassPoint": 50,
-    "massBars": {
-      "light": 4,
-      "heavy": 7
-    }
-  },
-  "slots": [
-    {
-      "id": "wheels",
-      "name": "Колёса",
-      "icon": "slot_wheels.png",
-      "required": true
-    },
+  "$comment": "Детали. Масса — кг, мощность — л.с., прочность 1–10 (прочность машины — по самой слабой детали), сцепление шин — очки 0–10 на грунте и асфальте, прижим — очки спойлера. Влияние на разгон считает src/systems/drive.js по data/physics.json. Необязательные слоты без детали стоят «штатными» (slot.none).",
+  "groups": [
+    { "id": "wheels", "name": "Колёса", "icon": "tire", "slots": ["tires", "rims"] },
     {
       "id": "engine",
       "name": "Двигатель",
-      "icon": "slot_engine.png",
-      "required": true
+      "icon": "engine",
+      "slots": ["engine", "intake", "exhaust", "ecu"]
+    },
+    { "id": "drivetrain", "name": "Трансмиссия", "icon": "gearbox", "slots": ["gearbox"] },
+    { "id": "chassis", "name": "Подвеска", "icon": "suspension", "slots": ["suspension"] },
+    { "id": "body", "name": "Кузов", "icon": "body", "slots": ["body", "spoiler"] }
+  ],
+  "slots": [
+    { "id": "tires", "name": "Шины", "required": true },
+    { "id": "rims", "name": "Диски", "required": true },
+    { "id": "engine", "name": "Мотор", "required": true },
+    {
+      "id": "intake",
+      "name": "Впуск",
+      "required": false,
+      "none": {
+        "name": "Штатный впуск",
+        "short": "Родной бумажный фильтр",
+        "description": "Заводской короб и бумажный фильтр. Тихо, надёжно, мощности не добавляет."
+      }
     },
     {
-      "id": "body",
-      "name": "Кузов",
-      "icon": "slot_body.png",
-      "required": true
+      "id": "exhaust",
+      "name": "Выхлоп",
+      "required": false,
+      "none": {
+        "name": "Штатный глушитель",
+        "short": "Тихий и тяжёлый",
+        "description": "Родная банка с резонатором. Соседи довольны, мотор дышит с трудом."
+      }
     },
+    {
+      "id": "ecu",
+      "name": "ЭБУ",
+      "required": false,
+      "none": {
+        "name": "Заводская прошивка",
+        "short": "С запасом для мотора",
+        "description": "Прошивка с завода: зажигание позднее, отсечка рано. Мотору спокойно."
+      }
+    },
+    { "id": "gearbox", "name": "Коробка", "required": true },
+    { "id": "suspension", "name": "Подвеска", "required": true },
+    { "id": "body", "name": "Кузов", "required": true },
     {
       "id": "spoiler",
       "name": "Спойлер",
-      "icon": "slot_spoiler.png",
-      "required": false
+      "required": false,
+      "none": {
+        "name": "Без спойлера",
+        "short": "Легче, но зад не прижат",
+        "description": "Чистая крышка багажника. На скорости задняя ось чуть легчает."
+      }
     }
   ],
   "initialBuild": {
-    "wheels": null,
+    "tires": null,
+    "rims": "rims_stock",
     "engine": "engine_stock",
+    "intake": null,
+    "exhaust": null,
+    "ecu": null,
+    "gearbox": "gearbox_stock",
+    "suspension": "suspension_stock",
     "body": "body_rusty",
     "spoiler": null
   },
   "parts": [
     {
-      "id": "wheels_studded",
-      "slot": "wheels",
-      "name": "Зимняя шипованная",
-      "description": "Цепко держит грязь и лёд. На асфальте шумит и скользит.",
-      "mass": 4,
-      "power": 0,
-      "grip": {
-        "clay": 8,
-        "asphalt": 4
-      },
-      "durability": 6,
-      "icon": "wheels_studded.png",
-      "sprite": "tire_studded",
-      "downforce": 0
-    },
-    {
-      "id": "wheels_stock",
-      "slot": "wheels",
-      "name": "Дедовы родные",
-      "description": "Всесезонка деда. Везде средне, зато надёжно.",
-      "mass": 4,
-      "power": 0,
-      "grip": {
-        "clay": 5,
-        "asphalt": 5
-      },
+      "id": "tires_stock",
+      "slot": "tires",
+      "name": "Дедова всесезонка",
+      "short": "Везде средне, зато надёжно",
+      "description": "Комплект, на котором дед ездил круглый год. Протектор живой, резина мягкая. На грязи и на асфальте — середина, без сюрпризов.",
+      "mass": 40,
       "durability": 5,
-      "icon": "wheels_stock.png",
-      "sprite": "tire_stock",
-      "downforce": 0
+      "grip": { "clay": 5, "asphalt": 5 },
+      "sprite": "stock"
     },
     {
-      "id": "wheels_slicks",
-      "slot": "wheels",
+      "id": "tires_studded",
+      "slot": "tires",
+      "name": "Зимняя шипованная",
+      "short": "Цепляет грязь и лёд",
+      "description": "Шипы и глубокий протектор вгрызаются в глину. На асфальте шипы скользят, как коньки, а резина гудит.",
+      "mass": 44,
+      "durability": 6,
+      "grip": { "clay": 8, "asphalt": 4 },
+      "sprite": "studded"
+    },
+    {
+      "id": "tires_mud",
+      "slot": "tires",
+      "name": "Грязевая M/T",
+      "short": "Для колеи, не для трассы",
+      "description": "Крупные шашки протектора сами чистятся от глины. Лучшая на грунтовке, но тяжёлая и на асфальте плавает.",
+      "mass": 52,
+      "durability": 7,
+      "grip": { "clay": 9, "asphalt": 3 },
+      "sprite": "mud"
+    },
+    {
+      "id": "tires_sport",
+      "slot": "tires",
+      "name": "Спортивная летняя",
+      "short": "Хороша на сухом асфальте",
+      "description": "Мягкий состав и низкий профиль. На асфальте держит почти как слик, в грязи протектор сразу забивается.",
+      "mass": 38,
+      "durability": 4,
+      "grip": { "clay": 3, "asphalt": 7 },
+      "sprite": "sport"
+    },
+    {
+      "id": "tires_slicks",
+      "slot": "tires",
       "name": "Слики",
-      "description": "Лысая гоночная резина. Асфальт — её стихия, грязь — нет.",
-      "mass": 3,
-      "power": 0,
-      "grip": {
-        "clay": 2,
-        "asphalt": 9
-      },
+      "short": "Асфальт — её стихия",
+      "description": "Гладкая гоночная резина: весь протектор — пятно контакта. На сухом асфальте лучшая, на глине — как по маслу.",
+      "mass": 34,
       "durability": 3,
-      "icon": "wheels_slicks.png",
-      "sprite": "tire_slicks",
-      "downforce": 0
+      "grip": { "clay": 2, "asphalt": 9 },
+      "sprite": "slicks"
+    },
+    {
+      "id": "rims_stock",
+      "slot": "rims",
+      "name": "Родные литые 17″",
+      "short": "Шесть спиц, как с завода",
+      "description": "Заводские литые диски. Средний вес, крепкие — дед ни разу не гнул их на кооперативных ямах.",
+      "mass": 44,
+      "durability": 6,
+      "sprite": "six"
+    },
+    {
+      "id": "rims_steel",
+      "slot": "rims",
+      "name": "Штампованные 16″",
+      "short": "Тяжёлые, зато не убить",
+      "description": "Простые стальные диски с колпачками. Тяжёлые и медленно раскручиваются, но кочки им нипочём: погнул — выправил молотком.",
+      "mass": 56,
+      "durability": 9,
+      "sprite": "steel"
+    },
+    {
+      "id": "rims_mesh",
+      "slot": "rims",
+      "name": "Сетка 17″",
+      "short": "Классика девяностых",
+      "description": "Сборные диски с тонкими перекрещенными спицами. Легче родных, держат удар неплохо, а смотрятся как на гоночных снимках.",
+      "mass": 38,
+      "durability": 6,
+      "sprite": "mesh"
+    },
+    {
+      "id": "rims_five",
+      "slot": "rims",
+      "name": "Пятилучевые 18″",
+      "short": "Лёгкие и большие",
+      "description": "Пять широких лучей и большой диаметр, за ними видно гоночные суппорты. Лёгкие, но на колее могут треснуть.",
+      "mass": 34,
+      "durability": 5,
+      "sprite": "five"
+    },
+    {
+      "id": "rims_forged",
+      "slot": "rims",
+      "name": "Кованые 18″",
+      "short": "Самые лёгкие",
+      "description": "Десять тонких кованых спиц. Самые лёгкие — машина быстрее раскручивает колёса. Хрупкие на ударах.",
+      "mass": 28,
+      "durability": 4,
+      "sprite": "multi"
     },
     {
       "id": "engine_stock",
       "slot": "engine",
-      "name": "Родной 1.3",
-      "description": "Дедов мотор. Живой, но тихий.",
-      "mass": 4,
-      "power": 4,
-      "grip": null,
-      "durability": 6,
-      "icon": "engine_stock.png",
-      "sprite": null,
-      "downforce": 0
+      "name": "Родной 2.0",
+      "short": "Живой, но тихий",
+      "description": "Дедов атмосферный рядный шестицилиндровый. Тянет ровно с самых низов, крутится до 7000. Для заезда с Палычем слабоват.",
+      "mass": 170,
+      "durability": 7,
+      "power": 160,
+      "redline": 7000,
+      "curve": "atmo",
+      "displacement": "2,0 л",
+      "aspiration": "Атмосферный"
     },
     {
       "id": "engine_tuned",
       "slot": "engine",
-      "name": "Тюнинг 2.0",
-      "description": "Перебранный двухлитровый. Хороший баланс силы и веса.",
-      "mass": 6,
-      "power": 7,
-      "grip": null,
+      "name": "Перебранный 2.5",
+      "short": "Хороший баланс силы и веса",
+      "description": "Тот же мотор, расточенный до 2,5 литра: кованые поршни, валы поострее. Любит обороты — до 7500.",
+      "mass": 182,
       "durability": 5,
-      "icon": "engine_tuned.png",
-      "sprite": null,
-      "downforce": 0
+      "power": 230,
+      "redline": 7500,
+      "curve": "atmo",
+      "displacement": "2,5 л",
+      "aspiration": "Атмосферный"
     },
     {
       "id": "engine_turbo",
       "slot": "engine",
-      "name": "Турбо с разборки",
-      "description": "Самый мощный, но тяжёлый и капризный.",
-      "mass": 7,
-      "power": 9,
-      "grip": null,
-      "durability": 3,
-      "icon": "engine_turbo.png",
-      "sprite": null,
-      "downforce": 0
+      "name": "Турбо 2.6 с разборки",
+      "short": "Самый мощный и капризный",
+      "description": "Битурбо с японской разборки. До 3500 оборотов вялый, потом подхватывает турбины и рвёт. Тяжёлый и греется.",
+      "mass": 215,
+      "durability": 4,
+      "power": 330,
+      "redline": 7000,
+      "curve": "turbo",
+      "displacement": "2,6 л",
+      "aspiration": "Турбо"
+    },
+    {
+      "id": "intake_filter",
+      "slot": "intake",
+      "name": "Фильтр нулевого сопротивления",
+      "short": "+4% мощности",
+      "description": "Конусный фильтр вместо бумажного. Мотору легче дышать, под капотом появляется басовитый вдох.",
+      "mass": 1,
+      "durability": 8,
+      "powerMul": 0.04
+    },
+    {
+      "id": "intake_cold",
+      "slot": "intake",
+      "name": "Холодный впуск",
+      "short": "+7% мощности",
+      "description": "Труба выведена в бампер, мотор вдыхает холодный воздух. Мощнее, но в лужу лучше не нырять.",
+      "mass": 3,
+      "durability": 5,
+      "powerMul": 0.07
+    },
+    {
+      "id": "exhaust_sport",
+      "slot": "exhaust",
+      "name": "Спортивный глушитель",
+      "short": "+5% мощности, −8 кг",
+      "description": "Прямой нержавеющий глушитель большего диаметра. Легче родного и звучит ниже.",
+      "mass": -8,
+      "durability": 7,
+      "powerMul": 0.05
+    },
+    {
+      "id": "exhaust_straight",
+      "slot": "exhaust",
+      "name": "Прямоток",
+      "short": "+9% мощности, −14 кг",
+      "description": "Труба без банок от коллектора до бампера. Мотор дышит свободно, весь кооператив знает, что ты выехал.",
+      "mass": -14,
+      "durability": 5,
+      "powerMul": 0.09
+    },
+    {
+      "id": "ecu_chip",
+      "slot": "ecu",
+      "name": "Чип-тюнинг",
+      "short": "+10% мощности, отсечка +300",
+      "description": "Знакомый электронщик перешил блок: раньше зажигание, позже отсечка. Мотор злее, но работает на пределе.",
+      "mass": 0,
+      "durability": 4,
+      "powerMul": 0.1,
+      "redlineAdd": 300
+    },
+    {
+      "id": "gearbox_stock",
+      "slot": "gearbox",
+      "name": "Родная 5-ступка",
+      "short": "Длинные передачи",
+      "description": "Заводская пятиступенчатая. Передачи длинные: на трассе тихо и экономно, на разгоне мотор проваливается после переключения.",
+      "mass": 55,
+      "durability": 8,
+      "ratios": [12.4, 7.8, 5.6, 4.4, 3.6],
+      "shiftMs": 260
+    },
+    {
+      "id": "gearbox_close",
+      "slot": "gearbox",
+      "name": "Спортивная короткая",
+      "short": "Быстрее разгон, чаще переключать",
+      "description": "Короткие близкие передачи: мотор всё время в зоне мощности, переключения быстрее. Только успевай дёргать рычаг.",
+      "mass": 52,
+      "durability": 6,
+      "ratios": [13.8, 9.6, 7.3, 5.8, 4.8],
+      "shiftMs": 190
+    },
+    {
+      "id": "gearbox_heavy",
+      "slot": "gearbox",
+      "name": "Усиленная от грузовичка",
+      "short": "Неубиваемая, тяжёлая",
+      "description": "Коробка с усиленными шестернями и короткой первой. Переварит любой мотор, но тяжёлая и переключается неторопливо.",
+      "mass": 72,
+      "durability": 10,
+      "ratios": [15.6, 9.0, 6.0, 4.5, 3.6],
+      "shiftMs": 340
+    },
+    {
+      "id": "suspension_stock",
+      "slot": "suspension",
+      "name": "Родная подвеска",
+      "short": "Мягкая, для всего",
+      "description": "Заводские пружины и амортизаторы. Мягко на ямах, на резком старте зад приседает.",
+      "mass": 40,
+      "durability": 6,
+      "impact": 1,
+      "gripMul": { "clay": 1, "asphalt": 1 }
+    },
+    {
+      "id": "suspension_sport",
+      "slot": "suspension",
+      "name": "Спортивные койловеры",
+      "short": "Лучше старт, жёстко на ямах",
+      "description": "Винтовая подвеска с жёсткими пружинами. Машина ниже, шины лучше прижаты на старте. На колее трясёт так, что детали страдают.",
+      "mass": 36,
+      "durability": 5,
+      "impact": 1.35,
+      "gripMul": { "clay": 0.95, "asphalt": 1.06 }
+    },
+    {
+      "id": "suspension_raised",
+      "slot": "suspension",
+      "name": "Лифт для грунтовки",
+      "short": "Колея не страшна",
+      "description": "Длинноходные амортизаторы и проставки: машина выше, удары гасятся. На асфальте кренится и хуже стартует.",
+      "mass": 52,
+      "durability": 8,
+      "impact": 0.6,
+      "gripMul": { "clay": 1.08, "asphalt": 0.95 }
     },
     {
       "id": "body_rusty",
       "slot": "body",
       "name": "Ржавый родной",
-      "description": "Родной кузов деда. Ржавчина есть, но держится.",
-      "mass": 8,
-      "power": 0,
-      "grip": null,
-      "durability": 4,
-      "icon": "body_rusty.png",
-      "sprite": "overlay_rust",
-      "downforce": 0
+      "short": "Ржавчина есть, но держится",
+      "description": "Родной кузов деда с салоном и всеми креслами. Пороги подгнили, но двадцать лет он держится.",
+      "mass": 1080,
+      "durability": 5,
+      "sprite": "rust"
     },
     {
       "id": "body_cage",
       "slot": "body",
       "name": "Усиленный каркас",
-      "description": "Каркас и накладки. Не убить, но очень тяжёлый.",
-      "mass": 11,
-      "power": 0,
-      "grip": null,
+      "short": "Не убить, но тяжёлый",
+      "description": "Вваренный каркас безопасности, усиленные пороги и накладки. Кузов переживёт что угодно, но весит как два деда.",
+      "mass": 1240,
       "durability": 9,
-      "icon": "body_cage.png",
-      "sprite": "overlay_cage",
-      "downforce": 0
+      "sprite": "cage"
     },
     {
       "id": "body_light",
       "slot": "body",
       "name": "Облегчённый",
-      "description": "Тонкое железо и спойлер. Лёгкий, но хрупкий.",
-      "mass": 5,
-      "power": 0,
-      "grip": null,
+      "short": "Лёгкий, но хрупкий",
+      "description": "Без задних сидений, шумки и запаски, пластиковые стёкла. Минус двести кило, но на кочках кузов хрустит.",
+      "mass": 880,
       "durability": 2,
-      "icon": "body_light.png",
-      "sprite": "overlay_spoiler",
-      "downforce": 0
+      "sprite": "light"
     },
     {
       "id": "spoiler_lip",
       "slot": "spoiler",
       "name": "Лип на багажник",
-      "description": "Невысокий козырёк. Чуть прижимает зад на асфальте.",
-      "mass": 2,
-      "power": 0,
-      "grip": null,
+      "short": "Немного прижима",
+      "description": "Невысокий козырёк на крышке багажника. Чуть прижимает зад на скорости, почти не мешает воздуху.",
+      "mass": 4,
+      "durability": 7,
       "downforce": 2,
-      "durability": 6,
-      "icon": "spoiler_lip.png",
-      "sprite": "spoiler_lip"
+      "sprite": "lip"
     },
     {
       "id": "spoiler_wing",
       "slot": "spoiler",
       "name": "Высокое крыло",
-      "description": "Большое крыло на стойках. Сильно прижимает, но хлипкое.",
-      "mass": 2,
-      "power": 0,
-      "grip": null,
-      "downforce": 3,
+      "short": "Сильный прижим, хлипкое",
+      "description": "Большое крыло на стойках. На второй половине заезда сильно прижимает машину, но тормозит воздухом и шатается на кочках.",
+      "mass": 9,
       "durability": 3,
-      "icon": "spoiler_wing.png",
-      "sprite": "spoiler_wing"
+      "downforce": 4,
+      "sprite": "wing"
     }
-  ],
-  "$comment": "Детали. downforce — прижимная сила спойлера: прибавляется к сцеплению на асфальте (на грунте скорости малы, не влияет). Слот spoiler необязательный."
+  ]
 }

@@ -34,7 +34,8 @@
     "sfx": 80,
     "muted": false,
     "textSpeed": "normal",
-    "shake": true
+    "shake": true,
+    "gearbox": "manual"
   },
   "hints": {
     "failStreakForGrandpaHint": 3
@@ -50,7 +51,9 @@
   "pedals": {
     "keys": {
       "gas": ["KeyW", "ArrowUp"],
-      "brake": ["KeyS", "ArrowDown"]
+      "brake": ["KeyS", "ArrowDown"],
+      "shiftUp": ["KeyE", "ShiftLeft", "ShiftRight"],
+      "shiftDown": ["KeyQ", "ControlLeft", "ControlRight"]
     },
     "attackPerSec": 10,
     "releasePerSec": 14,

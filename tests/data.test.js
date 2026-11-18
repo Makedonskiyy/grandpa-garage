@@ -9,27 +9,38 @@ import storyBackgrounds from '../data/story-backgrounds.json';
 const MAX_LINE = 90; // ТЗ 2.3: реплика влезает в две строки диалогового окна
 
 describe('parts.json', () => {
-  it('в обязательных слотах ровно три детали, в необязательных — хотя бы одна', () => {
+  it('в каждом слоте хотя бы две детали, у необязательных — описание штатной', () => {
     for (const slot of parts.slots) {
       const count = parts.parts.filter((p) => p.slot === slot.id).length;
-      if (slot.required === false) expect(count).toBeGreaterThan(0);
-      else expect(count).toBe(3);
+      expect(count, slot.id).toBeGreaterThanOrEqual(slot.required === false ? 1 : 2);
+      if (slot.required === false) expect(slot.none?.name, slot.id).toBeTruthy();
     }
   });
 
-  it('прижимная сила есть только у спойлеров', () => {
+  it('каждый слот входит ровно в одну группу меню', () => {
+    const inGroups = parts.groups.flatMap((g) => g.slots);
+    expect([...inGroups].sort()).toEqual(parts.slots.map((s) => s.id).sort());
+  });
+
+  it('прижимная сила есть только у спойлеров, сцепление — только у шин', () => {
     for (const p of parts.parts) {
       if (p.slot === 'spoiler') expect(p.downforce).toBeGreaterThan(0);
       else expect(p.downforce ?? 0).toBe(0);
+      if (p.slot === 'tires') expect(typeof p.grip.clay).toBe('number');
+      else expect(p.grip).toBeUndefined();
     }
   });
 
-  it('id уникальны, ассеты названы латиницей через подчёркивание', () => {
+  it('id уникальны, у каждой детали имя, короткая строка и описание', () => {
     const ids = parts.parts.map((p) => p.id);
     expect(new Set(ids).size).toBe(ids.length);
     for (const p of parts.parts) {
       expect(p.id).toMatch(/^[a-z0-9_]+$/);
-      expect(p.icon).toMatch(/^[a-z0-9_]+\.png$/);
+      expect(p.name.length, p.id).toBeGreaterThan(2);
+      expect(p.short.length, p.id).toBeLessThanOrEqual(40);
+      expect(p.description.length, p.id).toBeGreaterThan(40);
+      expect(p.durability, p.id).toBeGreaterThanOrEqual(1);
+      expect(p.durability, p.id).toBeLessThanOrEqual(10);
     }
   });
 
@@ -46,12 +57,15 @@ describe('tests.json', () => {
     expect(tests.tests.map((t) => t.id)).toEqual(['trial', 'race']);
   });
 
-  it('у колёс есть сцепление для поверхности каждого заезда', () => {
-    for (const t of tests.tests) {
-      for (const w of parts.parts.filter((p) => p.slot === 'wheels')) {
-        expect(typeof w.grip[t.surface]).toBe('number');
-      }
+  it('трасса обкатки непрерывна, все участки известны', () => {
+    const { track, surfaces } = tests.tests[0];
+    let x = 0;
+    for (const s of track.segments) {
+      expect(s.from).toBe(x);
+      expect(surfaces[s.type], s.type).toBeTruthy();
+      x = s.to;
     }
+    expect(x).toBe(track.length);
   });
 
   it('подсказки деда влезают в окно', () => {

@@ -9,6 +9,10 @@ import {
   shouldShowGrandpaHint,
   isGameComplete,
   washCar,
+  changeOil,
+  repairBody,
+  conditionScore,
+  cosmeticHex,
 } from '../src/gameState.js';
 import {
   sanitize,
@@ -22,13 +26,22 @@ describe('gameState', () => {
   beforeEach(() => resetGame());
 
   it('клик по выбранной детали снимает её, по другой — заменяет', () => {
-    togglePart('wheels_slicks');
-    expect(gameState.build.wheels).toBe('wheels_slicks');
-    togglePart('wheels_slicks');
-    expect(gameState.build.wheels).toBeNull();
-    togglePart('wheels_studded');
-    togglePart('wheels_stock');
-    expect(gameState.build.wheels).toBe('wheels_stock');
+    togglePart('tires_slicks');
+    expect(gameState.build.tires).toBe('tires_slicks');
+    togglePart('tires_slicks');
+    expect(gameState.build.tires).toBeNull();
+    togglePart('tires_studded');
+    togglePart('tires_stock');
+    expect(gameState.build.tires).toBe('tires_stock');
+  });
+
+  it('обязательную деталь повторный клик не снимает, необязательную — снимает', () => {
+    togglePart('engine_stock');
+    expect(gameState.build.engine).toBe('engine_stock');
+    togglePart('exhaust_sport');
+    expect(gameState.build.exhaust).toBe('exhaust_sport');
+    togglePart('exhaust_sport');
+    expect(gameState.build.exhaust).toBeNull();
   });
 
   it('провал не сбрасывает сборку, третий провал подряд включает совет деда', () => {
@@ -50,13 +63,36 @@ describe('gameState', () => {
   });
 
   it('старт: колёс нет, спойлера нет, машина грязная; «Помыть» её чистит', () => {
-    expect(gameState.build.wheels).toBeNull();
+    expect(gameState.build.tires).toBeNull();
     expect(gameState.build.spoiler).toBeNull();
     expect(gameState.car.dirty).toBe(true);
     washCar();
     expect(gameState.car.dirty).toBe(false);
     resetGame();
     expect(gameState.car.dirty).toBe(true);
+  });
+
+  it('обслуживание: масло, ремонт и мойка поднимают состояние машины', () => {
+    const before = conditionScore().score;
+    changeOil();
+    washCar();
+    recordResult('trial', { ok: false, details: { damage: 6, capacity: 10 } });
+    expect(gameState.car.damage).toBeCloseTo(0.6);
+    expect(gameState.car.dirty).toBe(true);
+    repairBody();
+    washCar();
+    expect(gameState.car.oil).toBe('fresh');
+    expect(conditionScore().score).toBeGreaterThan(before);
+    expect(conditionScore().score).toBe(10);
+  });
+
+  it('свой цвет краски, дисков и неона; фары — только готовые', () => {
+    setCosmetic('paint', '#12AB34');
+    expect(gameState.cosmetics.paint).toBe('#12ab34');
+    expect(cosmeticHex('paint', gameState.cosmetics.paint)).toBe('#12ab34');
+    expect(cosmeticHex('paint', 'cherry')).toBe('#8b1a2b');
+    expect(() => setCosmetic('headlight', '#ffffff')).toThrow();
+    expect(() => setCosmetic('paint', 'red')).toThrow();
   });
 
   it('косметика проверяет варианты, resetGame всё сбрасывает', () => {
@@ -92,6 +128,7 @@ describe('settings', () => {
       muted: false,
       textSpeed: 'normal',
       shake: true,
+      gearbox: 'manual',
     });
   });
 
