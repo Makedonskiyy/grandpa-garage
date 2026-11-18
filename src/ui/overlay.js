@@ -5,6 +5,7 @@
  */
 import Phaser from 'phaser';
 import { el } from './dom.js';
+import { icon } from './icons.js';
 
 const root = () => document.getElementById('ui-root');
 
@@ -29,10 +30,12 @@ function modalHost() {
 const openModals = [];
 
 /**
- * Открывает модальное окно. build(close) возвращает содержимое панели.
+ * Открывает модальное окно: тёмная панель с заголовком, крестиком и подсказкой «Esc — закрыть».
+ * build(close) возвращает содержимое панели.
+ * @param {{ id?: string, title?: string, size?: 'md'|'lg' }} [opts]
  * @returns {() => void} функция закрытия
  */
-export function openModal(build, { id } = {}) {
+export function openModal(build, { id, title, size = 'md' } = {}) {
   if (id && openModals.some((m) => m.id === id)) return () => {};
   const backdrop = el('div', { class: 'modal-backdrop' });
   const close = () => {
@@ -43,11 +46,33 @@ export function openModal(build, { id } = {}) {
   backdrop.addEventListener('pointerdown', (e) => {
     if (e.target === backdrop) close();
   });
+  const closeBtn = el(
+    'button',
+    {
+      class: 'modal__close',
+      type: 'button',
+      'aria-label': 'Закрыть',
+      onclick: close,
+    },
+    icon('close'),
+  );
   backdrop.append(
-    el('div', { class: 'modal', role: 'dialog', 'aria-modal': 'true' }, build(close)),
+    el(
+      'div',
+      { class: `modal modal--${size}`, role: 'dialog', 'aria-modal': 'true', 'aria-label': title },
+      [
+        el('header', { class: 'modal__head' }, [
+          el('h2', { class: 'modal__title', text: title }),
+          closeBtn,
+        ]),
+        el('div', { class: 'modal__body' }, build(close)),
+        el('footer', { class: 'modal__foot' }, [el('kbd', { text: 'Esc' }), 'закрыть']),
+      ],
+    ),
   );
   modalHost().append(backdrop);
   openModals.push({ id, backdrop, close });
+  closeBtn.focus({ preventScroll: true });
   return close;
 }
 

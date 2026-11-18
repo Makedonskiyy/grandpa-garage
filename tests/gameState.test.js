@@ -15,6 +15,7 @@ import {
   loadSettings,
   updateSettings,
   effectiveVolume,
+  charDelayMs,
 } from '../src/systems/settings.js';
 
 describe('gameState', () => {
@@ -73,12 +74,39 @@ describe('settings', () => {
   };
 
   it('мусор из хранилища заменяется значениями по умолчанию', () => {
-    expect(sanitize({ scale: '7', music: 500, sfx: 'abc', muted: 'yes' })).toEqual({
+    expect(
+      sanitize({
+        scale: '7',
+        display: 'big',
+        music: 500,
+        sfx: 'abc',
+        muted: 'yes',
+        textSpeed: 'warp',
+        shake: 1,
+      }),
+    ).toEqual({
       scale: 'auto',
+      display: 'ask',
       music: 100,
       sfx: 80,
       muted: false,
+      textSpeed: 'normal',
+      shake: true,
     });
+  });
+
+  it('старое «На весь экран» в масштабе становится режимом экрана', () => {
+    const s = sanitize({ scale: 'fullscreen' });
+    expect(s.scale).toBe('auto');
+    expect(s.display).toBe('fullscreen');
+  });
+
+  it('скорость текста задаёт задержку между буквами, «Сразу» — без задержки', () => {
+    expect(charDelayMs(sanitize({ textSpeed: 'normal' }))).toBeCloseTo(1000 / 30);
+    expect(charDelayMs(sanitize({ textSpeed: 'fast' }))).toBeLessThan(
+      charDelayMs(sanitize({ textSpeed: 'slow' })),
+    );
+    expect(charDelayMs(sanitize({ textSpeed: 'instant' }))).toBe(0);
   });
 
   it('сломанное хранилище не роняет игру', () => {

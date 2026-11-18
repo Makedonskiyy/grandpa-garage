@@ -5,10 +5,22 @@
     "backgroundColor": "#000000"
   },
   "boot": {
-    "minDurationMs": 1500
+    "$comment": "Заставка: пауза, логотип со свечением, подпись команды, затем кольцо загрузки (мс).",
+    "delayMs": 1000,
+    "logoInMs": 1000,
+    "logoHoldMs": 1400,
+    "logoOutMs": 800,
+    "creditInMs": 800,
+    "creditHoldMs": 1800,
+    "creditOutMs": 800,
+    "loaderMinMs": 900
   },
   "dialog": {
-    "charsPerSecond": 30,
+    "charsPerSecond": {
+      "slow": 18,
+      "normal": 30,
+      "fast": 60
+    },
     "clickEveryChars": 2,
     "dateHoldMs": 2000
   },
@@ -17,9 +29,12 @@
   },
   "settingsDefaults": {
     "scale": "auto",
+    "display": "ask",
     "music": 70,
     "sfx": 80,
-    "muted": false
+    "muted": false,
+    "textSpeed": "normal",
+    "shake": true
   },
   "hints": {
     "failStreakForGrandpaHint": 3

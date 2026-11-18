@@ -86,4 +86,4 @@ npm run dev
 
 ## Лицензия
 
-Код распространяется под лицензией [GNU GPL v3.0](LICENSE). Шрифты Literata и Caveat — под SIL Open Font License 1.1, иконки Lucide — под лицензией ISC.
+Код распространяется под лицензией [GNU GPL v3.0](LICENSE). Шрифты Literata, Caveat, Cormorant Garamond и Inter — под SIL Open Font License 1.1, иконки Phosphor — под лицензией MIT.
