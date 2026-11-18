@@ -158,6 +158,16 @@
   pointer-events: none;
 }
 
+/* Затемнение низа меню под кнопками — фон читается, кнопки видны. */
+.menu-shade {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 640px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.76) 100%);
+  pointer-events: none;
+}
+
 .menu-actions {
   left: 96px;
   bottom: 96px;

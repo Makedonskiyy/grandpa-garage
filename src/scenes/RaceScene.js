@@ -297,7 +297,6 @@ export class RaceScene extends BaseScene {
       this.run.reasonKey = 'slow';
     }
     this.result = summarize(this.run, this.best);
-    this.cameras.main.flash(250, 255, 255, 255);
     this.$time.textContent = formatSeconds(this.run.t);
     audio.playSfx(this.result.ok ? SFX.SUCCESS : SFX.FAIL);
     this.time.delayedCall(cfg.finishHoldMs, () => {
