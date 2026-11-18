@@ -9,6 +9,7 @@ import { gameState, recordResult } from '../gameState.js';
 import { el } from '../ui/dom.js';
 import { webButton } from '../ui/components.js';
 import { t } from '../systems/strings.js';
+import { getSettings } from '../systems/settings.js';
 
 const GROUND_Y = 300;
 const CAR_START_X = 170; // машина почти в центре, дорога едет под ней
@@ -210,7 +211,7 @@ export class TrialScene extends BaseScene {
     this.engine?.stop();
     const { reasonKey } = this.result;
     if (reasonKey === 'broken') {
-      this.cameras.main.shake(400, 0.01);
+      if (getSettings().shake) this.cameras.main.shake(400, 0.01);
       this.car.drop(60);
       this.#puff(0x777777, this.car.x + 110, this.car.y - 50);
     } else if (reasonKey === 'traction') {

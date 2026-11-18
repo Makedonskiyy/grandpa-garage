@@ -1,22 +1,45 @@
 /*
- * Веб-интерфейс нового стиля (макет меню): обычные кнопки, Literata, оранжевый из логотипа.
- * Пиксельным остаётся только арт. Размеры — в пикселях Full HD (1920×1080), сетка 8 px;
+ * Веб-интерфейс: обычные кнопки, Literata, оранжевый из логотипа. Пиксельным остаётся только арт.
+ * Размеры — в пикселях Full HD (1920×1080), сетка 8 px (мелкие шаги внутри контролов — 4 px);
  * #stage вписывается в окно целиком (src/systems/scale.js).
+ *
+ * Направление: тёплый ламповый гараж. Хром тихий — тёмные тёплые поверхности и волосяные
+ * линии; цвет ушанки — только у главного действия, выбора и «контрольной лампы» (точка на
+ * выбранном пункте, как лампочка на приборной панели). Яркие моменты — арт: пиксельные сцены
+ * и тёплое свечение на заставке.
  */
 :root {
-  /* Тёплая нейтральная шкала (гараж, дерево, бумага) и один акцент. */
+  /* Светлая шкала — кнопки и карточки гаража. */
   --ui-ink: #1f1b16; /* основной текст на светлом */
   --ui-ink-2: #5e554a; /* вторичный */
   --ui-ink-3: #7b7266; /* приглушённый: подписи, значения */
-  --ui-paper: #fdfbf7; /* светлые кнопки и окна */
-  --ui-paper-raised: #efe9df; /* наведение, поля ввода */
+  --ui-paper: #fdfbf7; /* светлые кнопки */
+  --ui-paper-raised: #efe9df; /* наведение */
   --ui-hairline: rgb(31 27 22 / 0.1);
-  --ui-accent: #eea45a; /* оранжевый ушанки — только главное действие и выбор */
+
+  /* Тёмная тёплая шкала — меню, окна, заставка. */
+  --ui-d0: #0d0b0a; /* утопленные поля: сегменты, переключатели */
+  --ui-d1: #161311; /* панель окна */
+  --ui-d2: #1f1b18; /* наведение */
+  --ui-d3: #2a2521; /* выбранный сегмент, клавиши */
+  --ui-d4: #3a332d; /* выключенная лампа */
+  --ui-text: #efe9de;
+  --ui-text-2: #b3ab9f;
+  --ui-text-3: #7d756a;
+  --ui-line: rgb(239 233 222 / 0.08);
+  --ui-line-strong: rgb(239 233 222 / 0.14);
+
+  --ui-accent: #eea45a; /* оранжевый ушанки — главное действие, выбор, лампа */
   --ui-accent-hover: #f2b273;
   --ui-accent-press: #e3954a;
+
   --ui-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --ui-fast: 150ms;
   --ui-enter: 200ms;
+
+  /* Шрифты заставки: подпись команды и строка загрузки (по макету). */
+  --font-credit: 'Cormorant Garamond', Georgia, serif;
+  --font-sans: 'Inter Variable', 'Inter', system-ui, sans-serif;
 }
 
 /* ---------- Кнопки ---------- */
@@ -41,7 +64,13 @@
   white-space: nowrap;
   transition:
     background-color var(--ui-fast) var(--ui-ease),
+    color var(--ui-fast) var(--ui-ease),
     transform var(--ui-fast) var(--ui-ease);
+}
+
+/* Подпись обрезана по высоте заглавных: иконка и текст центрируются по буквам, а не по строке. */
+.wbtn__label {
+  text-box: trim-both cap alphabetic;
 }
 
 .wbtn--primary {
@@ -64,9 +93,29 @@
   background: var(--ui-accent-press);
 }
 
+/* Тёмная кнопка: поверхность сцены, волосяная рамка, приглушённая иконка. */
+.wbtn--dark {
+  color: var(--ui-text);
+  background: rgb(22 19 17 / 0.88);
+  box-shadow: inset 0 0 0 2px var(--ui-line-strong);
+}
+
+.wbtn--dark .icon {
+  color: var(--ui-text-2);
+  transition: color var(--ui-fast) var(--ui-ease);
+}
+
+.wbtn--dark:hover:not(:disabled) {
+  background: var(--ui-d3);
+}
+
+.wbtn--dark:hover:not(:disabled) .icon {
+  color: var(--ui-text);
+}
+
 .wbtn:focus-visible {
-  outline: 6px solid var(--ui-paper);
-  outline-offset: 6px;
+  outline: 4px solid var(--ui-accent);
+  outline-offset: 4px;
 }
 
 .wbtn:disabled {
@@ -82,7 +131,7 @@
   box-shadow: none;
 }
 
-/* Иконка — квадрат 20×20 в потоке flex, по центру строки, без ручных сдвигов. */
+/* Иконка — квадрат в потоке flex, по центру строки, без ручных сдвигов. */
 .icon {
   display: inline-flex;
   flex: none;
@@ -96,167 +145,503 @@
   height: 100%;
 }
 
-/* ---------- Меню ---------- */
+/* ---------- Меню ----------
+ * Логотип и столбик кнопок — на одной левой линии (96 px от края), ширина кнопок = ширине
+ * логотипа (528). Главная кнопка выше остальных и отделена от них большим промежутком.
+ */
 .menu-logo {
-  /* Край ушанки в SVG отстоит от края файла на 9px: сдвиг выравнивает её по краю кнопок. */
+  /* Край ушанки в SVG отстоит от края файла на 9 px: сдвиг ставит её на линию кнопок. */
   left: 87px;
   top: 96px;
   height: 96px;
   user-select: none;
   pointer-events: none;
-  filter: drop-shadow(0 6px 12px rgb(0 0 0 / 0.5));
 }
 
 .menu-actions {
   left: 96px;
   bottom: 96px;
-  display: grid;
-  grid-template-columns: repeat(3, 528px);
-  gap: 36px;
+  width: 528px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.menu-btn {
+  position: relative;
+  justify-content: flex-start;
+  gap: 24px;
+  height: 88px;
+  padding: 0 32px;
+  border-radius: 16px;
+  font-size: 36px;
+  box-shadow: none;
+}
+
+.menu-btn .icon {
+  width: 40px;
+  height: 40px;
+}
+
+.menu-btn--main {
+  height: 104px;
+  margin-bottom: 8px;
+  font-size: 40px;
+  box-shadow: 0 16px 40px rgb(0 0 0 / 0.4);
+}
+
+/* Контрольная лампа: загорается справа у тёмной кнопки под курсором или фокусом. */
+.menu-btn.wbtn--dark::after {
+  content: '';
+  position: absolute;
+  right: 32px;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  margin-top: -6px;
+  border-radius: 50%;
+  background: var(--ui-accent);
+  opacity: 0;
+  transition: opacity var(--ui-fast) var(--ui-ease);
+}
+
+.menu-btn.wbtn--dark:hover::after,
+.menu-btn.wbtn--dark:focus-visible::after {
+  opacity: 1;
 }
 
 .version {
-  right: 24px;
-  bottom: 24px;
-  font-family: var(--font-ui);
+  right: 32px;
+  bottom: 32px;
+  font-family: var(--font-sans);
   font-size: 24px;
   font-variant-numeric: tabular-nums;
-  color: rgb(255 255 255 / 0.4);
+  color: rgb(239 233 222 / 0.4);
 }
 
-/* ---------- Модальные окна ---------- */
+/* ---------- Модальные окна ----------
+ * Тёмная панель: заголовок с крестиком, тело с разделами, подвал с подсказкой «Esc — закрыть».
+ * Глубина — ступенями поверхностей и волосяными линиями.
+ */
 .modal-backdrop {
   position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgb(0 0 0 / 0.6);
+  background: rgb(8 7 6 / 0.72);
   pointer-events: auto;
   animation: ui-fade var(--ui-enter) var(--ui-ease);
 }
 
 .modal {
-  width: 1128px;
+  width: 1360px;
   max-height: 960px;
-  overflow: auto;
-  padding: 60px 72px;
-  border-radius: 42px;
-  background: var(--ui-paper);
-  color: var(--ui-ink);
-  box-shadow: 0 24px 72px rgb(0 0 0 / 0.35);
+  display: flex;
+  flex-direction: column;
+  border-radius: 24px;
+  background: var(--ui-d1);
+  color: var(--ui-text);
+  box-shadow:
+    inset 0 0 0 2px var(--ui-line),
+    0 32px 80px rgb(0 0 0 / 0.5);
   font-family: var(--font-ui);
-  font-size: 36px;
-  line-height: 1.5;
+  font-size: 26px;
+  line-height: 1.45;
   animation: ui-rise var(--ui-enter) var(--ui-ease);
 }
 
-.modal h2 {
-  margin: 0 0 48px;
-  font-size: 60px;
-  font-weight: 500;
-  line-height: 1.2;
+.modal--lg {
+  width: 1600px;
 }
 
-.modal p {
-  margin: 0 0 24px;
-  color: var(--ui-ink-2);
-}
-
-.modal__footer {
-  margin-top: 60px;
+.modal__head {
   display: flex;
-  justify-content: flex-end;
-}
-
-/* Поле настроек: подпись | контрол | значение — три выровненные колонки. */
-.field {
-  display: grid;
-  grid-template-columns: 336px 1fr 72px;
   align-items: center;
-  gap: 36px;
-  min-height: 84px;
-  margin-bottom: 24px;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 32px 32px 0 48px;
 }
 
-.field select {
-  height: 84px;
-  padding: 0 24px;
-  border: 3px solid var(--ui-hairline);
-  border-radius: 24px;
-  font: inherit;
-  color: var(--ui-ink);
-  background: var(--ui-paper-raised);
-}
-
-.field__value {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-  color: var(--ui-ink-3);
-}
-
-.field input[type='checkbox'] {
-  width: 48px;
-  height: 48px;
+.modal__title {
   margin: 0;
-  accent-color: var(--ui-accent);
+  font-size: 48px;
+  font-weight: 500;
+  line-height: 1.1;
 }
 
-/* Ползунок в цветах интерфейса вместо системного. */
-.field input[type='range'] {
-  width: 100%;
+.modal__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  padding: 0;
+  border: 0;
+  border-radius: 16px;
+  color: var(--ui-text-2);
+  background: transparent;
+  cursor: pointer;
+  transition:
+    background-color var(--ui-fast) var(--ui-ease),
+    color var(--ui-fast) var(--ui-ease);
+}
+
+.modal__close:hover {
+  color: var(--ui-text);
+  background: var(--ui-d3);
+}
+
+.modal__close:focus-visible {
+  outline: 4px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+
+.modal__close .icon {
+  width: 32px;
+  height: 32px;
+}
+
+.modal__body {
+  overflow: auto;
+  padding: 24px 48px 32px;
+}
+
+.modal__foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 48px 32px;
+  border-top: 2px solid var(--ui-line);
+  font-size: 24px;
+  color: var(--ui-text-3);
+}
+
+.modal__section {
+  margin: 0 0 16px;
+  font-size: 26px;
+  font-weight: 500;
+  color: var(--ui-text-3);
+}
+
+/* Клавиша: тёмная выпуклая шапочка. */
+kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  height: 44px;
+  padding: 0 12px;
+  border-radius: 10px;
+  background: var(--ui-d3);
+  box-shadow:
+    inset 0 -4px 0 rgb(0 0 0 / 0.35),
+    inset 0 0 0 2px var(--ui-line);
+  font-family: var(--font-sans);
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--ui-text);
+}
+
+.kbd--icon .icon {
+  width: 28px;
+  height: 28px;
+}
+
+/* ---------- Настройки: две колонки — слева экран и игра, справа звук ---------- */
+.settings {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 64px;
+}
+
+.settings__col {
+  display: grid;
+  align-content: start;
+}
+
+.settings__section + .settings__section {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 2px solid var(--ui-line);
+}
+
+.setting {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 24px;
+  min-height: 72px;
+  padding: 4px 0;
+}
+
+/* Сегменты — под подписью, на всю ширину колонки. */
+.setting--stack {
+  grid-template-columns: 1fr;
+  gap: 12px;
+  padding: 8px 0 12px;
+}
+
+.setting--stack .seg {
+  display: flex;
+}
+
+.setting--stack .seg__item {
+  flex: 1;
+  justify-content: center;
+}
+
+.setting__hint {
+  margin-top: 4px;
+  font-size: 24px;
+  line-height: 1.35;
+  color: var(--ui-text-3);
+}
+
+/* Сегменты: утопленная дорожка, выбранный — светлее, с горящей лампой. */
+.seg {
+  display: inline-flex;
+  gap: 4px;
+  padding: 6px;
+  border-radius: 16px;
+  background: var(--ui-d0);
+  box-shadow: inset 0 0 0 2px var(--ui-line);
+}
+
+.seg__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  height: 56px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 12px;
+  font-family: var(--font-ui);
+  font-size: 24px;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--ui-text-2);
+  background: transparent;
+  cursor: pointer;
+  transition:
+    background-color var(--ui-fast) var(--ui-ease),
+    color var(--ui-fast) var(--ui-ease);
+}
+
+.seg__item:hover {
+  color: var(--ui-text);
+  background: var(--ui-d2);
+}
+
+.seg__item[aria-checked='true'] {
+  color: var(--ui-text);
+  background: var(--ui-d3);
+  box-shadow: inset 0 0 0 2px var(--ui-line-strong);
+}
+
+.seg__item:focus-visible,
+.switch:focus-visible {
+  outline: 4px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+
+.seg__lamp {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--ui-d4);
+  transition: background-color var(--ui-fast) var(--ui-ease);
+}
+
+.seg__item[aria-checked='true'] .seg__lamp {
+  background: var(--ui-accent);
+}
+
+/* Переключатель вкл/выкл. */
+.switch {
+  position: relative;
+  width: 88px;
   height: 48px;
+  padding: 0;
+  border: 0;
+  border-radius: 24px;
+  background: var(--ui-d0);
+  box-shadow: inset 0 0 0 2px var(--ui-line-strong);
+  cursor: pointer;
+  transition: background-color var(--ui-fast) var(--ui-ease);
+}
+
+.switch::after {
+  content: '';
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--ui-text-2);
+  transition:
+    transform var(--ui-fast) var(--ui-ease),
+    background-color var(--ui-fast) var(--ui-ease);
+}
+
+.switch[aria-checked='true'] {
+  background: var(--ui-accent);
+  box-shadow: none;
+}
+
+.switch[aria-checked='true']::after {
+  background: var(--ui-ink);
+  transform: translateX(40px);
+}
+
+/* Ползунок: дорожка 8 px, пройденная часть — цветом ушанки, значение справа. */
+.slider {
+  display: grid;
+  grid-template-columns: 360px 56px;
+  align-items: center;
+  gap: 24px;
+}
+
+.slider__value {
+  text-align: right;
+  font-family: var(--font-sans);
+  font-size: 26px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-text-2);
+}
+
+.slider__input {
+  width: 100%;
+  height: 40px;
   margin: 0;
   background: transparent;
   appearance: none;
   cursor: pointer;
 }
 
-.field input[type='range']::-webkit-slider-runnable-track {
-  /* Пройденная часть — акцентом: --fill выставляет SettingsPanel.js. */
-  height: 12px;
-  border-radius: 6px;
+.slider__input::-webkit-slider-runnable-track {
+  height: 8px;
+  border-radius: 4px;
   background: linear-gradient(
     to right,
     var(--ui-accent) 0 var(--fill, 50%),
-    var(--ui-paper-raised) var(--fill, 50%)
+    var(--ui-d3) var(--fill, 50%)
   );
 }
 
-.field input[type='range']::-moz-range-track {
-  height: 12px;
-  border-radius: 6px;
-  background: var(--ui-paper-raised);
+.slider__input::-moz-range-track {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--ui-d3);
 }
 
-.field input[type='range']::-moz-range-progress {
-  height: 12px;
-  border-radius: 6px;
+.slider__input::-moz-range-progress {
+  height: 8px;
+  border-radius: 4px;
   background: var(--ui-accent);
 }
 
-.field input[type='range']::-webkit-slider-thumb {
+.slider__input::-webkit-slider-thumb {
   appearance: none;
-  width: 48px;
-  height: 48px;
-  margin-top: -18px;
+  width: 32px;
+  height: 32px;
+  margin-top: -12px;
   border: 0;
   border-radius: 50%;
-  background: var(--ui-accent);
+  background: var(--ui-text);
+  box-shadow: 0 0 0 4px var(--ui-d1);
 }
 
-.field input[type='range']::-moz-range-thumb {
-  width: 48px;
-  height: 48px;
+.slider__input::-moz-range-thumb {
+  width: 32px;
+  height: 32px;
   border: 0;
   border-radius: 50%;
-  background: var(--ui-accent);
+  background: var(--ui-text);
 }
 
-.field input[type='range']:focus-visible {
-  outline: 6px solid var(--ui-accent);
-  outline-offset: 12px;
-  border-radius: 12px;
+.slider__input:focus-visible {
+  outline: 4px solid var(--ui-accent);
+  outline-offset: 8px;
+  border-radius: 8px;
+}
+
+/* ---------- Как играть: шаги слева, управление и характеристики справа ---------- */
+.howto {
+  display: grid;
+  grid-template-columns: 1fr 640px;
+  gap: 64px;
+}
+
+.howto__steps {
+  display: grid;
+  gap: 24px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.howto__step {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 24px;
+}
+
+.howto__num {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 2px var(--ui-line-strong);
+  font-family: var(--font-sans);
+  font-size: 24px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.howto__step-title {
+  margin-top: 10px;
+  font-size: 30px;
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+.howto__step-text {
+  margin: 4px 0 0;
+  color: var(--ui-text-2);
+}
+
+.howto__side {
+  display: grid;
+  align-content: start;
+  gap: 40px;
+}
+
+.howto__row {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  align-items: center;
+  gap: 24px;
+  min-height: 56px;
+}
+
+.howto__keys {
+  display: flex;
+  gap: 8px;
+}
+
+.howto__row-text {
+  color: var(--ui-text-2);
+}
+
+.howto__note {
+  margin: 16px 0 0;
+  font-size: 24px;
+  color: var(--ui-text-3);
 }
 
 @keyframes ui-fade {
@@ -272,71 +657,194 @@
   }
 }
 
-/* ---------- Загрузка ---------- */
+/* ---------- Заставка и загрузка (по макету) ----------
+ * Чёрный экран → логотип по центру и тёплое свечение снизу (размытый эллипс цвета ушанки) →
+ * «Сделано командой TRITON / Для AI GAME JAM» → кольцо загрузки и проценты → старт.
+ * Шаги переключает BootScene атрибутом data-stage; длительности — CSS-переменные из config.
+ */
 .boot {
-  left: 600px;
-  right: 600px;
-  top: 384px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 72px;
+  inset: 0;
+  background: #000;
+}
+
+.boot > * {
+  position: absolute;
+}
+
+.boot__glow {
+  left: 0;
+  top: 0;
+  width: 1920px;
+  height: 1080px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--boot-out, 800ms) var(--ui-ease);
 }
 
 .boot__logo {
-  height: 120px;
+  left: 50%;
+  top: 50%;
+  width: 880px;
+  opacity: 0;
+  transform: translate(-50%, calc(-50% + 16px));
   user-select: none;
   pointer-events: none;
+  transition:
+    opacity var(--boot-out, 800ms) var(--ui-ease),
+    transform var(--boot-in, 1000ms) var(--ui-ease);
 }
 
-.boot__bar {
-  width: 100%;
-  height: 12px;
-  border-radius: 6px;
-  background: rgb(255 255 255 / 0.12);
-  overflow: hidden;
+.boot[data-stage='logo'] .boot__logo {
+  opacity: 1;
+  transform: translate(-50%, -50%);
+  transition-duration: var(--boot-in, 1000ms);
 }
 
-.boot__fill {
-  height: 100%;
-  background: var(--ui-accent);
-  transform: scaleX(0);
-  transform-origin: left center;
-  transition: transform var(--ui-fast) var(--ui-ease);
+/* Свечение появляется вслед за логотипом, медленнее и слабее. */
+.boot[data-stage='logo'] .boot__glow {
+  opacity: 1;
+  transition: opacity calc(var(--boot-in, 1000ms) * 1.4) var(--ui-ease) 300ms;
 }
 
-.boot__row {
-  width: 100%;
-  margin-top: -36px; /* подписи ближе к полосе, чем полоса к логотипу */
+.boot__credit {
+  left: 0;
+  right: 0;
+  top: 50%;
+  text-align: center;
+  opacity: 0;
+  transform: translateY(-50%);
+  transition: opacity var(--boot-credit-out, 800ms) var(--ui-ease);
+}
+
+.boot[data-stage='credit'] .boot__credit {
+  opacity: 1;
+  transition-duration: var(--boot-credit-in, 800ms);
+}
+
+.boot__credit-title {
+  font-family: var(--font-credit);
+  font-size: 72px;
+  font-weight: 500;
+  line-height: 1.1;
+  color: #f4f1ec;
+}
+
+.boot__credit-sub {
+  margin-top: 4px;
+  font-family: var(--font-credit);
+  font-size: 40px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: #8a8784;
+}
+
+/* Кольцо 144 px по центру экрана, под ним строка загрузки. */
+.boot__loader {
+  left: 0;
+  right: 0;
+  top: 456px;
   display: flex;
-  justify-content: space-between;
-  font-family: var(--font-ui);
-  font-size: 36px;
-  color: #aaa398;
+  flex-direction: column;
+  align-items: center;
+  gap: 48px;
+  opacity: 0;
+  transition: opacity 400ms var(--ui-ease);
+}
+
+.boot[data-stage='loader'] .boot__loader {
+  opacity: 1;
+}
+
+.boot__ring {
+  width: 144px;
+  height: 144px;
+  transform: rotate(-90deg);
+}
+
+.boot__ring circle {
+  fill: none;
+  stroke-width: 12;
+}
+
+.boot__ring-track {
+  stroke: #2b2b2b;
+}
+
+.boot__ring-arc {
+  stroke: var(--ui-accent);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 300ms var(--ui-ease);
+}
+
+.boot__status {
+  font-family: var(--font-sans);
+  font-size: 34px;
+  color: #8f8f8f;
 }
 
 .boot__percent {
   font-variant-numeric: tabular-nums;
-  color: #8a847a;
+  color: #e8e8e8;
 }
 
-.boot__status--ready {
-  width: 100%;
-  text-align: center;
-  font-size: 42px;
-  color: #efe9de;
-  animation: ui-wait 2s var(--ui-ease) infinite alternate;
-}
-
-.boot__credits {
+/* Старт: вопрос про полный экран или «Нажмите, чтобы начать». */
+.boot__start {
   left: 0;
   right: 0;
-  top: auto;
-  bottom: 48px;
-  text-align: center;
+  top: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  opacity: 0;
+  transform: translateY(-50%);
+  pointer-events: none;
+  transition: opacity 400ms var(--ui-ease);
+}
+
+.boot[data-stage='start'] .boot__start {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.boot__question {
   font-family: var(--font-ui);
-  font-size: 27px;
-  color: #8a847a;
+  font-size: 48px;
+  font-weight: 500;
+  color: var(--ui-text);
+}
+
+.boot__hint {
+  margin-top: 12px;
+  font-family: var(--font-ui);
+  font-size: 28px;
+  color: var(--ui-text-3);
+}
+
+.boot__choices {
+  display: flex;
+  gap: 16px;
+  margin-top: 48px;
+}
+
+.boot__choices .wbtn {
+  gap: 16px;
+  height: 88px;
+  padding: 0 32px;
+  border-radius: 16px;
+  font-size: 32px;
+  box-shadow: none;
+}
+
+.boot__choices .icon {
+  width: 36px;
+  height: 36px;
+}
+
+.boot__press {
+  font-family: var(--font-ui);
+  font-size: 40px;
+  color: var(--ui-text);
+  animation: ui-wait 2s var(--ui-ease) infinite alternate;
 }
 
 /* Ожидание клика — единственная повторяющаяся анимация: экран ждёт игрока. */

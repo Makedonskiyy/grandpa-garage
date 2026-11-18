@@ -8,11 +8,11 @@ describe('computeZoom', () => {
     expect(computeZoom('3', 100, 100)).toBe(3);
   });
 
-  it('авто и полный экран заполняют окно целиком', () => {
+  it('авто заполняет окно целиком — и в окне, и на весь экран', () => {
     expect(computeZoom('auto', 1920, 1080)).toBe(3);
     // Окно браузера на мониторе 1920×1080 ниже из-за панелей — игра всё равно занимает его целиком.
     expect(computeZoom('auto', 1920, 969)).toBeCloseTo(969 / 360);
-    expect(computeZoom('fullscreen', 1366, 768)).toBeCloseTo(768 / 360);
+    expect(computeZoom('auto', 1366, 768)).toBeCloseTo(768 / 360);
   });
 
   it('окно меньше 640×360 — дробный множитель', () => {

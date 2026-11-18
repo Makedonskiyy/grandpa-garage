@@ -23,7 +23,7 @@ const listeners = new Set();
 
 /**
  * Масштаб мира (640×360) в CSS-пикселях окна.
- * «Авто» и «На весь экран» заполняют окно целиком (дробный множитель),
+ * «Авто» заполняет окно целиком (дробный множитель) — и в окне, и на весь экран,
  * «1×/2×/3×» — фиксированный размер 640×360 / 1280×720 / 1920×1080.
  */
 export function computeZoom(mode, viewportW, viewportH) {
@@ -47,15 +47,24 @@ export function fitCamera(camera) {
   camera.setOrigin(0, 0).setZoom(renderZoom).setScroll(0, 0);
 }
 
-async function syncFullscreen(mode) {
+/** Можно ли развернуть игру на весь экран (браузер поддерживает и разрешает). */
+export function canFullscreen() {
+  return Boolean(document.fullscreenEnabled && document.documentElement.requestFullscreen);
+}
+
+/**
+ * Включает или выключает полный экран. Вызывать из обработчика клика или клавиши:
+ * без жеста пользователя браузер откажет — тогда игра просто остаётся в окне.
+ */
+export async function setFullscreen(on) {
   try {
-    if (mode === 'fullscreen' && !document.fullscreenElement) {
-      await document.documentElement.requestFullscreen?.();
-    } else if (mode !== 'fullscreen' && document.fullscreenElement) {
-      await document.exitFullscreen?.();
+    if (on && !document.fullscreenElement && canFullscreen()) {
+      await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+    } else if (!on && document.fullscreenElement) {
+      await document.exitFullscreen();
     }
   } catch {
-    // Браузер может отказать без жеста пользователя — остаёмся в окне.
+    // Отказ браузера — остаёмся как есть.
   }
 }
 
@@ -82,8 +91,13 @@ export function initScale(game, stage = document.getElementById('stage')) {
 
   window.addEventListener('resize', apply);
   document.addEventListener('fullscreenchange', apply);
-  onSettingsChange((s) => {
-    syncFullscreen(s.scale).finally(apply);
+  onSettingsChange((s, prev) => {
+    // Полный экран переключаем только когда игрок сменил режим экрана, а не громкость.
+    if (s.display !== prev.display && s.display !== 'ask') {
+      setFullscreen(s.display === 'fullscreen').finally(apply);
+    } else if (s.scale !== prev.scale) {
+      apply();
+    }
   });
   apply();
 }

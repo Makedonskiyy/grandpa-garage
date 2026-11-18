@@ -11,8 +11,9 @@ import { resetGame } from '../gameState.js';
 import { t } from '../systems/strings.js';
 
 /**
- * Меню (ТЗ 3.3, макет): пиксельный фон гаража, логотип слева вверху,
- * три веб-кнопки снизу, лампочка изредка мигает, версия сборки в углу.
+ * Меню (ТЗ 3.3): пиксельный фон гаража — машина под чехлом в свете лампы, логотип слева вверху,
+ * под ним внизу слева столбик кнопок той же ширины, что и логотип (сетка 8 px):
+ * главная «Начать игру» в цвет ушанки, остальные — тёмные. Лампа изредка мигает.
  */
 export class MenuScene extends BaseScene {
   constructor() {
@@ -34,9 +35,21 @@ export class MenuScene extends BaseScene {
         draggable: 'false',
       }),
       el('div', { class: 'ui-abs menu-actions' }, [
-        webButton(t('menu.play'), () => this.#play(), { variant: 'primary', icon: 'play' }),
-        webButton(t('menu.howTo'), () => openHowTo(), { icon: 'help' }),
-        webButton(t('menu.settings'), () => openSettings(), { icon: 'gear' }),
+        webButton(t('menu.play'), () => this.#play(), {
+          variant: 'primary',
+          icon: 'play',
+          className: 'menu-btn menu-btn--main',
+        }),
+        webButton(t('menu.howTo'), () => openHowTo(), {
+          variant: 'dark',
+          icon: 'help',
+          className: 'menu-btn',
+        }),
+        webButton(t('menu.settings'), () => openSettings(), {
+          variant: 'dark',
+          icon: 'gear',
+          className: 'menu-btn',
+        }),
       ]),
       el('div', { class: 'ui-abs version', text: t('menu.version', { version: VERSION }) }),
     );

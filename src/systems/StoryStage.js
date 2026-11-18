@@ -24,6 +24,7 @@ import characters from '../../data/characters.json';
 import storyBackgrounds from '../../data/story-backgrounds.json';
 import { SFX, WORLD } from '../config/constants.js';
 import { audio } from './AudioManager.js';
+import { charDelayMs } from './settings.js';
 import { createLayer } from '../ui/overlay.js';
 import { el, clear } from '../ui/dom.js';
 
@@ -416,8 +417,14 @@ export class StoryStage {
         this.#frame(actor, open ? FRAME.talk : FRAME.idle);
       }, MOUTH_MS);
     }
+    // Скорость печати — из настроек; «Сразу» — реплика появляется целиком.
+    const delay = charDelayMs();
+    if (!delay) {
+      this.#completeTyping();
+      return;
+    }
     this.timer = this.scene.time.addEvent({
-      delay: 1000 / cfg.charsPerSecond,
+      delay,
       loop: true,
       callback: () => {
         this.shown += 1;

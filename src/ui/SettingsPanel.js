@@ -1,60 +1,110 @@
 /**
- * Окно настроек (ТЗ 3.4): масштаб, музыка, звуки, «Без звука».
- * Всё применяется сразу и сохраняется в localStorage.
+ * Окно настроек (ТЗ 3.4): слева экран и игра, справа звук. Всё применяется сразу
+ * и сохраняется в localStorage (src/systems/settings.js).
  */
 import { el } from './dom.js';
-import { webButton } from './components.js';
+import { segmented, slider, toggle } from './components.js';
 import { openModal } from './overlay.js';
-import { getSettings, updateSettings, SCALE_MODES } from '../systems/settings.js';
+import { getSettings, updateSettings, SCALE_MODES, TEXT_SPEEDS } from '../systems/settings.js';
+import { canFullscreen } from '../systems/scale.js';
 import { t } from '../systems/strings.js';
 
-const MODAL_ID = 'settings';
+/**
+ * Строка настройки: подпись (и пояснение) слева, контрол справа;
+ * stack — контрол под подписью на всю ширину (сегменты).
+ */
+const row = (label, control, hint, stack = false) =>
+  el('div', { class: stack ? 'setting setting--stack' : 'setting' }, [
+    el('div', { class: 'setting__label' }, [
+      el('div', { text: label }),
+      hint ? el('div', { class: 'setting__hint', text: hint }) : null,
+    ]),
+    control,
+  ]);
 
-function volumeField(labelKey, key) {
-  const s = getSettings();
-  const value = el('span', { class: 'field__value', text: String(s[key]) });
-  const input = el('input', { type: 'range', min: 0, max: 100, step: 5, value: s[key] });
-  // --fill закрашивает пройденную часть дорожки (см. ui.css).
-  const paint = () => input.style.setProperty('--fill', `${input.value}%`);
-  paint();
-  input.addEventListener('input', () => {
-    value.textContent = input.value;
-    paint();
-    updateSettings({ [key]: Number(input.value) });
-  });
-  return el('label', { class: 'field' }, [t(labelKey), input, value]);
-}
+const section = (title, rows) =>
+  el('section', { class: 'settings__section' }, [
+    el('h3', { class: 'modal__section', text: title }),
+    ...rows,
+  ]);
 
 export function openSettings() {
   return openModal(
-    (close) => {
+    () => {
       const s = getSettings();
-
-      const select = el(
-        'select',
-        {},
-        SCALE_MODES.map((m) =>
-          el('option', { value: m, selected: s.scale === m }, t(`settings.scaleOptions.${m}`)),
-        ),
-      );
-      select.addEventListener('change', () => updateSettings({ scale: select.value }));
-
-      const mute = el('input', { type: 'checkbox', checked: s.muted });
-      mute.addEventListener('change', () => updateSettings({ muted: mute.checked }));
-
-      return [
-        el('h2', { text: t('settings.title') }),
-        el('label', { class: 'field' }, [t('settings.scale'), select, el('span')]),
-        volumeField('settings.music', 'music'),
-        volumeField('settings.sfx', 'sfx'),
-        el('label', { class: 'field' }, [t('settings.mute'), mute, el('span')]),
-        el(
-          'div',
-          { class: 'modal__footer' },
-          webButton(t('settings.close'), close, { variant: 'primary', className: 'wbtn--small' }),
+      // Режим экрана — по факту: игрок мог выйти из полного экрана сам.
+      const display = document.fullscreenElement ? 'fullscreen' : 'window';
+      const screen = [
+        canFullscreen()
+          ? row(
+              t('settings.display'),
+              segmented(
+                ['fullscreen', 'window'].map((v) => ({
+                  value: v,
+                  label: t(`settings.displayOptions.${v}`),
+                })),
+                display,
+                (v) => updateSettings({ display: v }),
+                { label: t('settings.display') },
+              ),
+              null,
+              true,
+            )
+          : null,
+        row(
+          t('settings.scale'),
+          segmented(
+            SCALE_MODES.map((v) => ({ value: v, label: t(`settings.scaleOptions.${v}`) })),
+            s.scale,
+            (v) => updateSettings({ scale: v }),
+            { label: t('settings.scale') },
+          ),
+          t('settings.scaleHint'),
+          true,
         ),
       ];
+      const sound = [
+        row(
+          t('settings.music'),
+          slider(s.music, (v) => updateSettings({ music: v }), { label: t('settings.music') }),
+        ),
+        row(
+          t('settings.sfx'),
+          slider(s.sfx, (v) => updateSettings({ sfx: v }), { label: t('settings.sfx') }),
+        ),
+        row(
+          t('settings.mute'),
+          toggle(s.muted, (v) => updateSettings({ muted: v }), { label: t('settings.mute') }),
+        ),
+      ];
+      const game = [
+        row(
+          t('settings.textSpeed'),
+          segmented(
+            TEXT_SPEEDS.map((v) => ({ value: v, label: t(`settings.textSpeedOptions.${v}`) })),
+            s.textSpeed,
+            (v) => updateSettings({ textSpeed: v }),
+            { label: t('settings.textSpeed') },
+          ),
+          null,
+          true,
+        ),
+        row(
+          t('settings.shake'),
+          toggle(s.shake, (v) => updateSettings({ shake: v }), { label: t('settings.shake') }),
+          t('settings.shakeHint'),
+        ),
+      ];
+      return [
+        el('div', { class: 'settings' }, [
+          el('div', { class: 'settings__col' }, [
+            section(t('settings.sections.screen'), screen),
+            section(t('settings.sections.game'), game),
+          ]),
+          el('div', { class: 'settings__col' }, [section(t('settings.sections.sound'), sound)]),
+        ]),
+      ];
     },
-    { id: MODAL_ID },
+    { id: 'settings', title: t('settings.title') },
   );
 }
