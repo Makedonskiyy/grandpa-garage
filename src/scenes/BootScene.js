@@ -12,6 +12,9 @@ import { canFullscreen, setFullscreen } from '../systems/scale.js';
 
 const RING_R = 66; // радиус кольца загрузки в единицах SVG 144×144
 const RING_LEN = 2 * Math.PI * RING_R;
+const CREDIT_FONT = '"Cormorant Garamond"';
+const LOADER_FONT = '"Inter Variable"';
+const SPLASH_WAIT_MS = 4000; // дольше картинки и шрифты не ждём — заставка идёт как есть
 
 /**
  * Boot (ТЗ 3.2, 7.3) — заставка и загрузка по макету.
@@ -35,7 +38,16 @@ export class BootScene extends BaseScene {
     this.#build();
     this.load.on(Phaser.Loader.Events.PROGRESS, (p) => this.#setProgress(p));
     this.#queueManifest();
-    this.#playSplash();
+    // Заставка стартует, когда логотип и свечение уже загружены: по сети они приходят
+    // не сразу, и без ожидания свечение появлялось бы без логотипа. Шрифты подписи и строки
+    // загрузки грузим заранее, чтобы текст не сменил начертание у игрока на глазах.
+    const ready = [
+      ...[...this.$root.querySelectorAll('img')].map((img) => img.decode()),
+      document.fonts?.load(`500 72px ${CREDIT_FONT}`),
+      document.fonts?.load(`400 34px ${LOADER_FONT}`),
+    ];
+    const timeout = new Promise((r) => setTimeout(r, SPLASH_WAIT_MS));
+    Promise.race([Promise.allSettled(ready), timeout]).then(() => this.#playSplash());
   }
 
   create() {
