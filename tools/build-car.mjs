@@ -52,11 +52,11 @@ const FA = arch(FRONT_X);
 const RA = arch(REAR_X);
 
 const BODY_PATH = [
-  'M 20 83.4',
-  'Q 12 83 9.6 79', // низ заднего бампера
-  'L 8.6 70',
-  'L 8 56',
-  'Q 8 54.6 9.4 54',
+  'M 24 82.8',
+  'Q 13.4 82 10.2 74.6', // низ заднего бампера круто загибается вверх
+  'Q 8.6 70 8.4 63',
+  'L 8.4 57',
+  'Q 8.4 54.8 9.6 54.2',
   'L 11 52.6',
   'L 12 40',
   'Q 12.4 34.6 15.4 33.4', // задний торец крышки багажника
@@ -91,7 +91,7 @@ const BODY_PATH = [
   `A ${ARCH_R} ${ARCH_R} 0 1 0 ${FA.b} ${SILL}`,
   `L ${RA.a} ${SILL}`,
   `A ${ARCH_R} ${ARCH_R} 0 1 0 ${RA.b} ${SILL}`,
-  'L 26 83.6',
+  'L 32 83.6',
   'Z',
 ].join(' ');
 
@@ -108,10 +108,11 @@ const WINDSHIELD =
   'M 145.6 12 Q 147.6 12.4 149.4 13.8 L 155.6 16.8 L 164 22.4 L 172.4 27.2 L 180.9 31.9 Q 184.6 33 188 33.4 L 177.4 33.6 L 157.6 17.6 Q 152.4 13.2 145.6 12 Z';
 // Фара: скошенный корпус под линией капота, две круглые линзы.
 const HEADLIGHT =
-  'M 250.6 49.6 L 262.8 50.2 Q 267.4 51.2 269 54.2 L 268.2 58 L 254 58.2 Q 251.4 54.6 250.6 49.6 Z';
+  'M 254.6 50.4 L 264.6 50.8 Q 267.4 51.2 267.6 53.8 L 267.2 56.4 Q 266.8 57.4 265.2 57.6 L 256 58.4 Q 254.4 58.4 254.2 56.8 L 254 52 Q 254 50.4 254.6 50.4 Z';
+// Линзы: [x, y, радиус] — ближняя крупнее.
 const LAMPS = [
-  [256.6, 54.2],
-  [262.8, 54.2],
+  [258.4, 54.4, 3],
+  [263.8, 54.2, 2.5],
 ];
 const TAIL =
   'M 13.6 38.6 L 17.4 38.6 Q 18.8 38.6 18.8 40.2 L 18.8 46 Q 18.8 47.6 17.4 47.6 L 13.6 47.6 Q 12.2 47.6 12.2 46 L 12.2 40.2 Q 12.2 38.6 13.6 38.6 Z';
@@ -119,7 +120,7 @@ const TAIL =
 const INTAKE = 'M 258.8 63.2 L 272.2 63.2 L 272.4 74.4 L 260.6 74.8 Q 259 69.4 258.8 63.2 Z';
 const FRONT_LIP = 'M 238 82.4 L 271.8 82.4 L 273.6 83.6 L 271.6 85.2 L 240 85.2 Z';
 const REAR_DIFFUSER =
-  'M 9.4 75 Q 11.4 80.6 18 82.6 L 41 82.8 L 41.4 84.6 L 20 84.2 Q 12 83.6 9.6 79 Z';
+  'M 14 79.6 Q 18.4 82 26 82.4 L 40 82.6 L 40.4 84.2 L 26 83.8 Q 16.4 83.4 12.6 80.4 Z';
 const HOOD =
   'M 190 33.4 L 206.2 36.1 L 218.8 37.7 L 231.4 39.8 L 244.1 41.9 L 256.7 45.6 L 257.4 47.6 L 230 42.2 L 190 36 Z';
 
@@ -354,7 +355,7 @@ function paintTone(x, y) {
     else if (y < crest - 1 && y >= 38) v = 0.96;
   }
   // Задний бампер ниже шва чуть темнее, торцы темнее борта.
-  if (x < 42 && y > 55) v -= 0.05;
+  if (y > 53 && x < 10 + (y - 52) * 1.6 + 14) v -= 0.05;
   if (x <= 12) v *= 0.8;
   if (x >= 269) v *= 0.82;
   return v;
@@ -430,8 +431,19 @@ function drawBody(m) {
   paint.line(40, 47, 46, 47, P(1), inPaint);
   paint.line(47, 41, 47, 46, P(1), inPaint);
   // Шов заднего бампера под фонарём и передний шов от фары к арке.
-  paint.line(10, 54, 40, 54, P(0.45), inPaint);
-  paint.line(10, 55, 40, 55, P(0.97), inPaint);
+  const bumperSeam = [
+    [10, 52],
+    [24, 52],
+    [32, 54],
+    [38, 57],
+    [43, 61],
+  ];
+  paint.poly(bumperSeam, P(0.45), inPaint);
+  paint.poly(
+    bumperSeam.map(([x, y]) => [x, y + 1]),
+    P(0.97),
+    inPaint,
+  );
   paint.poly(
     [
       [252, 59],
@@ -463,7 +475,7 @@ function drawBody(m) {
       if (m.sillDark.at(x, y)) base.set(x, y, C.trimLo);
     }
   for (let x = 240; x < 272; x++) if (m.lip.at(x, 83)) base.set(x, 83, C.trimHi);
-  for (let x = 14; x < 41; x++) if (m.diffuser.at(x, 82)) base.set(x, 82, C.trimHi);
+  for (let x = 16; x < 40; x++) if (m.diffuser.at(x, 82)) base.set(x, 82, C.trimHi);
   base.rect(266, 61, 3, 1, C.amber); // боковой повторитель на углу бампера
 
   // 8. Контур кузова и рамки стёкол.
@@ -537,10 +549,27 @@ function drawGlass(base, m) {
 }
 
 function drawLights(base, m) {
-  // Корпус фары тёмный, хромовая кромка сверху; линзы — в слое фары.
+  // Корпус фары: чёрная рамка, внутри тёмный отражатель, хромовые кольца вокруг линз,
+  // оранжевый поворотник в переднем нижнем углу. Сами линзы — в слое фары (цвет света).
   for (let y = 0; y < H; y++)
-    for (let x = 240; x < W; x++)
-      if (m.head.at(x, y)) base.set(x, y, m.head.at(x, y - 1) ? '#15161a' : C.chrome);
+    for (let x = 240; x < W; x++) {
+      if (!m.head.at(x, y)) continue;
+      let c = m.head.edge(x, y) ? C.outline : '#24262b';
+      for (const [cx, cy, r] of LAMPS) {
+        const dx = x + 0.5 - cx;
+        const dy = y + 0.5 - cy;
+        const d = Math.hypot(dx, dy);
+        if (d <= r + 0.5 && d > r - 0.6) c = C.chrome;
+        else if (d <= r - 0.6) {
+          // Линза: серебристая, светлее сверху слева, тёмный проектор чуть ниже центра.
+          const k = Math.max(0, (-dx - dy) / (r * 1.4));
+          c = k > 0.5 ? '#eef0f3' : k > 0.15 ? '#c9cdd3' : '#9da2aa';
+          if (Math.hypot(dx - 0.3, dy - 0.4) < r * 0.34) c = '#4a4e56';
+        }
+      }
+      base.set(x, y, c);
+    }
+  base.rect(265, 56, 2, 1, C.amber);
   // Круглый задний фонарь: блик сверху, тень снизу.
   for (let y = 30; y < 52; y++)
     for (let x = 8; x < 22; x++) {
@@ -554,13 +583,16 @@ function drawLights(base, m) {
 
 function layerHeadlight() {
   const p = new Pix();
-  for (const [cx, cy] of LAMPS) {
-    for (let y = Math.floor(cy - 3); y <= cy + 3; y++)
-      for (let x = Math.floor(cx - 3); x <= cx + 3; x++) {
-        const d = Math.hypot(x + 0.5 - cx, y + 0.5 - cy);
-        if (d <= 2.3) p.set(x, y, gray(d < 1.2 ? 1 : 0.74));
+  for (const [cx, cy, r] of LAMPS) {
+    for (let y = Math.floor(cy - r - 1); y <= cy + r + 1; y++)
+      for (let x = Math.floor(cx - r - 1); x <= cx + r + 1; x++) {
+        const dx = x + 0.5 - cx;
+        const dy = y + 0.5 - cy;
+        const d = Math.hypot(dx, dy);
+        // Светящийся центр проектора — его цвет задаёт «Внешний вид → Фары».
+        if (Math.hypot(dx - 0.3, dy - 0.4) < r * 0.34) p.set(x, y, gray(d < r * 0.2 ? 1 : 0.85));
       }
-    p.set(Math.floor(cx - 1), Math.floor(cy - 1), gray(1));
+    p.set(Math.floor(cx - r * 0.45), Math.floor(cy - r * 0.45), gray(1));
   }
   return p;
 }
