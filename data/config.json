@@ -32,6 +32,29 @@
       "traction": 0.3
     }
   },
+  "pedals": {
+    "keys": {
+      "gas": ["KeyW", "ArrowUp"],
+      "brake": ["KeyS", "ArrowDown"]
+    },
+    "attackPerSec": 10,
+    "releasePerSec": 14,
+    "brakeAttackPerSec": 12,
+    "brakeReleasePerSec": 18
+  },
+  "gearbox": {
+    "gears": 5,
+    "idleRpm": 900,
+    "redlineRpm": 7000,
+    "gearMaxSpeed": [0.22, 0.42, 0.62, 0.82, 1],
+    "downshiftHysteresis": 0.025,
+    "shiftTimeMs": 180,
+    "shiftRpmFactor": 0.55,
+    "throttleRpm": 500,
+    "brakeRpm": 900,
+    "segments": 14,
+    "redSegments": 3
+  },
   "sceneFadeMs": 300,
   "race": {
     "startX": 190,

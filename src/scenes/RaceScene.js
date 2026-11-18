@@ -10,10 +10,11 @@ import { getRenderZoom } from '../systems/scale.js';
 import { gameState, recordResult } from '../gameState.js';
 import { el } from '../ui/dom.js';
 import { t } from '../systems/strings.js';
+import { createGearbox, updateGearbox } from '../systems/autoGearbox.js';
+import { PedalControls } from '../ui/PedalControls.js';
+import { createTacho } from '../ui/tacho.js';
 
 const cfg = config.race;
-const TACHO_SEGMENTS = 14;
-const TACHO_RED = 3; // последние сегменты — красная зона
 
 /** Детерминированный генератор: фон одинаков при каждом запуске. */
 function rng(seed) {
@@ -39,6 +40,10 @@ export class RaceScene extends BaseScene {
     this.result = evaluateRace(gameState.build);
     this.state = 'intro';
     this.s = 0;
+    this.gearbox = createGearbox();
+    this.tacho = createTacho();
+    this.pedals = new PedalControls(this, { className: 'pedals--corner' });
+    this.pedals.setEnabled(false);
 
     this.#drawNight();
     this.rival = buildRivalCar(this, { x: 0, y: cfg.rivalLaneY, scale: cfg.carScale, night: true });
@@ -63,27 +68,18 @@ export class RaceScene extends BaseScene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.engine?.destroy());
 
     this.$hud.style.visibility = 'hidden';
+    this.pedals.node.style.visibility = 'hidden';
     await new StoryStage(this).play('preRace');
     this.$hud.style.visibility = '';
+    this.pedals.node.style.visibility = '';
     this.#runTree();
   }
 
   #buildHud() {
-    this.$tacho = Array.from({ length: TACHO_SEGMENTS }, (_, i) =>
-      el('span', { class: `tacho__seg${i >= TACHO_SEGMENTS - TACHO_RED ? ' is-red' : ''}` }),
-    );
-    this.$rpm = el('span', { text: '0' });
     this.$speed = el('span', { text: '0' });
-    this.$gear = el('div', { class: 'race-hud__gear', text: t('race.gear', { n: 1 }) });
     this.$time = el('div', { class: 'race-hud__value', text: '0,00' });
     this.$hud = el('div', { class: 'ui-abs surface race-hud' }, [
-      el('div', { class: 'race-hud__gauge' }, [
-        el('div', { class: 'race-hud__value' }, [
-          this.$rpm,
-          el('span', { class: 'race-hud__unit', text: t('race.rpmUnit') }),
-        ]),
-        el('div', { class: 'tacho' }, this.$tacho),
-      ]),
+      this.tacho.node,
       el('div', { class: 'race-hud__time' }, [
         this.$time,
         el('div', { class: 'race-hud__label', text: t('race.timer') }),
@@ -93,10 +89,14 @@ export class RaceScene extends BaseScene {
           this.$speed,
           el('span', { class: 'race-hud__unit', text: t('race.kmh') }),
         ]),
-        this.$gear,
       ]),
     ]);
-    this.ui.append(this.$hud);
+    this.ui.append(this.$hud, this.pedals.node);
+    this.tacho.render({
+      rpm: config.gearbox.idleRpm,
+      gear: 1,
+      redline: config.gearbox.redlineRpm,
+    });
   }
 
   /** Ночной пустырь за заводом: небо, корпуса с окнами, прожектор, мокрый асфальт. */
@@ -207,6 +207,7 @@ export class RaceScene extends BaseScene {
       light(this.tree.green, 0x2fff6a);
       audio.playSfx(SFX.TREE_GO);
       this.state = 'running';
+      this.pedals.setEnabled(true);
     });
   }
 
@@ -218,8 +219,10 @@ export class RaceScene extends BaseScene {
   }
 
   update(_time, delta) {
+    const input = this.pedals.update(delta / 1000);
     if (this.state !== 'running') {
-      this.player.step(delta / 1000); // подвеска успокаивается до старта и после финиша
+      // Подвеска успокаивается до старта и после финиша.
+      this.player.step(delta / 1000, { accel: -input.brake * 2 });
       return;
     }
     this.s += delta / 1000;
@@ -227,6 +230,12 @@ export class RaceScene extends BaseScene {
     const me = raceTelemetry(this.result.details.accel, this.s);
     const rival = raceTelemetry(this.result.details.rivalAccel, this.s);
     const brokenStop = !this.result.ok && this.result.reasonKey === 'broken';
+    const topSpeed = Math.max(0.001, this.result.details.accel * me.finishTime);
+    const gb = updateGearbox(
+      this.gearbox,
+      { speed01: me.speed / topSpeed, gas: input.gas, brake: input.brake },
+      delta / 1000,
+    );
 
     for (const [car, tel] of [
       [this.player, me],
@@ -238,7 +247,8 @@ export class RaceScene extends BaseScene {
         // Пока разгоняется — приседает на задние колёса (ускорение из расчёта заезда).
         car.step(delta / 1000, {
           distance: x - car.x,
-          accel: tel.finished ? 0 : this.result.details.accel,
+          accel:
+            (tel.finished ? 0 : this.result.details.accel) + input.gas * 1.2 - input.brake * 2.5,
         });
       } else {
         spinWheels(car, x - car.x);
@@ -247,19 +257,22 @@ export class RaceScene extends BaseScene {
       car.nameplate.x = x;
     }
 
-    const lit = Math.round((me.rpm / this.test.gauges.redlineRpm) * TACHO_SEGMENTS);
-    this.$tacho.forEach((seg, i) => seg.classList.toggle('is-on', i < lit));
-    this.$rpm.textContent = String(Math.round(me.rpm / 100) * 100);
+    this.tacho.render({
+      rpm: gb.rpm,
+      gear: gb.gear,
+      redline: config.gearbox.redlineRpm,
+      shifting: gb.shifting,
+    });
     this.$speed.textContent = String(Math.round(me.speedKmh));
-    this.$gear.textContent = t('race.gear', { n: me.gear });
     this.$time.textContent = formatSeconds(Math.min(this.s, me.finishTime));
-    this.engine?.setRate?.(0.7 + (me.rpm / this.test.gauges.redlineRpm) * 0.8);
+    this.engine?.setRate?.(0.7 + (gb.rpm / config.gearbox.redlineRpm) * 0.8);
 
     if (me.finished && rival.finished) this.#finish();
   }
 
   #finish() {
     this.state = 'finished';
+    this.pedals.setEnabled(false);
     this.engine?.stop();
     this.cameras.main.flash(250, 255, 255, 255);
     this.$time.textContent = formatSeconds(this.result.details.time);
