@@ -5,7 +5,13 @@
 import { el } from './dom.js';
 import { segmented, slider, toggle } from './components.js';
 import { openModal } from './overlay.js';
-import { getSettings, updateSettings, SCALE_MODES, TEXT_SPEEDS } from '../systems/settings.js';
+import {
+  getSettings,
+  updateSettings,
+  SCALE_MODES,
+  TEXT_SPEEDS,
+  GEARBOX_MODES,
+} from '../systems/settings.js';
 import { canFullscreen } from '../systems/scale.js';
 import { t } from '../systems/strings.js';
 
@@ -78,6 +84,17 @@ export function openSettings() {
         ),
       ];
       const game = [
+        row(
+          t('settings.gearbox'),
+          segmented(
+            GEARBOX_MODES.map((v) => ({ value: v, label: t(`settings.gearboxOptions.${v}`) })),
+            s.gearbox,
+            (v) => updateSettings({ gearbox: v }),
+            { label: t('settings.gearbox') },
+          ),
+          t('settings.gearboxHint'),
+          true,
+        ),
         row(
           t('settings.textSpeed'),
           segmented(
