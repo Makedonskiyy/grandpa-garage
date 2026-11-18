@@ -35,11 +35,11 @@ const H = 96;
 const GROUND = 92;
 
 // ---------- Пропорции (фото модели R34 сбоку: длина 272 ед. ≈ 4,6 м, база ≈ 2,67 м) ----------
-const WHEEL_R = 17.9;
-const WHEEL_Y = GROUND - WHEEL_R; // 74.1
+const WHEEL_R = 19;
+const WHEEL_Y = GROUND - WHEEL_R; // 73
 const REAR_X = 62.3;
 const FRONT_X = 221.4;
-const ARCH_R = 20.2;
+const ARCH_R = 21.2;
 const SILL = 84; // низ кузова между колёсами
 const FRAME = 48; // кадр колеса
 const FRAMES = 16;
@@ -51,54 +51,80 @@ const arch = (cx) => {
 const FA = arch(FRONT_X);
 const RA = arch(REAR_X);
 
+// Контуры сняты с фото модели, но в пиксельном виде длинные свесы смотрятся вытянутыми:
+// всё, что за задней осью и перед передней, поджато к колёсам.
+const REAR_K = 0.85;
+const FRONT_K = 0.86;
+/** Координата x после поджатия свесов. */
+const X = (x) =>
+  x < REAR_X ? REAR_X - (REAR_X - x) * REAR_K : x > FRONT_X ? FRONT_X + (x - FRONT_X) * FRONT_K : x;
+/** Поджимает свесы в контуре (команды M, L, Q с абсолютными координатами). */
+function squeeze(d) {
+  const tokens = d.trim().split(/\s+/);
+  const out = [];
+  for (let i = 0; i < tokens.length;) {
+    const cmd = tokens[i++];
+    out.push(cmd);
+    const pairs = { M: 1, L: 1, Q: 2, Z: 0 }[cmd];
+    if (pairs === undefined) throw new Error(`squeeze: команда ${cmd}`);
+    for (let k = 0; k < pairs; k++) {
+      out.push((Math.round(X(+tokens[i++]) * 100) / 100).toString(), tokens[i++]);
+    }
+  }
+  return out.join(' ');
+}
+
 const BODY_PATH = [
-  'M 24 82.8',
-  'Q 13.4 82 10.2 74.6', // низ заднего бампера круто загибается вверх
-  'Q 8.6 70 8.4 63',
-  'L 8.4 57',
-  'Q 8.4 54.8 9.6 54.2',
-  'L 11 52.6',
-  'L 12 40',
-  'Q 12.4 34.6 15.4 33.4', // задний торец крышки багажника
-  'Q 18 30 22 28.6',
-  'L 58 27.7', // багажник
-  'L 64 24.4', // стойка C
-  'L 72 19.8',
-  'L 80 16',
-  'L 88 13.4',
-  'Q 94 11.6 99 11.4',
-  'L 141 11.4', // крыша
-  'Q 145 11.6 148 13.6',
-  'L 155.6 16.8', // лобовое
-  'L 164 22.4',
-  'L 172.4 27.2',
-  'L 180.9 31.9',
-  'Q 185.5 33.2 190 33.4',
-  'L 206.2 36.1', // капот
-  'L 218.8 37.7',
-  'L 231.4 39.8',
-  'L 244.1 41.9',
-  'L 256.7 45.6',
-  'Q 263 47.6 266.8 50.6', // нос
-  'Q 270 53.4 271.2 57.6',
-  'L 271.8 62', // передний бампер
-  'Q 272.8 68 272.4 74',
-  'L 271.8 80',
-  'L 273.6 83.4', // губа
-  'L 271.6 85.2',
-  'L 244 85.2',
+  squeeze(
+    [
+      'M 24 82.8',
+      'Q 13.4 82 10.2 74.6', // низ заднего бампера круто загибается вверх
+      'Q 8.6 70 8.6 63',
+      'Q 8.8 56 10.6 50', // торец без ступеньки
+      'L 12 40',
+      'Q 12.4 34.6 15.4 33.4', // задний торец крышки багажника
+      'Q 18 30 22 28.6',
+      'L 58 27.7', // багажник
+      'L 64 24.4', // стойка C
+      'L 72 19.8',
+      'L 80 16',
+      'L 88 13.4',
+      'Q 94 11.6 99 11.4',
+      'L 141 11.4', // крыша
+      'Q 145 11.6 148 13.6',
+      'L 155.6 16.8', // лобовое
+      'L 164 22.4',
+      'L 172.4 27.2',
+      'L 180.9 31.9',
+      'Q 185.5 33.2 190 33.4',
+      'L 206.2 36.1', // капот
+      'L 218.8 37.7',
+      'L 231.4 39.8',
+      'L 244.1 41.9',
+      'L 256.7 45.6',
+      'Q 263 47.6 266.8 50.6', // нос
+      'Q 270 53.4 271.2 57.6',
+      'L 271.8 62', // передний бампер
+      'Q 272.8 68 272.4 74',
+      'L 271.8 80',
+      'L 273.6 83.4', // губа
+      'L 271.6 85.2',
+      'L 244 85.2',
+    ].join(' '),
+  ),
   `L ${FA.a} ${SILL}`,
   `A ${ARCH_R} ${ARCH_R} 0 1 0 ${FA.b} ${SILL}`,
   `L ${RA.a} ${SILL}`,
   `A ${ARCH_R} ${ARCH_R} 0 1 0 ${RA.b} ${SILL}`,
-  'L 32 83.6',
+  squeeze('L 32 83.6'),
   'Z',
 ].join(' ');
 
 // Остекление: заднее стекло — тёмная полоса над стойкой C; форточка; стойка B; дверное
 // стекло до стойки A; лобовое — клин; над стёклами толстая рамка крыши.
-const REAR_GLASS =
-  'M 58 27.7 L 64 24.4 L 72 19.8 L 80 16 L 88 13.4 Q 94 11.6 99 11.4 L 99 13.4 Q 94.4 13.6 88.6 15.4 L 80.6 18 L 72.6 21.8 L 64.6 26.4 L 61.4 27.7 Z';
+const REAR_GLASS = squeeze(
+  'M 58 27.7 L 64 24.4 L 72 19.8 L 80 16 L 88 13.4 Q 94 11.6 99 11.4 L 99 13.4 Q 94.4 13.6 88.6 15.4 L 80.6 18 L 72.6 21.8 L 64.6 26.4 L 61.4 27.7 Z',
+);
 const QUARTER_GLASS =
   'M 84 18.6 Q 88 17.2 96 17.2 L 111.4 17.2 L 111.4 37.4 L 96 36 L 82.6 34.8 Q 80.6 34.2 80.8 31.6 L 81.4 21.6 Q 82 19 84 18.6 Z';
 const B_PILLAR = 'M 111.4 17.2 L 115.8 17.2 L 115.8 37.8 L 111.4 37.4 Z';
@@ -106,23 +132,64 @@ const DOOR_GLASS =
   'M 115.8 17.2 L 150 17.2 Q 152 17.3 153.5 18.2 L 172.4 33.5 Q 175.6 37 175 39.4 L 115.8 38.2 Z';
 const WINDSHIELD =
   'M 145.6 12 Q 147.6 12.4 149.4 13.8 L 155.6 16.8 L 164 22.4 L 172.4 27.2 L 180.9 31.9 Q 184.6 33 188 33.4 L 177.4 33.6 L 157.6 17.6 Q 152.4 13.2 145.6 12 Z';
-// Фара: скошенный корпус под линией капота, две круглые линзы.
-const HEADLIGHT =
-  'M 254.6 50.4 L 264.6 50.8 Q 267.4 51.2 267.6 53.8 L 267.2 56.4 Q 266.8 57.4 265.2 57.6 L 256 58.4 Q 254.4 58.4 254.2 56.8 L 254 52 Q 254 50.4 254.6 50.4 Z';
-// Линзы: [x, y, радиус] — ближняя крупнее.
+// Фара: ровный скруглённый корпус 13×7 под линией капота, две круглые линзы 5×5.
+// Задний фонарь: круглый 7×7 на торце багажника.
+const HEAD = {
+  x: Math.round(X(253.6)),
+  y: 51,
+  rows: [
+    [2, 10],
+    [1, 11],
+    [0, 12],
+    [0, 12],
+    [0, 12],
+    [1, 11],
+    [2, 10],
+  ],
+};
+const LENS = [
+  [1, 3],
+  [0, 4],
+  [0, 4],
+  [0, 4],
+  [1, 3],
+]; // круг 5×5
 const LAMPS = [
-  [258.4, 54.4, 3],
-  [263.8, 54.2, 2.5],
+  [HEAD.x + 1, HEAD.y + 1],
+  [HEAD.x + 7, HEAD.y + 1],
 ];
-const TAIL =
-  'M 13.6 38.6 L 17.4 38.6 Q 18.8 38.6 18.8 40.2 L 18.8 46 Q 18.8 47.6 17.4 47.6 L 13.6 47.6 Q 12.2 47.6 12.2 46 L 12.2 40.2 Q 12.2 38.6 13.6 38.6 Z';
+const TAIL = {
+  x: Math.round(X(12)) + 1,
+  y: 39,
+  rows: [
+    [2, 4],
+    [1, 5],
+    [0, 6],
+    [0, 6],
+    [0, 6],
+    [1, 5],
+    [2, 4],
+  ],
+};
+/** Маска из строк [x0, x1] относительно точки (x, y). */
+function rowMask({ x, y, rows }) {
+  const bits = new Uint8Array(W * H);
+  rows.forEach(([a, b], i) => {
+    for (let k = a; k <= b; k++) bits[(y + i) * W + x + k] = 1;
+  });
+  return new Mask(W, H, bits);
+}
 // Передний бампер: большой нижний воздухозаборник, губа; сзади — диффузор.
-const INTAKE = 'M 258.8 63.2 L 272.2 63.2 L 272.4 74.4 L 260.6 74.8 Q 259 69.4 258.8 63.2 Z';
-const FRONT_LIP = 'M 238 82.4 L 271.8 82.4 L 273.6 83.6 L 271.6 85.2 L 240 85.2 Z';
-const REAR_DIFFUSER =
-  'M 14 79.6 Q 18.4 82 26 82.4 L 40 82.6 L 40.4 84.2 L 26 83.8 Q 16.4 83.4 12.6 80.4 Z';
-const HOOD =
-  'M 190 33.4 L 206.2 36.1 L 218.8 37.7 L 231.4 39.8 L 244.1 41.9 L 256.7 45.6 L 257.4 47.6 L 230 42.2 L 190 36 Z';
+const INTAKE = squeeze(
+  'M 258.8 63.2 L 272.2 63.2 L 272.4 74.4 L 260.6 74.8 Q 259 69.4 258.8 63.2 Z',
+);
+const FRONT_LIP = squeeze('M 238 82.4 L 271.8 82.4 L 273.6 83.6 L 271.6 85.2 L 240 85.2 Z');
+const REAR_DIFFUSER = squeeze(
+  'M 14 79.6 Q 18.4 82 26 82.4 L 40 82.6 L 40.4 84.2 L 26 83.8 Q 16.4 83.4 12.6 80.4 Z',
+);
+const HOOD = squeeze(
+  'M 190 33.4 L 206.2 36.1 L 218.8 37.7 L 231.4 39.8 L 244.1 41.9 L 256.7 45.6 L 257.4 47.6 L 230 42.2 L 190 36 Z',
+);
 
 // ---------- Цвета ----------
 const C = {
@@ -316,8 +383,8 @@ async function bodyMasks() {
     door: await mask(DOOR_GLASS),
     wind: await mask(WINDSHIELD),
     pillar: await mask(B_PILLAR),
-    head: await mask(HEADLIGHT),
-    tail: await mask(TAIL),
+    head: rowMask(HEAD),
+    tail: rowMask(TAIL),
     intake: await mask(INTAKE),
     lip: await mask(FRONT_LIP),
     diffuser: await mask(REAR_DIFFUSER),
@@ -348,16 +415,16 @@ function paintTone(x, y) {
   else if (y < 68) v = 0.83;
   else v = 0.78;
   // Заднее крыло: мощное «бедро» над аркой — светлая дуга и тень под ней.
-  if (x >= 14 && x <= 104) {
-    const crest = 46 - 4 * Math.sin((Math.PI * (x - 14)) / 90);
+  if (x >= X(14) && x <= 104) {
+    const crest = 46 - 4 * Math.sin((Math.PI * (x - X(14))) / (104 - X(14)));
     if (y >= crest - 1 && y < crest) v = 1;
     else if (y >= crest && y < crest + 2) v = 0.8;
     else if (y < crest - 1 && y >= 38) v = 0.96;
   }
   // Задний бампер ниже шва чуть темнее, торцы темнее борта.
-  if (y > 53 && x < 10 + (y - 52) * 1.6 + 14) v -= 0.05;
-  if (x <= 12) v *= 0.8;
-  if (x >= 269) v *= 0.82;
+  if (y > 61 && x < X(40)) v -= 0.05; // задний бампер ниже шва
+  if (x <= X(12)) v *= 0.8;
+  if (x >= X(269)) v *= 0.82;
   return v;
 }
 
@@ -426,17 +493,17 @@ function drawBody(m) {
   paint.set(123, 45, P(0.6));
   paint.line(117, 46, 122, 46, P(0.72), inPaint);
   // Лючок бензобака: щель тёмная сверху и слева, светлая снизу и справа.
-  paint.line(40, 40, 46, 40, P(0.45), inPaint);
-  paint.line(39, 41, 39, 46, P(0.45), inPaint);
-  paint.line(40, 47, 46, 47, P(1), inPaint);
-  paint.line(47, 41, 47, 46, P(1), inPaint);
+  const lid = Math.round(X(40));
+  paint.line(lid, 40, lid + 6, 40, P(0.45), inPaint);
+  paint.line(lid - 1, 41, lid - 1, 46, P(0.45), inPaint);
+  paint.line(lid, 47, lid + 6, 47, P(1), inPaint);
+  paint.line(lid + 7, 41, lid + 7, 46, P(1), inPaint);
   // Шов заднего бампера под фонарём и передний шов от фары к арке.
   const bumperSeam = [
-    [10, 52],
-    [24, 52],
-    [32, 54],
-    [38, 57],
-    [43, 61],
+    [X(9), 61],
+    [X(30), 61],
+    [X(37), 63],
+    [X(41), 66],
   ];
   paint.poly(bumperSeam, P(0.45), inPaint);
   paint.poly(
@@ -446,10 +513,10 @@ function drawBody(m) {
   );
   paint.poly(
     [
-      [252, 59],
-      [247, 61],
-      [243, 64],
-      [241, 66],
+      [X(252), 59],
+      [X(247), 61],
+      [X(243), 64],
+      [X(241), 66],
     ],
     P(0.45),
     inPaint,
@@ -458,8 +525,8 @@ function drawBody(m) {
   paint.poly(
     [
       [196, 37],
-      [226, 41],
-      [249, 47],
+      [X(226), 41],
+      [X(249), 47],
     ],
     P(0.82),
     inPaint,
@@ -474,9 +541,8 @@ function drawBody(m) {
       if (m.lip.at(x, y) || m.diffuser.at(x, y)) base.set(x, y, C.trim);
       if (m.sillDark.at(x, y)) base.set(x, y, C.trimLo);
     }
-  for (let x = 240; x < 272; x++) if (m.lip.at(x, 83)) base.set(x, 83, C.trimHi);
-  for (let x = 16; x < 40; x++) if (m.diffuser.at(x, 82)) base.set(x, 82, C.trimHi);
-  base.rect(266, 61, 3, 1, C.amber); // боковой повторитель на углу бампера
+  for (let x = 0; x < W; x++) if (m.lip.at(x, 83)) base.set(x, 83, C.trimHi);
+  for (let x = 0; x < W; x++) if (m.diffuser.at(x, 82)) base.set(x, 82, C.trimHi);
 
   // 8. Контур кузова и рамки стёкол.
   for (let y = 0; y < H; y++)
@@ -549,50 +615,46 @@ function drawGlass(base, m) {
 }
 
 function drawLights(base, m) {
-  // Корпус фары: чёрная рамка, внутри тёмный отражатель, хромовые кольца вокруг линз,
-  // оранжевый поворотник в переднем нижнем углу. Сами линзы — в слое фары (цвет света).
+  // Корпус фары: чёрная рамка, тёмный отражатель, две линзы в хромовых кольцах —
+  // серебристые, светлее сверху слева, тёмный проектор в центре.
+  // Сами светящиеся точки проекторов — в слое фары (цвет из «Внешнего вида»).
   for (let y = 0; y < H; y++)
-    for (let x = 240; x < W; x++) {
-      if (!m.head.at(x, y)) continue;
-      let c = m.head.edge(x, y) ? C.outline : '#24262b';
-      for (const [cx, cy, r] of LAMPS) {
-        const dx = x + 0.5 - cx;
-        const dy = y + 0.5 - cy;
-        const d = Math.hypot(dx, dy);
-        if (d <= r + 0.5 && d > r - 0.6) c = C.chrome;
-        else if (d <= r - 0.6) {
-          // Линза: серебристая, светлее сверху слева, тёмный проектор чуть ниже центра.
-          const k = Math.max(0, (-dx - dy) / (r * 1.4));
-          c = k > 0.5 ? '#eef0f3' : k > 0.15 ? '#c9cdd3' : '#9da2aa';
-          if (Math.hypot(dx - 0.3, dy - 0.4) < r * 0.34) c = '#4a4e56';
-        }
+    for (let x = 0; x < W; x++)
+      if (m.head.at(x, y)) base.set(x, y, m.head.edge(x, y) ? C.outline : '#24262b');
+  for (const [lx, ly] of LAMPS) {
+    const lens = rowMask({ x: lx, y: ly, rows: LENS });
+    for (let y = ly; y < ly + 5; y++)
+      for (let x = lx; x < lx + 5; x++) {
+        if (!lens.at(x, y)) continue;
+        const i = x - lx;
+        const j = y - ly;
+        let c = lens.edge(x, y) ? C.chrome : '#c9cdd3';
+        if (!lens.edge(x, y) && i + j <= 3) c = '#eef0f3';
+        if (!lens.edge(x, y) && i + j >= 5) c = '#9da2aa';
+        if (i === 2 && j === 2) c = '#4a4e56';
+        base.set(x, y, c);
       }
+  }
+  base.rect(Math.round(X(265)), 60, 2, 1, C.amber); // поворотник в углу бампера
+  // Круглый задний фонарь: тёмный ободок, красное поле, светлое внутреннее кольцо, блик.
+  for (let y = TAIL.y; y < TAIL.y + 7; y++)
+    for (let x = TAIL.x; x < TAIL.x + 7; x++) {
+      if (!m.tail.at(x, y)) continue;
+      const i = x - TAIL.x - 3;
+      const j = y - TAIL.y - 3;
+      let c = m.tail.edge(x, y) ? C.tailEdge : C.tail;
+      if (!m.tail.edge(x, y) && Math.hypot(i, j) <= 1.1) c = C.tailLo;
+      if (!m.tail.edge(x, y) && i + j <= -3) c = C.tailHi;
       base.set(x, y, c);
     }
-  base.rect(265, 56, 2, 1, C.amber);
-  // Круглый задний фонарь: блик сверху, тень снизу.
-  for (let y = 30; y < 52; y++)
-    for (let x = 8; x < 22; x++) {
-      if (!m.tail.at(x, y)) continue;
-      const top = !m.tail.at(x, y - 2);
-      const low = !m.tail.at(x, y + 2);
-      base.set(x, y, top ? C.tailHi : low ? C.tailLo : C.tail);
-    }
-  base.set(14, 40, '#ffd0d0');
+  base.set(TAIL.x + 2, TAIL.y + 2, '#ffd0d0');
 }
 
 function layerHeadlight() {
   const p = new Pix();
-  for (const [cx, cy, r] of LAMPS) {
-    for (let y = Math.floor(cy - r - 1); y <= cy + r + 1; y++)
-      for (let x = Math.floor(cx - r - 1); x <= cx + r + 1; x++) {
-        const dx = x + 0.5 - cx;
-        const dy = y + 0.5 - cy;
-        const d = Math.hypot(dx, dy);
-        // Светящийся центр проектора — его цвет задаёт «Внешний вид → Фары».
-        if (Math.hypot(dx - 0.3, dy - 0.4) < r * 0.34) p.set(x, y, gray(d < r * 0.2 ? 1 : 0.85));
-      }
-    p.set(Math.floor(cx - r * 0.45), Math.floor(cy - r * 0.45), gray(1));
+  for (const [lx, ly] of LAMPS) {
+    p.set(lx + 2, ly + 2, gray(1)); // светящийся проектор
+    p.set(lx + 1, ly + 1, gray(0.9));
   }
   return p;
 }
@@ -642,8 +704,8 @@ function layerOverlay(kind, m) {
       [FRONT_X - 28, SILL - 10, 12, 8],
       [FRONT_X + 18, SILL - 12, 12, 10],
       [90, 76, 70, 6],
-      [10, 46, 8, 16],
-      [236, 42, 12, 4],
+      [X(10), 46, 8, 14],
+      [X(236), 42, 10, 4],
     ];
     for (const [zx, zy, zw, zh] of zones)
       for (let y = Math.round(zy); y < zy + zh; y++)
@@ -665,7 +727,7 @@ function layerOverlay(kind, m) {
     const sx1 = Math.floor(+FA.b) - 1;
     p.rect(sx0, 77, sx1 - sx0 + 1, 6, C.metalDark);
     p.line(sx0, 77, sx1, 77, C.metal);
-    p.rect(268, 66, 2, 3, '#d14b2a'); // буксировочная петля
+    p.rect(Math.round(X(268)), 66, 2, 3, '#d14b2a'); // буксировочная петля
     return p;
   }
   if (kind === 'light') {
@@ -701,30 +763,36 @@ async function layerSpoiler(kind, part) {
     if (part !== 'paint') return p;
     // Утиный хвост на крышке багажника.
     const lip = await mask(
-      'M 16.6 28.6 L 46 27.4 L 51.6 23.4 Q 51.2 22.6 49.2 22.8 L 19 25.2 Q 16 26 16.6 28.6 Z',
+      squeeze(
+        'M 16.6 28.6 L 46 27.4 L 51.6 23.4 Q 51.2 22.6 49.2 22.8 L 19 25.2 Q 16 26 16.6 28.6 Z',
+      ),
     );
     shadeShape(p, lip, 0.84);
     return p;
   }
   if (part === 'base') {
     // Тень под крылом на крышке багажника.
-    for (let x = 17; x < 50; x++) p.set(x, 28, '#000000', 110);
+    for (let x = Math.round(X(17)); x < X(50); x++) p.set(x, 28, '#000000', 110);
     return p;
   }
   // Антикрыло на высоких стойках, с торцевой пластиной.
   shadeShape(
     p,
     await mask(
-      'M 21 28.4 L 26.6 28.2 L 28.4 19.4 L 23.6 19.6 Z M 37.4 28 L 43 27.8 L 43.6 19 L 39 19.2 Z',
+      squeeze(
+        'M 21 28.4 L 26.6 28.2 L 28.4 19.4 L 23.6 19.6 Z M 37.4 28 L 43 27.8 L 43.6 19 L 39 19.2 Z',
+      ),
     ),
     0.74,
   );
   shadeShape(
     p,
-    await mask('M 10 16.6 Q 29 15 48.6 15.2 Q 50.6 15.6 50.2 17.6 L 49.8 19.6 Q 30 19 11 20.8 Z'),
+    await mask(
+      squeeze('M 10 16.6 Q 29 15 48.6 15.2 Q 50.6 15.6 50.2 17.6 L 49.8 19.6 Q 30 19 11 20.8 Z'),
+    ),
     0.86,
   );
-  shadeShape(p, await mask('M 8.4 14.4 L 11.4 14.4 L 11.4 22.4 L 8.4 22.4 Z'), 0.78);
+  shadeShape(p, await mask(squeeze('M 8.4 14.4 L 11.4 14.4 L 11.4 22.4 L 8.4 22.4 Z')), 0.78);
   return p;
 }
 
@@ -770,10 +838,10 @@ function layerBricks() {
 
 // Низкий профиль: диск почти во всё колесо.
 const TIRES = {
-  stock: { rim: 13.6, style: 'multi', caliper: C.caliperGrey },
-  studded: { rim: 12.4, style: 'steel', caliper: C.caliperGrey, studs: true },
-  slicks: { rim: 13.8, style: 'six', caliper: C.caliperRed },
-  old: { rim: 12.4, style: 'steelOld', caliper: C.caliperGrey, flat: true },
+  stock: { rim: 14.6, style: 'multi', caliper: C.caliperGrey },
+  studded: { rim: 13.2, style: 'steel', caliper: C.caliperGrey, studs: true },
+  slicks: { rim: 14.8, style: 'six', caliper: C.caliperRed },
+  old: { rim: 13.2, style: 'steelOld', caliper: C.caliperGrey, flat: true },
 };
 
 const angDist = (a, b) => Math.abs(((((a - b) % 360) + 540) % 360) - 180);
@@ -932,7 +1000,7 @@ async function main() {
     anchor: { x: W / 2, y: GROUND },
     wheels: { rear: { x: REAR_X, y: WHEEL_Y }, front: { x: FRONT_X, y: WHEEL_Y }, radius: WHEEL_R },
     wheelFrame: { width: FRAME, height: FRAME, frames: FRAMES },
-    headlight: { x: 266, y: 54 },
+    headlight: { x: Math.round(X(266)), y: 54 },
     tires: {
       wheels_stock: 'stock',
       wheels_studded: 'studded',
