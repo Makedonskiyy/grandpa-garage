@@ -1,15 +1,15 @@
 {
-  "$comment": "Сгенерировано tools/build-car.mjs (npm run car) — не править руками. Координаты в единицах мира; текстуры в density раз крупнее (пиксель-арт без сглаживания).",
+  "$comment": "Сгенерировано tools/build-car.mjs (npm run car) — не править руками. Координаты в единицах мира; текстуры в density раз крупнее. Рисунок — сетка 432×144 (точка = 2×2 пикселя текстуры).",
   "density": 3,
   "size": { "width": 288, "height": 96 },
   "anchor": { "x": 144, "y": 92 },
   "wheels": {
-    "rear": { "x": 66.4, "y": 72.4 },
-    "front": { "x": 224.6, "y": 72.4 },
-    "radius": 19.6
+    "rear": { "x": 67.18, "y": 72.64 },
+    "front": { "x": 224.77, "y": 72.64 },
+    "radius": 19.36
   },
   "wheelFrame": { "width": 48, "height": 48, "frames": 16 },
-  "headlight": { "x": 270, "y": 55 },
+  "headlight": { "x": 274, "y": 54 },
   "tires": {
     "wheels_stock": "stock",
     "wheels_studded": "studded",

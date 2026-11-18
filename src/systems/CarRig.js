@@ -4,7 +4,8 @@
  *
  * Порядок слоёв снизу вверх:
  *   тень → неон → ниши колёс → колёса (шина + диск) / кирпичи → стойки крыла →
- *   основа → краска → накладка кузова → спойлер → фара → грязь → свет фар (ночь).
+ *   основа → краска → оттенки (холодный свет, тёплые тени — поверх любого цвета) →
+ *   накладка кузова → спойлер → фара → грязь → свет фар (ночь).
  * Кузов (всё, кроме тени и колёс) качается на подвеске; колёса стоят на земле и крутятся.
  *
  * Точка (0, 0) контейнера — земля под серединой машины.
@@ -35,6 +36,7 @@ const IMAGES = [
   'car_wells',
   'car_base',
   'car_paint',
+  'car_tone',
   'car_headlight',
   'car_dirt',
   'car_bricks',
@@ -104,6 +106,7 @@ export class CarRig extends Phaser.GameObjects.Container {
       wingBase: img('car_spoiler_wing_base'),
       base: img('car_base'),
       paint: img('car_paint'),
+      tone: img('car_tone'),
       overlay: img('car_overlay_rust'),
       spoiler: img('car_spoiler_lip_paint'),
       headlight: img('car_headlight'),
