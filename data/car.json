@@ -11,12 +11,16 @@
   "wheelFrame": { "width": 48, "height": 48, "frames": 16 },
   "headlight": { "x": 272.67, "y": 54.67 },
   "shadow": { "height": 20, "above": 14 },
-  "tires": {
-    "wheels_stock": "stock",
-    "wheels_studded": "studded",
-    "wheels_slicks": "slicks",
-    "none": "old"
+  "tires": ["stock", "studded", "mud", "sport", "slicks", "old"],
+  "rims": {
+    "six": "m",
+    "steel": "s",
+    "steelOld": "s",
+    "mesh": "m",
+    "five": "l",
+    "multi": "l"
   },
+  "noTires": { "tire": "old", "rim": "steelOld" },
   "overlays": {
     "body_rusty": "rust",
     "body_cage": "cage",

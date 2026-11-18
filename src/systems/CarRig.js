@@ -12,7 +12,6 @@
  */
 import Phaser from 'phaser';
 import car from '../../data/car.json';
-import cosmetics from '../../data/cosmetics.json';
 import {
   createSuspension,
   stepSuspension,
@@ -21,12 +20,20 @@ import {
   rollAngle,
   wheelFrame,
 } from './carPhysics.js';
+import { getPart } from './simulate.js';
+import { cosmeticHex } from '../gameState.js';
 
 const PATH = 'assets/images/car/';
 const AX = car.anchor.x;
 const AY = car.anchor.y;
 const PIVOT_Y = car.wheels.rear.y - AY; // кузов качается вокруг высоты осей
-const TIRE_TYPES = [...new Set(Object.values(car.tires))];
+const SIZES = [...new Set(Object.values(car.rims))];
+const RIM_TYPES = Object.keys(car.rims);
+/** Все колёсные листы: шины под каждый размер диска, тормоза и диски. */
+const WHEEL_SHEETS = [
+  ...car.tires.flatMap((t) => SIZES.map((s) => `wheel_tire_${t}_${s}`)),
+  ...RIM_TYPES.flatMap((r) => [`wheel_brake_${r}`, `wheel_rim_${r}`]),
+];
 const OLD_RIM_COLOR = 0x9a9ea6;
 // Текстуры машины в DENSITY раз детальнее мира: показываем в масштабе 1/DENSITY.
 const DENSITY = car.density ?? 1;
@@ -52,25 +59,31 @@ export function preloadCar(scene) {
     frameWidth: car.wheelFrame.width * DENSITY,
     frameHeight: car.wheelFrame.height * DENSITY,
   };
-  for (const t of TIRE_TYPES) {
-    scene.load.spritesheet(`wheel_tire_${t}`, `${PATH}wheel_tire_${t}.png`, frame);
-    scene.load.spritesheet(`wheel_rim_${t}`, `${PATH}wheel_rim_${t}.png`, frame);
-  }
+  for (const key of WHEEL_SHEETS) scene.load.spritesheet(key, `${PATH}${key}.png`, frame);
   // Детальные текстуры сглаживаем при уменьшении: при любом размере окна машина остаётся
   // чёткой, а пиксельные фоны вокруг — крупными (у них остаётся фильтр NEAREST).
   scene.load.once(Phaser.Loader.Events.COMPLETE, () => {
-    const keys = [
-      ...new Set(IMAGES),
-      ...TIRE_TYPES.flatMap((t) => [`wheel_tire_${t}`, `wheel_rim_${t}`]),
-    ];
+    const keys = [...new Set(IMAGES), ...WHEEL_SHEETS];
     for (const key of keys) scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
   });
 }
 
-const colorOf = (group, id) => {
-  const c = cosmetics[group].find((x) => x.id === id) ?? cosmetics[group][0];
-  return c.hex ? Phaser.Display.Color.HexStringToColor(c.hex).color : null;
+/** Цвет варианта внешнего вида (готового или своего) числом для setTint; null — выключено. */
+const colorOf = (group, value) => {
+  const hex = cosmeticHex(group, value);
+  return hex ? Phaser.Display.Color.HexStringToColor(hex).color : null;
 };
+
+/** Ключи листов колеса по сборке; без шин — спущенное дедово на старых штампах. */
+export function wheelKeys(build) {
+  const tire = build.tires ? getPart(build.tires)?.sprite : car.noTires.tire;
+  const rim = build.tires ? (getPart(build.rims)?.sprite ?? 'six') : car.noTires.rim;
+  return {
+    brake: `wheel_brake_${rim}`,
+    tire: `wheel_tire_${tire}_${car.rims[rim]}`,
+    rim: `wheel_rim_${rim}`,
+  };
+}
 
 export class CarRig extends Phaser.GameObjects.Container {
   /**
@@ -135,8 +148,9 @@ export class CarRig extends Phaser.GameObjects.Container {
       const x = w.x - AX;
       const yy = w.y - AY;
       return {
-        tire: scene.add.sprite(x, yy, 'wheel_tire_stock', 0).setScale(TEX),
-        rim: scene.add.sprite(x, yy, 'wheel_rim_stock', 0).setScale(TEX),
+        brake: scene.add.sprite(x, yy, 'wheel_brake_six', 0).setScale(TEX),
+        tire: scene.add.sprite(x, yy, 'wheel_tire_stock_m', 0).setScale(TEX),
+        rim: scene.add.sprite(x, yy, 'wheel_rim_six', 0).setScale(TEX),
       };
     };
     this.wheels = { rear: wheel(car.wheels.rear), front: wheel(car.wheels.front) };
@@ -147,10 +161,7 @@ export class CarRig extends Phaser.GameObjects.Container {
       this.neon,
       this.bodyBack,
       this.bricks,
-      this.wheels.rear.tire,
-      this.wheels.rear.rim,
-      this.wheels.front.tire,
-      this.wheels.front.rim,
+      ...['rear', 'front'].flatMap((k) => ['brake', 'tire', 'rim'].map((p) => this.wheels[k][p])),
       this.bodyFront,
     ]);
 
@@ -184,16 +195,15 @@ export class CarRig extends Phaser.GameObjects.Container {
 
     L.dirt.setVisible(Boolean(dirty));
 
-    // Колёса: без колёс в сборке — спущенное дедово сзади и кирпичи спереди.
-    const type = build.wheels ? car.tires[build.wheels] : car.tires.none;
-    const rimColor = build.wheels ? colorOf('rim', looks.rim) : OLD_RIM_COLOR;
+    // Колёса: без шин в сборке — спущенное дедово сзади и кирпичи спереди.
+    const keys = wheelKeys(build);
+    const rimColor = build.tires ? colorOf('rim', looks.rim) : OLD_RIM_COLOR;
     for (const w of [this.wheels.rear, this.wheels.front]) {
-      w.tire.setTexture(`wheel_tire_${type}`, w.tire.frame.name);
-      w.rim.setTexture(`wheel_rim_${type}`, w.rim.frame.name).setTint(rimColor);
+      for (const p of ['brake', 'tire', 'rim']) w[p].setTexture(keys[p], w[p].frame.name);
+      w.rim.setTint(rimColor);
     }
-    const hasWheels = Boolean(build.wheels);
-    this.wheels.front.tire.setVisible(hasWheels);
-    this.wheels.front.rim.setVisible(hasWheels);
+    const hasWheels = Boolean(build.tires);
+    for (const p of ['brake', 'tire', 'rim']) this.wheels.front[p].setVisible(hasWheels);
     this.bricks.setVisible(!hasWheels);
     this.build = build;
     return this;
@@ -205,10 +215,25 @@ export class CarRig extends Phaser.GameObjects.Container {
     this.bodyBack.rotation = other.bodyBack.rotation;
     this.bodyFront.y = other.bodyFront.y;
     this.bodyFront.rotation = other.bodyFront.rotation;
-    for (const k of ['rear', 'front']) {
-      this.wheels[k].tire.setFrame(other.wheels[k].tire.frame.name);
-      this.wheels[k].rim.setFrame(other.wheels[k].rim.frame.name);
+    for (const k of ['rear', 'front'])
+      for (const p of ['brake', 'tire', 'rim'])
+        this.wheels[k][p].setFrame(other.wheels[k][p].frame.name);
+  }
+
+  /** Блик по свежей краске: светлая копия слоя краски быстро гаснет. */
+  shine() {
+    if (!this.gloss) {
+      this.gloss = this.scene.add
+        .image(this.layers.paint.x, this.layers.paint.y, 'car_paint')
+        .setOrigin(0)
+        .setScale(this.layers.paint.scaleX)
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setAlpha(0);
+      this.bodyFront.addAt(this.gloss, this.bodyFront.getIndex(this.layers.tone) + 1);
     }
+    this.scene.tweens.killTweensOf(this.gloss);
+    this.gloss.setAlpha(0.55);
+    this.scene.tweens.add({ targets: this.gloss, alpha: 0, duration: 520, ease: 'Sine.easeOut' });
   }
 
   /** «Посадка» после установки детали: кузов слегка подпрыгивает на подвеске. */
@@ -238,6 +263,7 @@ export class CarRig extends Phaser.GameObjects.Container {
       this.wheelAngle = rollAngle(this.wheelAngle, distance / this.scaleX);
       const f = wheelFrame(this.wheelAngle);
       for (const w of [this.wheels.rear, this.wheels.front]) {
+        w.brake.setFrame(f);
         w.tire.setFrame(f);
         w.rim.setFrame(f);
       }

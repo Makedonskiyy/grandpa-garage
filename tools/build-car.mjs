@@ -908,14 +908,29 @@ function layerBricks() {
   return p;
 }
 
-// ---------- Колёса: шина + тормоз (не перекрашиваются) и диск (серый) ----------
+// ---------- Колёса: тормоз, шина, диск — три слоя ----------
+//
+// Шины и диски — отдельные детали. Диаметр шины один (Ø 655 мм по чертежу), диски — трёх
+// размеров: 16″ (штампы), 17″ (родные, сетка), 18″ (пятилучевые, кованые). Шина рисуется под
+// каждый размер диска (боковина выше у маленького диска), тормоз — под каждый диск: за
+// большими дисками — красные суппорты, за штампами — простые серые.
 
-const TIRES = {
-  stock: { rim: RIM_R, style: 'six', caliper: C.caliperGrey },
-  // Штампованные — на 1″ меньше родных, боковина чуть выше, но в пропорциях чертежа.
-  studded: { rim: RIM_R - 3, style: 'steel', caliper: C.caliperGrey, studs: true },
-  slicks: { rim: RIM_R, style: 'multi', caliper: C.caliperRed },
-  old: { rim: RIM_R - 3, style: 'steelOld', caliper: C.caliperGrey, flat: true },
+const RIM_SIZE = { s: RIM_R - 3, m: RIM_R, l: RIM_R + 2.5 };
+const RIMS = {
+  six: { size: 'm', caliper: C.caliperGrey },
+  steel: { size: 's', caliper: C.caliperGrey },
+  steelOld: { size: 's', caliper: C.caliperGrey },
+  mesh: { size: 'm', caliper: C.caliperGrey },
+  five: { size: 'l', caliper: C.caliperRed },
+  multi: { size: 'l', caliper: C.caliperRed },
+};
+const TIRE_KINDS = {
+  stock: {},
+  studded: { studs: true },
+  mud: { lugs: true },
+  sport: { stripe: true },
+  slicks: { slick: true },
+  old: { flat: true },
 };
 
 const angDist = (a, b) => Math.abs(((((a - b) % 360) + 540) % 360) - 180);
@@ -943,35 +958,53 @@ function polar(fn) {
   return p;
 }
 
-function tirePix(t, angle) {
+/** Шина: резина от обода до протектора; t — вид шины, rim — радиус диска. */
+function tirePix(t, rim, angle) {
   const R = TIRE_R;
   return polar((rr, a, dx, dy) => {
-    const r = t.flat && dy > 0 && rr > t.rim ? Math.hypot((dx * R) / (R + 6), dy) : rr;
-    if (r > R) return null;
+    const r = t.flat && dy > 0 && rr > rim ? Math.hypot((dx * R) / (R + 6), dy) : rr;
+    if (r > R || r <= rim) return null;
+    // Грязевая: шашки протектора выступают по кромке — силуэт «зубчатый».
+    if (t.lugs && r > R - 2.4) return toRay(a, angle, 26) < 3.2 ? C.outline : null;
     if (t.studs && r > R - 2.2 && toRay(a, angle, 30) < 1.1) return '#8d939b';
     if (r > R - 1.6) return C.outline;
-    if (r > t.rim + 1.6) {
+    if (r > rim + 1.6) {
       const L = lit(a);
-      if (r > R - 4) return L > 0.6 ? C.rubberSide : C.rubber; // плечо протектора
-      if (r < t.rim + 3) return C.rubber; // борт у обода
-      if (Math.abs(r - (R - 6)) < 0.8 && L > 0.3) return C.rubberHi;
+      if (t.lugs && r > R - 7 && toRay(a, angle + 7, 26) < 2.4) return C.rubberLit; // боковые шашки
+      if (r > R - 4) {
+        if (t.slick) return L > 0.45 ? C.rubberLit : C.rubberSide; // гладкое плечо с бликом
+        return L > 0.6 ? C.rubberSide : C.rubber; // плечо протектора
+      }
+      if (r < rim + 3) return C.rubber; // борт у обода
+      if (t.stripe && Math.abs(r - (rim + 4.5)) < 0.7) return '#6b6e75'; // кант на боковине
+      if (Math.abs(r - (R - 6)) < 0.8 && L > 0.3 && !t.slick) return C.rubberHi;
       return L > 0.7 ? C.rubberLit : L > 0.25 ? C.rubberSide : C.rubber;
     }
-    if (r > t.rim) return C.outline;
-    const ca = angDist(a, 205);
-    if (ca < 22 && r > t.rim - 15 && r < t.rim - 3) {
-      if (r > t.rim - 6) return t.caliper === C.caliperRed ? C.caliperRedHi : C.caliperGreyHi;
-      return t.caliper;
-    }
-    if (r > t.rim - 3) return C.discDark;
-    if (Math.abs(r - (t.rim - 9)) < 1.2 && toRay(a, angle, 24) < 3) return C.discDark;
-    if (r < 10) return C.discDark;
-    return r > t.rim - 12 ? C.discHi : C.disc;
+    return C.outline; // край у обода
   });
 }
 
-function rimPix(t, angle) {
-  const R = t.rim;
+/** Тормоз за диском: суппорт сверху сзади (не крутится) и диск с перфорацией (крутится). */
+function brakePix(rimDef, angle) {
+  const R = RIM_SIZE[rimDef.size];
+  const red = rimDef.caliper === C.caliperRed;
+  return polar((r, a) => {
+    if (r > R) return null;
+    const ca = angDist(a, 205);
+    if (ca < (red ? 26 : 22) && r > R - (red ? 17 : 15) && r < R - 3) {
+      if (r > R - 6) return red ? C.caliperRedHi : C.caliperGreyHi;
+      return rimDef.caliper;
+    }
+    if (r > R - 3) return C.discDark;
+    if (Math.abs(r - (R - 9)) < 1.2 && toRay(a, angle, 24) < 3) return C.discDark;
+    if (r < 10) return C.discDark;
+    return r > R - 12 ? C.discHi : C.disc;
+  });
+}
+
+/** Диск: обод и спицы по стилю. */
+function rimPix(rimDef, style, angle) {
+  const R = RIM_SIZE[rimDef.size];
   const nut = (r, a, n, rr) => {
     const ra = (a * Math.PI) / 180;
     for (let i = 0; i < n; i++) {
@@ -984,39 +1017,54 @@ function rimPix(t, angle) {
     }
     return false;
   };
+  const hub = (r, a, nutR = 8.6) => {
+    if (nut(r, a, 5, nutR)) return gray(0.42);
+    return r < 5 ? gray(0.55) : r > 11 ? gray(0.6) : gray(0.86);
+  };
   return polar((r, a) => {
     if (r > R) return null;
     const L = lit(a);
     // Обод: полированная полка, светлая сверху слева; внутренняя ступень темнее.
     if (r > R - 2.6) return gray(0.72 + 0.28 * L);
     if (r > R - 4.6) return gray(0.5);
-    if (t.style === 'six') {
-      if (r < 13) {
-        if (nut(r, a, 5, 8.6)) return gray(0.42);
-        return r < 5 ? gray(0.55) : r > 11 ? gray(0.6) : gray(0.86);
-      }
-      // Шесть спиц, как на чертеже: шире к ободу, светлая грань со стороны света.
-      const hw = ((2.6 + (1.8 * (r - 13)) / (R - 13)) / r) * (180 / Math.PI);
-      const d = spoke(a, angle, 6);
-      const px = (Math.abs(d) * Math.PI * r) / 180; // ширина в точках от оси спицы
+    if (style === 'six' || style === 'five') {
+      if (r < 13) return hub(r, a);
+      const n = style === 'six' ? 6 : 5;
+      // Спицы шире к ободу, светлая грань со стороны света; у пяти лучей — шире и с кромкой.
+      const base = style === 'six' ? 2.6 : 3.6;
+      const grow = style === 'six' ? 1.8 : 3.2;
+      const hw = ((base + (grow * (r - 13)) / (R - 13)) / r) * (180 / Math.PI);
+      const d = spoke(a, angle, n);
+      const px = (Math.abs(d) * Math.PI * r) / 180;
       const hwPx = (hw * Math.PI * r) / 180;
       if (Math.abs(d) < hw) {
         if (hwPx - px < 1) return gray(0.46); // кромка спицы
+        if (style === 'five' && Math.abs(px) < 0.8 && r > 16) return gray(0.62); // ребро по оси
         return gray(d < -hw * 0.25 ? 1 : d > hw * 0.4 ? 0.62 : 0.84);
       }
       return null;
     }
-    if (t.style === 'multi') {
-      if (r < 12) {
-        if (nut(r, a, 5, 8)) return gray(0.42);
-        return r < 5 ? gray(0.55) : gray(0.86);
-      }
+    if (style === 'multi') {
+      if (r < 12) return hub(r, a, 8);
       const hw = ((1.6 + (1 * (r - 12)) / (R - 12)) / r) * (180 / Math.PI);
       const d = spoke(a, angle, 10);
       if (Math.abs(d) < hw) return gray(d < 0 ? 1 : 0.78);
       return null;
     }
-    const b = t.style === 'steelOld' ? 0.6 : 0.78;
+    if (style === 'mesh') {
+      if (r < 12) return hub(r, a, 8);
+      // Сетка: два семейства тонких спиц, закрученных в разные стороны, пересекаются ромбами.
+      if (r > R - 7.5) return gray(0.66 + 0.2 * L); // плоская полка под болтами сборки
+      const tw = 9 * ((r - 12) / (R - 12));
+      const hw = (1.15 / r) * (180 / Math.PI);
+      const d1 = spoke(a + tw * 1.6, angle, 10);
+      const d2 = spoke(a - tw * 1.6, angle, 10);
+      if (Math.abs(d1) < hw) return gray(0.92);
+      if (Math.abs(d2) < hw) return gray(0.7);
+      if (Math.abs(r - 15) < 1) return gray(0.6); // кольцо у ступицы
+      return null;
+    }
+    const b = style === 'steelOld' ? 0.6 : 0.78;
     const win = toRay(a, angle, 8) * (Math.PI / 180) * r;
     if (Math.abs(r - R * 0.66) < 3.6 && win < 5) return null; // окно — видно тормоз
     if (Math.abs(r - R * 0.66) < 4.6 && win < 6) return gray(b - 0.22); // кромка окна
@@ -1072,9 +1120,12 @@ async function main() {
   await save('car_spoiler_wing_paint', await layerSpoiler('wing', 'paint', m).png());
   await save('car_spoiler_wing_base', await layerSpoiler('wing', 'base', m).png());
   await save('car_bricks', await layerBricks().png());
-  for (const [id, t] of Object.entries(TIRES)) {
-    await save(`wheel_tire_${id}`, await strip((a) => tirePix(t, a)));
-    await save(`wheel_rim_${id}`, await strip((a) => rimPix(t, a)));
+  for (const [id, t] of Object.entries(TIRE_KINDS))
+    for (const [size, r] of Object.entries(RIM_SIZE))
+      await save(`wheel_tire_${id}_${size}`, await strip((a) => tirePix(t, r, a)));
+  for (const [id, def] of Object.entries(RIMS)) {
+    await save(`wheel_brake_${id}`, await strip((a) => brakePix(def, a)));
+    await save(`wheel_rim_${id}`, await strip((a) => rimPix(def, id, a)));
   }
 
   const meta = {
@@ -1091,12 +1142,10 @@ async function main() {
     wheelFrame: { width: FRAME / 3, height: FRAME / 3, frames: FRAMES },
     headlight: { x: toWorldX(818), y: toWorldY(164) },
     shadow: { height: SHADOW_H / 3, above: SHADOW_GROUND / 3 },
-    tires: {
-      wheels_stock: 'stock',
-      wheels_studded: 'studded',
-      wheels_slicks: 'slicks',
-      none: 'old',
-    },
+    // Шины: вид × размер диска; диски: размер. Детали ссылаются на них полем sprite.
+    tires: Object.keys(TIRE_KINDS),
+    rims: Object.fromEntries(Object.entries(RIMS).map(([id, d]) => [id, d.size])),
+    noTires: { tire: 'old', rim: 'steelOld' },
     overlays: { body_rusty: 'rust', body_cage: 'cage', body_light: 'light' },
     spoilers: {
       spoiler_lip: { paint: 'car_spoiler_lip_paint' },
@@ -1130,9 +1179,10 @@ async function preview(files) {
       .extract({ left: i * FRAME, top: 0, width: FRAME, height: FRAME })
       .png()
       .toBuffer();
-  const wheel = async (type, rimHex, i) => [
-    await frame(files[`wheel_tire_${type}`], i),
-    await tint(await frame(files[`wheel_rim_${type}`], i), rimHex),
+  const wheel = async (type, rim, rimHex, i) => [
+    await frame(files[`wheel_brake_${rim}`], i),
+    await frame(files[`wheel_tire_${type}_${RIMS[rim].size}`], i),
+    await tint(await frame(files[`wheel_rim_${rim}`], i), rimHex),
   ];
   const assemble = async (v, bg) => {
     const layers = [];
@@ -1142,9 +1192,9 @@ async function preview(files) {
     const pos = (x) => [Math.round(x - FRAME / 2), Math.round(AXY - FRAME / 2)];
     if (v.tire) {
       for (const x of [AXR, AXF])
-        for (const b of await wheel(v.tire, v.rim, v.frame ?? 0)) add(b, ...pos(x));
+        for (const b of await wheel(v.tire, v.rimStyle ?? 'six', v.rim, v.frame ?? 0)) add(b, ...pos(x));
     } else {
-      for (const b of await wheel('old', '#9a9ea6', 0)) add(b, ...pos(AXR));
+      for (const b of await wheel('old', 'steelOld', '#9a9ea6', 0)) add(b, ...pos(AXR));
       add(files.car_bricks);
     }
     if (v.spoiler === 'wing') add(files.car_spoiler_wing_base);
@@ -1164,22 +1214,10 @@ async function preview(files) {
   const variants = [
     { paint: '#a8adb3', tire: null, overlay: 'rust', dirt: true },
     { paint: '#e8e8e0', tire: 'stock', rim: '#c0c4c8' },
-    {
-      paint: '#1f3f8f',
-      tire: 'slicks',
-      overlay: 'light',
-      rim: '#9a9ea6',
-      spoiler: 'wing',
-      frame: 3,
-    },
-    {
-      paint: '#8b1a2b',
-      tire: 'studded',
-      overlay: 'cage',
-      rim: '#c0c4c8',
-      spoiler: 'lip',
-      frame: 6,
-    },
+    { paint: '#1f3f8f', tire: 'slicks', rimStyle: 'multi', overlay: 'light', rim: '#9a9ea6', spoiler: 'wing', frame: 3 },
+    { paint: '#8b1a2b', tire: 'studded', rimStyle: 'steel', overlay: 'cage', rim: '#c0c4c8', spoiler: 'lip', frame: 6 },
+    { paint: '#e0b022', tire: 'mud', rimStyle: 'mesh', overlay: 'rust', rim: '#c9a23a', frame: 2 },
+    { paint: '#3a3d42', tire: 'sport', rimStyle: 'five', rim: '#1c1c1f', frame: 5 },
   ];
   const rows = [];
   for (const v of variants) rows.push(await assemble(v, '#2a2724'));
