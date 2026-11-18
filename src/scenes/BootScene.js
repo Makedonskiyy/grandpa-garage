@@ -7,6 +7,7 @@ import { el } from '../ui/dom.js';
 import { webButton } from '../ui/components.js';
 import { t } from '../systems/strings.js';
 import { preloadCar } from '../systems/CarRig.js';
+import { preloadStartLight } from '../systems/StartLight.js';
 import { getSettings, updateSettings } from '../systems/settings.js';
 import { canFullscreen, setFullscreen } from '../systems/scale.js';
 
@@ -116,6 +117,7 @@ export class BootScene extends BaseScene {
     for (const a of manifest.spritesheets) this.load.spritesheet(a.key, a.path, a.frame);
     for (const a of manifest.audio) this.load.audio(a.key, [].concat(a.path));
     preloadCar(this); // слои машины игрока: список берётся из data/car.json
+    preloadStartLight(this); // стартовый светофор обкатки и заезда
   }
 
   // ---------- Заставка ----------

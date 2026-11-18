@@ -10,7 +10,7 @@ import { icon } from './icons.js';
 import { t } from '../systems/strings.js';
 import { PedalControls } from './PedalControls.js';
 import { createGauge } from './gauges.js';
-import { greenZone, shiftUp, shiftDown } from '../systems/drive.js';
+import { greenZone, shiftUp, shiftDown, startRun } from '../systems/drive.js';
 
 const HOLD_MS = 1100;
 
@@ -59,9 +59,8 @@ export class DriveHud {
     this.node = el('div', { class: `ui-abs dash ${className}`.trim() }, [
       el('div', { class: 'dash__shade', 'aria-hidden': 'true' }),
       p.$brake,
-      p.$down,
-      el('div', { class: 'dash__gauges' }, [this.tacho.node, this.speedo.node]),
-      p.$up,
+      // Лепестки крепятся к приборам сзади: кронштейны прячутся за обечайками.
+      el('div', { class: 'dash__gauges' }, [p.$down, this.tacho.node, this.speedo.node, p.$up]),
       p.$gas,
     ]);
     this.info = middle.length ? el('div', { class: 'ui-abs dash-info' }, middle) : null;
@@ -73,7 +72,11 @@ export class DriveHud {
 
   /** Ввод педалей за кадр. */
   input(dt) {
-    return this.pedals.update(dt);
+    const input = this.pedals.update(dt);
+    // Автомат: трогание — газом (до зелёного — фальстарт), на ручной — первой передачей.
+    const run = this.run;
+    if (run.auto && !run.started && !run.done && input.gas > 0.3) startRun(run);
+    return input;
   }
 
   setEnabled(on) {

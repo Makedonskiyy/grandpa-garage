@@ -3,7 +3,8 @@ import { BaseScene } from './BaseScene.js';
 import { SCENES, MUSIC, SFX, WORLD } from '../config/constants.js';
 import { buildCar } from '../systems/buildCar.js';
 import { getTest } from '../systems/simulate.js';
-import { createRun, stepRun, startRun, runBot, summarize, segmentAt } from '../systems/drive.js';
+import { createRun, stepRun, greenLight, runBot, summarize, segmentAt } from '../systems/drive.js';
+import { StartLight } from '../systems/StartLight.js';
 import { audio } from '../systems/AudioManager.js';
 import { gameState, recordResult } from '../gameState.js';
 import { el } from '../ui/dom.js';
@@ -65,8 +66,18 @@ export class TrialScene extends BaseScene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.engine?.destroy());
 
     this.#buildHud();
-    startRun(this.run);
-    this.hud.say(auto ? 'startAuto' : 'start');
+    // Светофор у обочины на старте: трогается игрок сам, на зелёный.
+    this.light = new StartLight(this, 4 * PPM, 146, { scale: 1.1, pole: 40 });
+    this.track.add(this.light);
+    this.hud.say(auto ? 'launchAuto' : 'launch');
+    this.light.run(this.test.christmasTree, {
+      onAmber: () => audio.playSfx(SFX.TREE_BEEP),
+      onGreen: () => {
+        audio.playSfx(SFX.TREE_GO);
+        greenLight(this.run);
+        this.hud.say(auto ? 'goAuto' : 'goManual', 'good');
+      },
+    });
   }
 
   #buildHud() {
@@ -345,7 +356,14 @@ export class TrialScene extends BaseScene {
 
   /** Подсказка: что впереди и что делать прямо сейчас. */
   #hints(run, seg) {
-    for (const e of run.events.splice(0)) if (e.type === 'overrev') this.hud.say('overrev', 'warn');
+    for (const e of run.events.splice(0)) {
+      if (e.type === 'overrev') this.hud.say('overrev', 'warn');
+      if (e.type === 'early') this.hud.say('early', 'warn');
+    }
+    if (!run.started) {
+      if (run.green && run.t > 1.2) this.hud.say(run.auto ? 'goAuto' : 'goManual', 'warn');
+      return;
+    }
     if (run.sink > 0.25) return this.hud.say('sinking', 'warn');
     if (run.slip > 0.5) return this.hud.say('spin', 'warn');
     if (!run.auto && run.limiter && seg.type !== 'ruts') return this.hud.say('limiter', 'warn');

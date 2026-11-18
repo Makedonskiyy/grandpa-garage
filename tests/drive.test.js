@@ -4,6 +4,7 @@ import {
   createRun,
   stepRun,
   startRun,
+  greenLight,
   shiftUp,
   runBot,
   predict,
@@ -35,6 +36,7 @@ const key = (b) => `${b.tires}+${b.engine}+${b.body}`;
 function drive(testId, build, { gas = 1, shiftAt = 0.97, auto = false } = {}) {
   const run = createRun(testId, build, { auto });
   run.rpm = gas >= 1 ? run.stats.redline * 0.8 : bestLaunchRpm(run);
+  greenLight(run);
   startRun(run);
   while (!run.done && run.t < 120) {
     if (!auto && shiftAt && run.rpm >= run.stats.redline * shiftAt) shiftUp(run);
@@ -112,7 +114,7 @@ describe('баланс: идеальный водитель', () => {
 
   it('заезд: Палыча обгоняют только с асфальтовой резиной', () => {
     for (const b of raceOk) expect(['tires_sport', 'tires_slicks']).toContain(b.tires);
-    const turbo = { ...BASE, tires: 'tires_slicks', engine: 'engine_turbo' };
+    const turbo = { ...BASE, tires: 'tires_slicks', engine: 'engine_turbo', body: 'body_light' };
     expect(runBot('race', turbo).ok).toBe(true);
     expect(runBot('race', { ...turbo, tires: 'tires_studded' }).ok).toBe(false);
   });
@@ -179,6 +181,38 @@ describe('езда игрока', () => {
     expect(weak.reasonKey).toBe('slow');
     expect(weak.reason).toBeTruthy();
     expect(weak.details.diffText).toMatch(/Медленнее Палыча/);
+  });
+
+  it('фальстарт: в заезде — поражение, на обкатке машина просто ждёт зелёный', () => {
+    const race = createRun('race', BASE);
+    expect(startRun(race)).toBe(false);
+    expect(race.done).toBe(true);
+    expect(race.reasonKey).toBe('jump');
+    const trial = createRun('trial', { ...BASE, tires: 'tires_studded' });
+    expect(startRun(trial)).toBe(false);
+    expect(trial.done).toBe(false);
+    greenLight(trial);
+    expect(startRun(trial)).toBe(true);
+  });
+
+  it('реакция идёт в зачёт: поздний старт — позже финиш', () => {
+    const b = { ...BASE, tires: 'tires_slicks', engine: 'engine_turbo' };
+    const go = (wait) => {
+      const run = createRun('race', b);
+      run.rpm = bestLaunchRpm(run);
+      greenLight(run);
+      while (run.t < wait) stepRun(run, { gas: 0.4 }, STEP);
+      startRun(run);
+      while (!run.done && run.t < 40) {
+        if (run.rpm > run.stats.redline * 0.97) shiftUp(run);
+        stepRun(run, { gas: 0.7 }, STEP);
+      }
+      return run;
+    };
+    const fast = go(0.2);
+    const slow = go(1.2);
+    expect(fast.reaction).toBeCloseTo(0.2, 1);
+    expect(slow.t - fast.t).toBeGreaterThan(0.8);
   });
 
   it('время форматируется до сотых', () => {

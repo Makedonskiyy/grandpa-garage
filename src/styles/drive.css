@@ -54,59 +54,25 @@
   height: auto;
   transform-origin: 50% 100%;
   transition:
-    transform 90ms var(--ui-ease),
-    filter 90ms var(--ui-ease);
+    transform 70ms var(--ui-ease),
+    filter 70ms var(--ui-ease);
   pointer-events: none;
 }
 
-/* Нажатая педаль уходит вниз и от игрока — наклон по оси X. */
+/* Нажатая педаль — едва заметно уходит вниз и темнеет. */
 .pedal.is-pressed .pedal__img {
-  transform: perspective(700px) rotateX(22deg) translateY(6px) scale(0.97);
-  filter: brightness(0.88);
-}
-
-.pedal__keys {
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 10px);
-  transform: translateX(-50%);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  white-space: nowrap;
-}
-
-.pedal__label {
-  margin-right: 4px;
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--ui-text);
-  text-shadow: 0 2px 6px rgb(0 0 0 / 0.8);
-}
-
-.dash kbd {
-  min-width: 32px;
-  height: 30px;
-  padding: 0 8px;
-  display: inline-grid;
-  place-items: center;
-  border-radius: 7px;
-  font: 600 16px/1 var(--font-ui);
-  color: var(--ui-text);
-  background: rgb(12 12 14 / 0.85);
-  box-shadow: inset 0 0 0 1px var(--ui-line-strong);
-}
-
-.pedal.is-pressed kbd {
-  color: var(--ui-ink);
-  background: var(--ui-accent);
+  transform: translateY(4px) scale(0.985);
+  filter: brightness(0.9);
 }
 
 /* ---------- Лепестки переключения ---------- */
+/* Лепестки — внутри блока приборов, за обечайками (z-index ниже приборов). */
 .shift {
   position: absolute;
-  bottom: 56px;
+  z-index: 0;
+  bottom: 64px;
   width: 168px;
+  pointer-events: auto;
   padding: 0;
   border: 0;
   background: none;
@@ -116,11 +82,11 @@
 }
 
 .shift--down {
-  left: 392px;
+  left: -112px;
 }
 
 .shift--up {
-  right: 392px;
+  right: -112px;
 }
 
 .shift__img {
@@ -159,13 +125,6 @@
   40% {
     transform: rotate(-9deg) scale(0.96);
   }
-}
-
-.shift kbd {
-  position: absolute;
-  left: 50%;
-  bottom: -8px;
-  transform: translateX(-50%);
 }
 
 /* Автомат: лепестки остаются на месте, но приглушены и не нажимаются. */
@@ -214,7 +173,7 @@
 }
 
 .gauge--tacho {
-  z-index: 1;
+  z-index: 2;
   width: 480px;
   height: 304px;
 }
@@ -225,9 +184,14 @@
 }
 
 .gauge--speedo {
+  z-index: 1;
   width: 352px;
   height: 228px;
-  margin-left: -28px;
+  margin-left: 12px;
+}
+
+.gauge--speedo .gauge__num {
+  font-size: 27px;
 }
 
 .gauge--speedo svg {
@@ -253,20 +217,6 @@
 .gauge__sub {
   font: 600 14px/1 var(--font-ui);
   fill: #8a9098;
-}
-
-.gauge.is-zone svg {
-  filter: drop-shadow(0 0 16px rgb(65 211 107 / 0.85));
-}
-
-.gauge.is-alarm svg {
-  animation: limiter 140ms steps(2) infinite;
-}
-
-@keyframes limiter {
-  50% {
-    filter: drop-shadow(0 0 18px rgb(255 50 56 / 0.95));
-  }
 }
 
 /* ---------- Карточка сцены сверху слева (обкатка: путь и прочность) ---------- */

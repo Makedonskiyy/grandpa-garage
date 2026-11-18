@@ -1,0 +1,77 @@
+o = #121317
+b = #2b2d33
+l = #3e414a
+s = #1e2025
+h = #08090b
+r = #4a1619
+a = #4b3814
+g = #123a20
+q = #6a2a2c
+y = #6b5426
+e = #22553a
+c = #5a5e68
+---
+...oooooooooooooo...
+..obbbbbbbbbbbbbbo..
+.oblllllllllllllsbo.
+.oblbbbbbbbbbbbbsbo.
+.oblcoooooooooocsbo.
+.oblbhhhhhhhhhhbsbo.
+.oblbbbbhhhhbbbbsbo.
+.oblbbbhrrrrhbbbsbo.
+.oblbbhrqqrrrhbbsbo.
+.oblbbhrqrrrrhbbsbo.
+.oblbbhrrrrrrhbbsbo.
+.oblbbhrrrrrrhbbsbo.
+.oblbbbhrrrrhbbbsbo.
+.oblbbbbhhhhbbbbsbo.
+.oblbbbbbbbbbbbbsbo.
+.oblbbbbbbbbbbbbsbo.
+.oblboooooooooobsbo.
+.oblbhhhhhhhhhhbsbo.
+.oblbbbbhhhhbbbbsbo.
+.oblbbbhaaaahbbbsbo.
+.oblbbhayyaaahbbsbo.
+.oblbbhayaaaahbbsbo.
+.oblbbhaaaaaahbbsbo.
+.oblbbhaaaaaahbbsbo.
+.oblbbbhaaaahbbbsbo.
+.oblbbbbhhhhbbbbsbo.
+.oblboooooooooobsbo.
+.oblbhhhhhhhhhhbsbo.
+.oblbbbbhhhhbbbbsbo.
+.oblbbbhaaaahbbbsbo.
+.oblbbhayyaaahbbsbo.
+.oblbbhayaaaahbbsbo.
+.oblbbhaaaaaahbbsbo.
+.oblbbhaaaaaahbbsbo.
+.oblbbbhaaaahbbbsbo.
+.oblbbbbhhhhbbbbsbo.
+.oblboooooooooobsbo.
+.oblbhhhhhhhhhhbsbo.
+.oblbbbbhhhhbbbbsbo.
+.oblbbbhaaaahbbbsbo.
+.oblbbhayyaaahbbsbo.
+.oblbbhayaaaahbbsbo.
+.oblbbhaaaaaahbbsbo.
+.oblbbhaaaaaahbbsbo.
+.oblbbbhaaaahbbbsbo.
+.oblbbbbhhhhbbbbsbo.
+.oblbbbbbbbbbbbbsbo.
+.oblsssssssssssssbo.
+.oblboooooooooobsbo.
+.oblbhhhhhhhhhhbsbo.
+.oblbbbbhhhhbbbbsbo.
+.oblbbbhgggghbbbsbo.
+.oblbbhgeeggghbbsbo.
+.oblbbhgegggghbbsbo.
+.oblbbhgggggghbbsbo.
+.oblbbhgggggghbbsbo.
+.oblbbbhgggghbbbsbo.
+.oblbbbbhhhhbbbbsbo.
+.oblbbbbbbbbbbbbsbo.
+.oblcbbbbbbbbbbcsbo.
+.oblbbbbbbbbbbbbsbo.
+.oblbbbbbbbbbbbbsbo.
+..obbbbbbbbbbbbbbo..
+...oooooooooooooo...

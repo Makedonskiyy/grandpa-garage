@@ -59,7 +59,10 @@ export function createRun(testId, build, opts = {}, data = defaultData) {
     rpm: ph.engine.idleRpm,
     slip: 0,
     shiftTimer: 0,
+    /** Зелёный загорелся: время идёт с этого момента. До старта машина стоит. */
+    green: false,
     started: false,
+    reaction: null,
     done: false,
     ok: false,
     reasonKey: null,
@@ -107,6 +110,8 @@ function gripLimit(run, v) {
 }
 
 export function shiftUp(run) {
+  // На ручной коробке старт — включить первую передачу.
+  if (!run.started && !run.done) return startRun(run);
   if (!run.started || run.done || run.shiftTimer > 0 || run.gear >= run.stats.ratios.length) {
     return false;
   }
@@ -131,11 +136,30 @@ export function shiftDown(run) {
   return true;
 }
 
-/** Старт: сцепление начинает схватывать, обороты на старте запоминаются. */
+/** Загорелся зелёный: с этого момента идёт время, реакция игрока — в зачёт. */
+export function greenLight(run) {
+  run.green = true;
+}
+
+/**
+ * Трогание: сцепление схватывает на набранных оборотах. До зелёного — фальстарт:
+ * в заезде это поражение, на обкатке машина просто не трогается (событие early).
+ * @returns {boolean} тронулась ли машина
+ */
 export function startRun(run) {
+  if (run.started || run.done) return false;
+  if (!run.green) {
+    if (run.test.jumpStartFails) {
+      run.events.push({ type: 'jump' });
+      finish(run, false, 'jump');
+    } else run.events.push({ type: 'early' });
+    return false;
+  }
   run.started = true;
+  run.reaction = run.t;
   run.launchRpm = Math.max(run.rpm, run.ph.clutch.launchMinRpm);
   run.events.push({ type: 'start', rpm: run.rpm });
+  return true;
 }
 
 function finish(run, ok, reasonKey = null) {
@@ -166,8 +190,9 @@ function tick(run, gas, brake, h) {
   const { idleRpm } = ph.engine;
   const redline = stats.redline;
 
-  // До старта: мотор на нейтрали, газ раскручивает его до отсечки.
+  // До старта: мотор на нейтрали, газ раскручивает его до отсечки; после зелёного идёт время.
   if (!run.started) {
+    if (run.green) run.t += h;
     const target = idleRpm + gas * (redline - idleRpm);
     const rate = target > run.rpm ? ph.engine.revUpPerSec : ph.engine.revDownPerSec;
     run.rpm += clamp(target - run.rpm, -rate * h, rate * h);
@@ -376,7 +401,13 @@ function trialTarget(run) {
 export function runBot(testId, build, opts = {}, data = defaultData) {
   const run = createRun(testId, build, { condition: opts.condition, auto: false }, data);
   if (!run.stats.complete) return run;
-  run.rpm = bestLaunchRpm(run);
+  // Обороты старта держит газом, на зелёный трогается с реакцией хорошего водителя.
+  const best = bestLaunchRpm(run);
+  const { idleRpm } = run.ph.engine;
+  run.rpm = best;
+  greenLight(run);
+  const hold = (best - idleRpm) / (run.stats.redline - idleRpm);
+  while (run.t < run.ph.reaction.bot) stepRun(run, { gas: hold }, STEP);
   startRun(run);
   const maxT = 90;
   while (!run.done && run.t < maxT) {
@@ -413,7 +444,7 @@ export function summarize(run, best = null) {
   let reasonKey = run.ok ? null : run.reasonKey;
   // Сборка позволяла, а не вышло — значит, дело в езде.
   const buildCould = best?.ok;
-  if (!run.ok && buildCould && reasonKey !== 'broken') reasonKey = 'driving';
+  if (!run.ok && buildCould && !['broken', 'jump'].includes(reasonKey)) reasonKey = 'driving';
   if (!run.ok && buildCould && reasonKey === 'broken' && run.testId === 'trial')
     reasonKey = 'rough';
 
@@ -436,6 +467,7 @@ export function summarize(run, best = null) {
     damage: run.damage,
     capacity: run.capacity,
     bestTime: best?.ok ? best.t : null,
+    reaction: run.reaction,
   };
   if (run.testId === 'race') {
     details.rivalTime = test.rivalTime;

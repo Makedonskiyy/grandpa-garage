@@ -20,7 +20,8 @@
     "garage-bg": "node tools/build-garage-bg.mjs",
     "car": "node tools/build-car.mjs",
     "characters": "node tools/build-characters.mjs",
-    "hud": "node tools/build-hud.mjs"
+    "hud": "node tools/build-hud.mjs",
+    "start-light": "py -I tools/build-start-light.py"
   },
   "engines": {
     "node": ">=20"

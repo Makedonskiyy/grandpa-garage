@@ -57,10 +57,6 @@ export class PedalControls {
           alt: '',
           draggable: 'false',
         }),
-        el('span', { class: 'pedal__keys' }, [
-          el('span', { class: 'pedal__label', text: label }),
-          ...keys.map((k) => el('kbd', { text: k })),
-        ]),
       ],
     );
     const press = (e) => {
@@ -101,7 +97,6 @@ export class PedalControls {
           alt: '',
           draggable: 'false',
         }),
-        el('kbd', { text: key }),
       ],
     );
     node.addEventListener('pointerdown', (e) => {

@@ -6,11 +6,12 @@
  *
  * Тахометр — главный прибор: в окошке передача, на шкале зелёная дуга «переключайся»
  * (до старта — «трогайся»), при попадании в неё обечайка загорается зелёным, на отсечке
- * мигает красным. Спидометр — поменьше, в окошке скорость цифрами.
+ * — рамка окошка (без внешнего свечения). Спидометр — поменьше, в окошке скорость цифрами.
  */
 const NS = 'http://www.w3.org/2000/svg';
-const START = -128; // угол нуля шкалы от вертикали, градусы
-const SWEEP = 256;
+// Шкала на 200°: ноль чуть ниже горизонтали слева — виден, хотя низ прибора за краем экрана.
+const START = -100; // угол нуля шкалы от вертикали, градусы
+const SWEEP = 200;
 let uid = 0;
 
 const rad = (d) => (d * Math.PI) / 180;
@@ -64,15 +65,6 @@ export function createGauge(o) {
   svg('stop', { offset: 0, 'stop-color': '#f2f4f6' }, cap);
   svg('stop', { offset: 0.5, 'stop-color': '#7b8089' }, cap);
   svg('stop', { offset: 1, 'stop-color': '#2a2d32' }, cap);
-  const glow = svg(
-    'filter',
-    { id: `${id}g`, x: '-50%', y: '-50%', width: '200%', height: '200%' },
-    defs,
-  );
-  svg('feGaussianBlur', { stdDeviation: 3, result: 'b' }, glow);
-  const merge = svg('feMerge', {}, glow);
-  svg('feMergeNode', { in: 'b' }, merge);
-  svg('feMergeNode', { in: 'SourceGraphic' }, merge);
 
   // Обечайка, тёмное кольцо, циферблат, блик стекла.
   svg('circle', { r: 198, fill: `url(#${id}c)` }, s);
@@ -147,7 +139,7 @@ export function createGauge(o) {
   unit.textContent = o.unit;
 
   // Окошко с цифрами — над осью стрелки: низ прибора спрятан за краем экрана.
-  svg(
+  const win = svg(
     'rect',
     {
       x: -58,
@@ -169,7 +161,7 @@ export function createGauge(o) {
   const sub = svg('text', { x: 0, y: -27, 'text-anchor': 'middle', class: 'gauge__sub' }, s);
 
   // Стрелка и колпачок.
-  const needle = svg('g', { class: 'gauge__needle', filter: `url(#${id}g)` }, s);
+  const needle = svg('g', { class: 'gauge__needle' }, s);
   svg('path', { d: 'M-7 26 L-2.6 -166 L2.6 -166 L7 26 Z', fill: '#ff2a2f' }, needle);
   svg('circle', { r: 22, fill: `url(#${id}k)`, stroke: '#16171a', 'stroke-width': 3 }, s);
   svg(
@@ -198,6 +190,9 @@ export function createGauge(o) {
       root.classList.toggle('is-zone', inZone);
       root.classList.toggle('is-alarm', alarm);
       ring.setAttribute('fill', '#0a0b0d');
+      // Сигнал прямо в приборе: зелёная рамка окошка — переключайся, красная — отсечка.
+      win.setAttribute('stroke', alarm ? '#ff3b40' : inZone ? '#41d36b' : '#2b2e34');
+      win.setAttribute('stroke-width', alarm || inZone ? 4 : 2);
     },
   };
 }

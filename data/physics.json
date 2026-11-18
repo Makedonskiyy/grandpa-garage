@@ -10,9 +10,18 @@
   "driverMass": 75,
   "downforcePerPoint": 0.55,
   "spoilerDragPerPoint": 0.012,
-  "muPerGrip": { "asphalt": 0.12, "clay": 0.075 },
+  "muPerGrip": {
+    "asphalt": 0.12,
+    "clay": 0.075
+  },
   "brakeMu": 0.9,
-  "slip": { "kinetic": 0.72, "rise": 7, "fall": 5, "rpmFlare": 0.55, "smokeAt": 0.25 },
+  "slip": {
+    "kinetic": 0.72,
+    "rise": 7,
+    "fall": 5,
+    "rpmFlare": 0.55,
+    "smokeAt": 0.25
+  },
   "engine": {
     "idleRpm": 900,
     "revUpPerSec": 9000,
@@ -37,7 +46,17 @@
     },
     "limiterCut": 0.94
   },
-  "clutch": { "launchMinRpm": 1500 },
-  "gearbox": { "autoUpshift": 0.95, "autoDownshift": 0.42, "autoShiftExtraMs": 120 },
-  "oldOilPowerMul": 0.94
+  "clutch": {
+    "launchMinRpm": 1500
+  },
+  "gearbox": {
+    "autoUpshift": 0.95,
+    "autoDownshift": 0.42,
+    "autoShiftExtraMs": 120
+  },
+  "oldOilPowerMul": 0.94,
+  "reaction": {
+    "bot": 0.25,
+    "rival": 0.3
+  }
 }

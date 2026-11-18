@@ -4,7 +4,8 @@ import { BaseScene } from './BaseScene.js';
 import { SCENES, MUSIC, SFX, WORLD } from '../config/constants.js';
 import { buildCar, buildRivalCar, spinWheels } from '../systems/buildCar.js';
 import { getTest, formatSeconds } from '../systems/simulate.js';
-import { createRun, stepRun, startRun, runBot, summarize } from '../systems/drive.js';
+import { createRun, stepRun, greenLight, runBot, summarize } from '../systems/drive.js';
+import { StartLight } from '../systems/StartLight.js';
 import { StoryStage } from '../systems/StoryStage.js';
 import { audio } from '../systems/AudioManager.js';
 import { getRenderZoom } from '../systems/scale.js';
@@ -44,7 +45,10 @@ export class RaceScene extends BaseScene {
     const auto = getSettings().gearbox === 'auto';
     this.run = createRun('race', gameState.build, { condition: gameState.car, auto });
     this.best = runBot('race', gameState.build, { condition: gameState.car });
-    this.rivalAccel = (2 * this.test.formula.distance) / this.test.rivalTime ** 2;
+    // Палыч трогается с реакцией и всё равно финиширует ровно за 13,0 с от зелёного.
+    this.rivalReaction = this.run.ph.reaction.rival;
+    this.rivalAccel =
+      (2 * this.test.formula.distance) / (this.test.rivalTime - this.rivalReaction) ** 2;
     this.state = 'intro';
 
     this.#drawNight();
@@ -63,7 +67,7 @@ export class RaceScene extends BaseScene {
     for (const car of [this.rival, this.player]) car.x = cfg.startX - car.front;
     this.#nameplate(this.player, t('race.you'));
     this.#nameplate(this.rival, t('race.rival'));
-    this.tree = this.#drawTree();
+    this.light = new StartLight(this, WORLD.width - 26, 34, { scale: 1.25, pole: 76 });
     this.smoke = this.#makeSmoke();
 
     this.#buildHud();
@@ -77,11 +81,20 @@ export class RaceScene extends BaseScene {
     if (!this.scene.isActive()) return;
     this.hud.setVisible(true);
     this.$clock.style.visibility = '';
-    // Газ до старта уже работает: можно набрать обороты на «ёлке».
+    // Газ до старта уже работает: обороты набирают на красном и жёлтых.
     this.hud.setEnabled(true);
     this.state = 'tree';
-    this.hud.say('launch');
-    this.#runTree();
+    this.hud.say(this.run.auto ? 'launchAuto' : 'launch');
+    this.light.run(this.test.christmasTree, {
+      onAmber: () => audio.playSfx(SFX.TREE_BEEP),
+      onGreen: () => {
+        if (this.state !== 'tree') return;
+        audio.playSfx(SFX.TREE_GO);
+        greenLight(this.run);
+        this.state = 'running';
+        this.hud.say(this.run.auto ? 'goAuto' : 'goManual', 'good');
+      },
+    });
   }
 
   #buildHud() {
@@ -173,43 +186,6 @@ export class RaceScene extends BaseScene {
       .setResolution(zoom);
   }
 
-  /** «Ёлка» на правом краю: три жёлтых и зелёный, горящие лампы светятся. */
-  #drawTree() {
-    const x = WORLD.width - 22;
-    this.add.rectangle(x, 150, 3, 120, 0x0c0d13);
-    this.add.rectangle(x, 104, 22, 92, 0x111218).setStrokeStyle(1, 0x2a2c35);
-    const lamp = (y, off) => {
-      const glow = this.add.circle(x, y, 10, 0xffffff, 0).setBlendMode(Phaser.BlendModes.ADD);
-      return { core: this.add.circle(x, y, 6, off), glow };
-    };
-    const ambers = [];
-    for (let i = 0; i < this.test.christmasTree.ambers; i++)
-      ambers.push(lamp(70 + i * 22, 0x3a2f10));
-    const green = lamp(70 + ambers.length * 22, 0x10301a);
-    return { ambers, green };
-  }
-
-  #runTree() {
-    const step = this.test.christmasTree.intervalSec * 1000;
-    const light = (l, color) => {
-      l.core.setFillStyle(color);
-      l.glow.setFillStyle(color, 0.35);
-    };
-    this.tree.ambers.forEach((l, i) => {
-      this.time.delayedCall(step * (i + 1), () => {
-        light(l, 0xffc21a);
-        audio.playSfx(SFX.TREE_BEEP);
-      });
-    });
-    this.time.delayedCall(step * (this.tree.ambers.length + 1), () => {
-      light(this.tree.green, 0x2fff6a);
-      audio.playSfx(SFX.TREE_GO);
-      this.state = 'running';
-      startRun(this.run);
-      this.hud.say('go', 'good');
-    });
-  }
-
   /** Положение передка по пройденному пути → координата центра машины. */
   #xFor(car, distance) {
     const { distance: total } = this.test.formula;
@@ -242,8 +218,11 @@ export class RaceScene extends BaseScene {
     const dt = delta / 1000;
     const input = this.hud.input(dt);
     const run = this.run;
+    if (this.state === 'tree') {
+      stepRun(run, input, dt); // мотор на нейтрали, до зелёного
+      if (run.done) return this.#finish(); // тронулся раньше — фальстарт
+    }
     if (this.state !== 'running') {
-      if (this.state === 'tree') stepRun(run, input, dt); // мотор на нейтрали
       // Подвеска успокаивается до старта и после финиша; перегазовка чуть приседает.
       const rev = this.state === 'tree' ? input.gas * 0.8 : 0;
       this.player.step(dt, { accel: rev - input.brake * 2 });
@@ -256,7 +235,8 @@ export class RaceScene extends BaseScene {
     stepRun(run, input, dt);
     this.#hints(run);
     const s = run.t;
-    const rivalDist = Math.min(this.test.formula.distance, (this.rivalAccel * s * s) / 2);
+    const rs = Math.max(0, s - this.rivalReaction);
+    const rivalDist = Math.min(this.test.formula.distance, (this.rivalAccel * rs * rs) / 2);
 
     // Колёса крутятся быстрее пути, когда буксуют.
     const px = (m) => (m / this.test.formula.distance) * (cfg.finishX - cfg.startX);
@@ -282,13 +262,15 @@ export class RaceScene extends BaseScene {
     this.#sound();
 
     const rivalDone = s >= this.test.rivalTime;
-    if ((run.done && rivalDone) || s > MAX_SEC) this.#finish();
+    if ((run.done && (rivalDone || run.reasonKey === 'jump')) || s > MAX_SEC) this.#finish();
   }
 
   /** Подсказка по ситуации: пробуксовка, отсечка, пора переключаться. */
   #hints(run) {
     for (const e of run.events.splice(0)) if (e.type === 'overrev') this.hud.say('overrev', 'warn');
     if (run.done) return this.hud.say('finish', 'good');
+    if (!run.started)
+      return run.t > 1.2 ? this.hud.say(run.auto ? 'goAuto' : 'goManual', 'warn') : null;
     if (run.slip > 0.5) return this.hud.say('spin', 'warn');
     if (!run.auto && run.limiter) return this.hud.say('limiter', 'warn');
     if (!run.auto && this.hud.inZone) return this.hud.say('shift');
@@ -302,6 +284,10 @@ export class RaceScene extends BaseScene {
   #finish() {
     if (this.state === 'finished') return;
     this.state = 'finished';
+    if (this.run.reasonKey === 'jump') {
+      this.light.foul();
+      this.hud.say('jump', 'warn');
+    }
     this.hud.setEnabled(false);
     this.smoke.stop();
     this.engine?.stop();
