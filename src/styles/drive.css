@@ -1,46 +1,295 @@
 /*
- * Приборы и управление в обкатке и заезде (src/ui/DriveHud.js).
- * Одна тёмная панель внизу: педали с передачами слева, приборы справа, посередине — то,
- * что нужно сцене (карта трассы и прочность на обкатке). Подсказка — над панелью по центру.
- * Сетка 8 px, высота панели 160, крупные зоны нажатия (педали 128×128) — играется и тапом.
+ * Приборная панель заездов (src/ui/DriveHud.js) — как за рулём, без коробки-панели:
+ * по краям педали тормоза и газа, у приборов — лепестки «−» и «+», в центре тахометр
+ * и спидометр, низ которых уходит за край экрана. Снизу — затемнение, чтобы приборы
+ * читались на любой сцене. Педали и лепестки — SVG из tools/build-hud.mjs, приборы —
+ * SVG из src/ui/gauges.js. Сетка 8 px; зоны нажатия не меньше 150×150.
  */
-.drive-hud {
-  left: 40px;
-  right: 40px;
-  bottom: 24px;
-  height: 136px;
-  padding: 12px 20px;
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 40px;
-  border-radius: 24px;
-  background: rgb(18 16 14 / 0.9);
-  box-shadow:
-    inset 0 0 0 1px var(--ui-line-strong),
-    0 16px 48px rgb(0 0 0 / 0.35);
-  color: var(--ui-text);
+.dash {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 340px;
+  pointer-events: none;
   font-family: var(--font-ui);
 }
 
-.drive-hud--trial {
-  grid-template-columns: auto minmax(320px, 1fr) 280px auto;
+.dash > * {
+  pointer-events: auto;
 }
 
-.drive-hud--race .drive-hud__gauges {
-  grid-column: 3;
+.dash__shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgb(0 0 0 / 0.72), rgb(0 0 0 / 0.35) 55%, transparent);
+  pointer-events: none !important;
 }
 
-.drive-hud__block {
-  min-width: 0;
+/* ---------- Педали ---------- */
+.pedal {
+  position: absolute;
+  bottom: 24px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pedal--brake {
+  left: 48px;
+  width: 240px;
+}
+
+.pedal--gas {
+  right: 64px;
+  width: 152px;
+}
+
+.pedal__img {
+  display: block;
+  width: 100%;
+  height: auto;
+  transform-origin: 50% 100%;
+  transition:
+    transform 90ms var(--ui-ease),
+    filter 90ms var(--ui-ease);
+  pointer-events: none;
+}
+
+/* Нажатая педаль уходит вниз и от игрока — наклон по оси X. */
+.pedal.is-pressed .pedal__img {
+  transform: perspective(700px) rotateX(22deg) translateY(6px) scale(0.97);
+  filter: brightness(0.88);
+}
+
+.pedal__keys {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.pedal__label {
+  margin-right: 4px;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--ui-text);
+  text-shadow: 0 2px 6px rgb(0 0 0 / 0.8);
+}
+
+.dash kbd {
+  min-width: 32px;
+  height: 30px;
+  padding: 0 8px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 7px;
+  font: 600 16px/1 var(--font-ui);
+  color: var(--ui-text);
+  background: rgb(12 12 14 / 0.85);
+  box-shadow: inset 0 0 0 1px var(--ui-line-strong);
+}
+
+.pedal.is-pressed kbd {
+  color: var(--ui-ink);
+  background: var(--ui-accent);
+}
+
+/* ---------- Лепестки переключения ---------- */
+.shift {
+  position: absolute;
+  bottom: 56px;
+  width: 168px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.shift--down {
+  left: 392px;
+}
+
+.shift--up {
+  right: 392px;
+}
+
+.shift__img {
+  display: block;
+  width: 100%;
+  height: auto;
+  pointer-events: none;
+  filter: drop-shadow(0 8px 10px rgb(0 0 0 / 0.5));
+  transition: transform 120ms var(--ui-ease);
+}
+
+.shift--down .shift__img {
+  transform-origin: 100% 55%;
+}
+
+.shift--up .shift__img {
+  transform-origin: 0 55%;
+}
+
+/* Щелчок лепестком: перо отклоняется к рулю и возвращается. */
+.shift--down.is-hit .shift__img {
+  animation: paddle-down 220ms var(--ui-ease);
+}
+
+.shift--up.is-hit .shift__img {
+  animation: paddle-up 220ms var(--ui-ease);
+}
+
+@keyframes paddle-down {
+  40% {
+    transform: rotate(9deg) scale(0.96);
+  }
+}
+
+@keyframes paddle-up {
+  40% {
+    transform: rotate(-9deg) scale(0.96);
+  }
+}
+
+.shift kbd {
+  position: absolute;
+  left: 50%;
+  bottom: -8px;
+  transform: translateX(-50%);
+}
+
+/* Автомат: лепестки остаются на месте, но приглушены и не нажимаются. */
+.shift.is-auto {
+  opacity: 0.3;
+  pointer-events: none !important;
+}
+
+.pedal:disabled,
+.shift:disabled {
+  cursor: default;
+}
+
+.pedal:disabled .pedal__img,
+.shift:disabled .shift__img {
+  filter: grayscale(0.4) brightness(0.7);
+}
+
+.pedal:focus-visible,
+.shift:focus-visible {
+  outline: 3px solid var(--ui-accent);
+  outline-offset: 6px;
+  border-radius: 16px;
+}
+
+/* ---------- Приборы ---------- */
+.dash__gauges {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: flex-end;
+  pointer-events: none !important;
+}
+
+.gauge {
+  position: relative;
+  overflow: hidden;
+  flex: none;
+}
+
+.gauge svg {
+  display: block;
+  overflow: visible;
+}
+
+.gauge--tacho {
+  z-index: 1;
+  width: 480px;
+  height: 304px;
+}
+
+.gauge--tacho svg {
+  width: 480px;
+  height: 480px;
+}
+
+.gauge--speedo {
+  width: 352px;
+  height: 228px;
+  margin-left: -28px;
+}
+
+.gauge--speedo svg {
+  width: 352px;
+  height: 352px;
+}
+
+.gauge__num {
+  font: 700 34px/1 var(--font-ui);
+}
+
+.gauge__unit {
+  font: 600 16px/1 var(--font-ui);
+  fill: #9aa0a8;
+}
+
+.gauge__readout {
+  font: 700 40px/1 var(--font-ui);
+  font-variant-numeric: tabular-nums;
+  fill: #f2c26b;
+}
+
+.gauge__sub {
+  font: 600 14px/1 var(--font-ui);
+  fill: #8a9098;
+}
+
+.gauge.is-zone svg {
+  filter: drop-shadow(0 0 16px rgb(65 211 107 / 0.85));
+}
+
+.gauge.is-alarm svg {
+  animation: limiter 140ms steps(2) infinite;
+}
+
+@keyframes limiter {
+  50% {
+    filter: drop-shadow(0 0 18px rgb(255 50 56 / 0.95));
+  }
+}
+
+/* ---------- Карточка сцены сверху слева (обкатка: путь и прочность) ---------- */
+.dash-info {
+  top: 32px;
+  left: 40px;
+  width: 520px;
+  padding: 20px 24px;
+  display: grid;
+  gap: 16px;
+  border-radius: 20px;
+  background: rgb(18 16 14 / 0.88);
+  box-shadow: inset 0 0 0 1px var(--ui-line-strong);
+  color: var(--ui-text);
+  font-family: var(--font-ui);
 }
 
 .hud-meter__head {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  margin-bottom: 12px;
-  font-size: 22px;
+  margin-bottom: 10px;
+  font-size: 20px;
   font-weight: 500;
   color: var(--ui-text-2);
 }
@@ -49,313 +298,6 @@
   font-variant-numeric: tabular-nums;
   font-weight: 600;
   color: var(--ui-text);
-}
-
-/* ---------- Педали и передачи ---------- */
-.pedals {
-  display: flex;
-  align-items: stretch;
-  gap: 10px;
-  height: 112px;
-}
-
-.pedal {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-  width: 112px;
-  padding: 0 0 12px;
-  border: 0;
-  border-radius: 16px;
-  font: inherit;
-  color: var(--ui-text);
-  background: var(--ui-d2);
-  box-shadow:
-    inset 0 0 0 1px var(--ui-line-strong),
-    inset 0 -6px 0 rgb(0 0 0 / 0.35);
-  cursor: pointer;
-  touch-action: none;
-  user-select: none;
-  transition:
-    transform 80ms var(--ui-ease),
-    background-color var(--ui-fast) var(--ui-ease);
-}
-
-/* Рифление педали — три полосы, как на резиновой накладке. */
-.pedal::before {
-  content: '';
-  position: absolute;
-  top: 14px;
-  left: 28px;
-  right: 28px;
-  height: 32px;
-  background: repeating-linear-gradient(
-    to bottom,
-    rgb(239 233 222 / 0.16) 0 4px,
-    transparent 4px 12px
-  );
-  border-radius: 2px;
-}
-
-.pedal__label {
-  font-size: 22px;
-  font-weight: 600;
-  line-height: 1;
-}
-
-.pedal__keys {
-  display: flex;
-  gap: 4px;
-}
-
-.pedals kbd,
-.shift kbd {
-  min-width: 32px;
-  height: 28px;
-  padding: 0 8px;
-  display: inline-grid;
-  place-items: center;
-  border-radius: 6px;
-  font: 600 16px/1 var(--font-ui);
-  color: var(--ui-text-2);
-  background: var(--ui-d0);
-  box-shadow: inset 0 0 0 1px var(--ui-line-strong);
-}
-
-.pedal.is-pressed {
-  transform: translateY(4px) scale(0.98);
-}
-
-.pedal--gas.is-pressed {
-  background: #2f4a2f;
-}
-
-.pedal--gas.is-pressed::before {
-  background: repeating-linear-gradient(to bottom, #8fd694 0 4px, transparent 4px 12px);
-}
-
-.pedal--brake.is-pressed {
-  background: #4d2b27;
-}
-
-.pedal--brake.is-pressed::before {
-  background: repeating-linear-gradient(to bottom, #e2766b 0 4px, transparent 4px 12px);
-}
-
-.pedal:focus-visible,
-.shift:focus-visible {
-  outline: 3px solid var(--ui-accent);
-  outline-offset: 3px;
-}
-
-.pedal:disabled,
-.shift:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
-
-.shifter {
-  display: grid;
-  grid-template-rows: 1fr 1fr;
-  gap: 8px;
-  width: 88px;
-}
-
-.shifter[hidden] {
-  display: none;
-}
-
-.shift {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  border: 0;
-  border-radius: 12px;
-  color: var(--ui-text);
-  background: var(--ui-d2);
-  box-shadow: inset 0 0 0 1px var(--ui-line-strong);
-  cursor: pointer;
-  touch-action: none;
-}
-
-.shift .icon {
-  width: 28px;
-  height: 28px;
-}
-
-.shift.is-hit {
-  animation: shift-hit 260ms var(--ui-ease);
-}
-
-@keyframes shift-hit {
-  0% {
-    background: var(--ui-accent);
-    color: var(--ui-ink);
-  }
-  100% {
-    background: var(--ui-d2);
-  }
-}
-
-/* ---------- Приборы ---------- */
-.drive-hud__gauges {
-  display: flex;
-  align-items: center;
-  gap: 32px;
-}
-
-.tacho-block {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
-.tacho-block__gearbox {
-  display: grid;
-  place-items: center;
-  width: 96px;
-  height: 96px;
-  border-radius: 16px;
-  background: var(--ui-d0);
-  box-shadow: inset 0 0 0 1px var(--ui-line-strong);
-}
-
-.tacho-block__gear {
-  font-size: 64px;
-  font-weight: 700;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-
-.tacho-block__mode {
-  margin-top: -8px;
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: var(--ui-text-3);
-}
-
-.tacho-block.is-shift .tacho-block__gearbox {
-  box-shadow: inset 0 0 0 3px #7fc98a;
-}
-
-.tacho-block.is-shifting .tacho-block__gear {
-  color: var(--ui-text-3);
-}
-
-.tacho-block__main {
-  width: 360px;
-}
-
-.tacho-block__head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: 12px;
-}
-
-.tacho-block__label,
-.speedo__label {
-  font-size: 22px;
-  font-weight: 500;
-  color: var(--ui-text-2);
-}
-
-.tacho-block__readout {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-}
-
-.tacho-block__rpm {
-  min-width: 80px;
-  text-align: right;
-  font-size: 32px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-.tacho-block__unit,
-.speedo__unit {
-  font-size: 18px;
-  color: var(--ui-text-3);
-}
-
-.tacho {
-  position: relative;
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 1fr;
-  gap: 4px;
-  padding-top: 10px;
-}
-
-/* Зелёная зона — полоса над сегментами: где переключаться (до старта — где трогаться). */
-.tacho__zone {
-  position: absolute;
-  top: 0;
-  height: 6px;
-  border-radius: 3px;
-  background: #7fc98a;
-  transition:
-    left var(--ui-enter) var(--ui-ease),
-    width var(--ui-enter) var(--ui-ease);
-}
-
-.tacho__zone[hidden] {
-  display: none;
-}
-
-.tacho__seg {
-  height: 20px;
-  border-radius: 3px;
-  background: rgb(239 233 222 / 0.1);
-}
-
-.tacho__seg.is-on {
-  background: var(--ui-text);
-}
-
-.tacho__seg.is-red {
-  background: rgb(226 118 107 / 0.22);
-}
-
-.tacho__seg.is-red.is-on {
-  background: #e2766b;
-}
-
-.tacho-block.is-limiter .tacho__seg.is-on {
-  animation: limiter 120ms steps(2) infinite;
-}
-
-@keyframes limiter {
-  50% {
-    background: #e2766b;
-  }
-}
-
-.speedo {
-  display: grid;
-  gap: 4px;
-  min-width: 160px;
-}
-
-.speedo__readout {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-}
-
-.speedo__value {
-  min-width: 96px;
-  font-size: 56px;
-  font-weight: 700;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
 }
 
 /* ---------- Карта трассы и прочность ---------- */
@@ -425,7 +367,7 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  max-width: 1100px;
+  max-width: 760px;
   padding: 16px 28px;
   border-radius: 999px;
   font-family: var(--font-ui);
@@ -456,8 +398,9 @@
 }
 
 /* В заезде сверху секундомер — подсказка под ним. */
-.drive-hud--race ~ .drive-hint {
+.dash--race ~ .drive-hint {
   top: 184px;
+  max-width: 1100px;
 }
 
 @keyframes hint-in {

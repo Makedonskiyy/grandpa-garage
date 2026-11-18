@@ -312,7 +312,8 @@
     "shiftUp": "Передача выше",
     "shiftDown": "Передача ниже",
     "modeManual": "Ручная",
-    "modeAuto": "Автомат"
+    "modeAuto": "Автомат",
+    "tachoUnit": "×1000 об/мин"
   },
   "result": {
     "success": "Успех",

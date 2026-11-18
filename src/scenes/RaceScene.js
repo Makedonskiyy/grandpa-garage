@@ -16,6 +16,8 @@ import { DriveHud } from '../ui/DriveHud.js';
 
 const cfg = config.race;
 const MAX_SEC = 30; // дальше ждать нет смысла — Палыч давно на финише
+/** Пустырь поднят над приборами: их верх — y ≈ 259 мира. */
+const SHIFT = -40;
 
 /** Детерминированный генератор: фон одинаков при каждом запуске. */
 function rng(seed) {
@@ -89,7 +91,7 @@ export class RaceScene extends BaseScene {
       this.$time,
     ]);
     this.ui.append(this.$clock);
-    this.hud = new DriveHud(this, this.run, { className: 'drive-hud--race' });
+    this.hud = new DriveHud(this, this.run, { className: 'dash--race' });
   }
 
   /** Ночной пустырь за заводом: небо, корпуса с окнами, прожектор, мокрый асфальт. */
@@ -118,7 +120,7 @@ export class RaceScene extends BaseScene {
     // Бетонный забор и асфальт.
     g.fillStyle(0x15161c).fillRect(0, 170, width, 20);
     for (let fx = 0; fx < width; fx += 24) g.fillStyle(0x101116).fillRect(fx, 170, 1, 20);
-    g.fillStyle(0x1c1d24).fillRect(0, 190, width, height - 190);
+    g.fillStyle(0x1c1d24).fillRect(0, 190, width, height - 190 - SHIFT);
     // Разметка полос и мокрые отблески.
     for (let lx = 0; lx < width; lx += 32) g.fillStyle(0x3a3a40).fillRect(lx, 250, 16, 2);
     for (let i = 0; i < 40; i++) {
@@ -139,6 +141,8 @@ export class RaceScene extends BaseScene {
     g.fillStyle(0x0c0d13).fillRect(36, 70, 3, 120);
     g.fillStyle(0x2a2c35).fillRect(30, 64, 16, 8);
     const light = this.add.graphics().setBlendMode(Phaser.BlendModes.ADD);
+    g.y = SHIFT;
+    light.y = SHIFT;
     for (const [w, a] of [
       [260, 0.025],
       [200, 0.03],
@@ -287,8 +291,7 @@ export class RaceScene extends BaseScene {
     if (run.done) return this.hud.say('finish', 'good');
     if (run.slip > 0.5) return this.hud.say('spin', 'warn');
     if (!run.auto && run.limiter) return this.hud.say('limiter', 'warn');
-    if (!run.auto && this.hud.tacho.node.classList.contains('is-shift'))
-      return this.hud.say('shift');
+    if (!run.auto && this.hud.inZone) return this.hud.say('shift');
     this.hud.quiet();
   }
 

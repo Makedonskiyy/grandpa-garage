@@ -7,10 +7,11 @@
  */
 import config from '../../data/config.json';
 import { el } from './dom.js';
-import { icon } from './icons.js';
 import { t } from '../systems/strings.js';
 import { createPedalState, setPedalTarget, stepPedals, isPedalKey } from '../systems/pedals.js';
 
+/** Педали и лепестки — векторные картинки tools/build-hud.mjs. */
+const HUD = 'assets/images/hud/';
 const isShiftKey = (code, dir) => (config.pedals.keys[dir] ?? []).includes(code);
 
 export class PedalControls {
@@ -30,16 +31,10 @@ export class PedalControls {
 
     this.$gas = this.#pedal('gas', t('race.gas'), ['W', '↑']);
     this.$brake = this.#pedal('brake', t('race.brake'), ['S', '↓']);
-    this.$up = this.#shiftButton('up', t('race.shiftUp'), 'shiftUp', 'E', () => this.onShiftUp?.());
-    this.$down = this.#shiftButton('down', t('race.shiftDown'), 'shiftDown', 'Q', () =>
-      this.onShiftDown?.(),
-    );
-    this.$gears = el('div', { class: 'shifter', hidden: !gears }, [this.$up, this.$down]);
-    this.node = el('div', { class: 'pedals', 'aria-label': t('race.pedalHint') }, [
-      this.$brake,
-      this.$gears,
-      this.$gas,
-    ]);
+    this.$up = this.#shiftButton('up', t('race.shiftUp'), 'E', () => this.onShiftUp?.());
+    this.$down = this.#shiftButton('down', t('race.shiftDown'), 'Q', () => this.onShiftDown?.());
+    this.gears = gears;
+    this.setGearsVisible(gears);
 
     this.#bindKeyboard();
     scene.events.once('shutdown', () => this.destroy());
@@ -56,12 +51,16 @@ export class PedalControls {
         title: `${label} — ${keys.join(' / ')}`,
       },
       [
-        el('span', { class: 'pedal__label', text: label }),
-        el(
-          'span',
-          { class: 'pedal__keys' },
-          keys.map((k) => el('kbd', { text: k })),
-        ),
+        el('img', {
+          class: 'pedal__img',
+          src: HUD + 'pedal_' + kind + '.svg',
+          alt: '',
+          draggable: 'false',
+        }),
+        el('span', { class: 'pedal__keys' }, [
+          el('span', { class: 'pedal__label', text: label }),
+          ...keys.map((k) => el('kbd', { text: k })),
+        ]),
       ],
     );
     const press = (e) => {
@@ -86,7 +85,7 @@ export class PedalControls {
     return node;
   }
 
-  #shiftButton(dir, label, iconName, key, fire) {
+  #shiftButton(dir, label, key, fire) {
     const node = el(
       'button',
       {
@@ -95,7 +94,15 @@ export class PedalControls {
         'aria-label': label,
         title: `${label} — ${key}`,
       },
-      [icon(iconName), el('kbd', { text: key })],
+      [
+        el('img', {
+          class: 'shift__img',
+          src: HUD + 'paddle_' + dir + '.svg',
+          alt: '',
+          draggable: 'false',
+        }),
+        el('kbd', { text: key }),
+      ],
     );
     node.addEventListener('pointerdown', (e) => {
       e.preventDefault();
@@ -175,7 +182,8 @@ export class PedalControls {
 
   /** Показывать ли кнопки передач (в режиме «автомат» они не нужны). */
   setGearsVisible(visible) {
-    this.$gears.hidden = !visible;
+    this.$up.classList.toggle('is-auto', !visible);
+    this.$down.classList.toggle('is-auto', !visible);
   }
 
   /** Текущие сглаженные значения: { gas, brake } от 0 до 1. */
@@ -189,6 +197,6 @@ export class PedalControls {
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
     window.removeEventListener('blur', this.onBlur);
-    this.node.remove();
+    for (const n of [this.$gas, this.$brake, this.$up, this.$down]) n.remove();
   }
 }

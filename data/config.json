@@ -69,8 +69,8 @@
   "race": {
     "startX": 224,
     "finishX": 600,
-    "playerLaneY": 290,
-    "rivalLaneY": 204,
+    "playerLaneY": 250,
+    "rivalLaneY": 174,
     "carScale": 0.8,
     "playerFront": 134,
     "rivalFront": 94,

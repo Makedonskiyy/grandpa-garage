@@ -19,7 +19,8 @@
     "art": "node tools/build-art.mjs",
     "garage-bg": "node tools/build-garage-bg.mjs",
     "car": "node tools/build-car.mjs",
-    "characters": "node tools/build-characters.mjs"
+    "characters": "node tools/build-characters.mjs",
+    "hud": "node tools/build-hud.mjs"
   },
   "engines": {
     "node": ">=20"

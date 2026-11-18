@@ -12,7 +12,13 @@ import { getSettings } from '../systems/settings.js';
 import { getRenderZoom } from '../systems/scale.js';
 import { DriveHud } from '../ui/DriveHud.js';
 
-const GROUND_Y = 288; // колёса над панелью приборов (верх панели — y 306)
+/**
+ * Весь пейзаж поднят на SHIFT, чтобы машина ехала над приборами (их верх — y ≈ 259).
+ * Внутри контейнеров трассы земля — ROAD_Y, на экране — GROUND_Y.
+ */
+const SHIFT = -34;
+const ROAD_Y = 288;
+const GROUND_Y = ROAD_Y + SHIFT;
 const CAR_X = 250; // машина стоит, дорога едет под ней
 const PPM = 62; // точек мира на метр: машина 288 точек ≈ 4,6 м
 const WARN_M = 28; // за сколько метров предупреждать об участке
@@ -89,7 +95,7 @@ export class TrialScene extends BaseScene {
         body,
       ]);
     this.hud = new DriveHud(this, this.run, {
-      className: 'drive-hud--trial',
+      className: 'dash--trial',
       middle: [
         block(t('trial.distance'), this.$pathValue, map),
         block(t('trial.durability'), this.$durValue, el('div', { class: 'meter' }, this.$dur)),
@@ -186,11 +192,12 @@ export class TrialScene extends BaseScene {
         g.fillStyle(0xcfd5d8).fillRect(sx, 263, 5, 1 + Math.floor(r() * 3));
       }
     });
-    this.layers = [
-      { sprite: this.add.tileSprite(0, 0, width, height, 'trial_far').setOrigin(0), k: 0.1 },
-      { sprite: this.add.tileSprite(0, 0, width, height, 'trial_mid').setOrigin(0), k: 0.4 },
-      { sprite: this.add.tileSprite(0, 0, width, height, 'trial_road').setOrigin(0), k: 1 },
-    ];
+    this.layers = ['trial_far', 'trial_mid', 'trial_road'].map((key, i) => ({
+      sprite: this.add.tileSprite(0, SHIFT, width, height, key).setOrigin(0),
+      k: [0.1, 0.4, 1][i],
+    }));
+    // Под поднятой дорогой — та же грязь до края экрана.
+    this.add.rectangle(0, height + SHIFT, width, -SHIFT, 0x4a3827).setOrigin(0);
   }
 
   /**
@@ -199,7 +206,7 @@ export class TrialScene extends BaseScene {
    * участка — знак на столбике, на финише — флаг.
    */
   #drawTrack() {
-    const box = this.add.container(CAR_X, 0);
+    const box = this.add.container(CAR_X, SHIFT);
     const g = this.add.graphics();
     const r = rng(7);
     box.add(g);
@@ -254,13 +261,13 @@ export class TrialScene extends BaseScene {
   /** Полоса жижи перед колёсами: в глубокой грязи колёса утопают. */
   #drawMudCover() {
     const g = this.add.graphics();
-    const box = this.add.container(CAR_X, 0, [g]);
+    const box = this.add.container(CAR_X, SHIFT, [g]);
     for (const s of this.test.track.segments) {
       if (s.type !== 'deep') continue;
       const x0 = s.from * PPM;
       const w = (s.to - s.from) * PPM;
-      g.fillStyle(0x2c2117).fillRect(x0, GROUND_Y - 5, w, 6);
-      for (let x = x0; x < x0 + w; x += 6) g.fillStyle(0x3d2e1f).fillRect(x, GROUND_Y - 6, 3, 1);
+      g.fillStyle(0x2c2117).fillRect(x0, ROAD_Y - 5, w, 6);
+      for (let x = x0; x < x0 + w; x += 6) g.fillStyle(0x3d2e1f).fillRect(x, ROAD_Y - 6, 3, 1);
     }
     return box;
   }

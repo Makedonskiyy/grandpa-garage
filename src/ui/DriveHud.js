@@ -1,13 +1,15 @@
 /**
- * DriveHud — приборы и управление в обкатке и заезде: педали с передачами, тахометр
- * с зелёной зоной, скорость и строка подсказки. Подсказка показывает одно, самое важное
- * сейчас, и держится не меньше секунды, чтобы её успели прочитать.
+ * DriveHud — приборная панель заездов, как за рулём: по краям — педали тормоза и газа,
+ * у приборов — лепестки переключения «−» и «+», в центре — тахометр (главный: передача
+ * и зелёная зона переключения) и спидометр. Низ приборов уходит за край экрана.
+ * Сверху — строка подсказки; данные сцены (карта трассы, прочность) — в карточке слева вверху.
+ * Подсказка показывает одно, самое важное сейчас, и держится не меньше секунды.
  */
 import { el } from './dom.js';
 import { icon } from './icons.js';
 import { t } from '../systems/strings.js';
 import { PedalControls } from './PedalControls.js';
-import { createTacho } from './tacho.js';
+import { createGauge } from './gauges.js';
 import { greenZone, shiftUp, shiftDown } from '../systems/drive.js';
 
 const HOLD_MS = 1100;
@@ -16,7 +18,7 @@ export class DriveHud {
   /**
    * @param {import('phaser').Scene} scene
    * @param {ReturnType<import('../systems/drive.js').createRun>} run
-   * @param {{ className?: string, middle?: Node[] }} [opts] middle — блоки сцены между педалями и приборами
+   * @param {{ className?: string, middle?: Node[] }} [opts] middle — блоки сцены для карточки сверху
    */
   constructor(scene, run, { className = '', middle = [] } = {}) {
     this.run = run;
@@ -27,30 +29,45 @@ export class DriveHud {
         if (!shiftDown(this.run)) this.say('overrev', 'warn');
       },
     });
-    this.tacho = createTacho();
-    this.$speed = el('span', { class: 'speedo__value', text: '0' });
+    const redline = run.stats.redline;
+    const tachoMax = Math.ceil(redline / 1000) * 1000 + 1000;
+    this.tacho = createGauge({
+      className: 'gauge--tacho',
+      max: tachoMax,
+      major: 1000,
+      minor: 5,
+      red: redline,
+      label: (v) => String(v / 1000),
+      unit: t('race.tachoUnit'),
+    });
+    this.speedo = createGauge({
+      className: 'gauge--speedo',
+      max: 280,
+      major: 40,
+      minor: 4,
+      label: (v) => String(v),
+      unit: t('race.kmh'),
+    });
+    this.inZone = false;
+
     this.$hintText = el('span', { class: 'drive-hint__text' });
     this.$hint = el('div', { class: 'ui-abs drive-hint', role: 'status', hidden: true }, [
       icon('info'),
       this.$hintText,
     ]);
-    this.node = el('div', { class: `ui-abs drive-hud ${className}`.trim() }, [
-      this.pedals.node,
-      ...middle,
-      el('div', { class: 'drive-hud__gauges' }, [
-        this.tacho.node,
-        el('div', { class: 'speedo' }, [
-          el('span', { class: 'speedo__label', text: t('trial.speed') }),
-          el('span', { class: 'speedo__readout' }, [
-            this.$speed,
-            el('span', { class: 'speedo__unit', text: t('race.kmh') }),
-          ]),
-        ]),
-      ]),
+    const p = this.pedals;
+    this.node = el('div', { class: `ui-abs dash ${className}`.trim() }, [
+      el('div', { class: 'dash__shade', 'aria-hidden': 'true' }),
+      p.$brake,
+      p.$down,
+      el('div', { class: 'dash__gauges' }, [this.tacho.node, this.speedo.node]),
+      p.$up,
+      p.$gas,
     ]);
+    this.info = middle.length ? el('div', { class: 'ui-abs dash-info' }, middle) : null;
     this.hintKey = null;
     this.hintUntil = 0;
-    scene.ui.append(this.node, this.$hint);
+    scene.ui.append(...[this.node, this.info, this.$hint].filter(Boolean));
     this.render();
   }
 
@@ -64,7 +81,7 @@ export class DriveHud {
   }
 
   setVisible(on) {
-    this.node.style.visibility = on ? '' : 'hidden';
+    for (const n of [this.node, this.info]) if (n) n.style.visibility = on ? '' : 'hidden';
     if (!on) this.$hint.hidden = true;
   }
 
@@ -89,15 +106,19 @@ export class DriveHud {
 
   render() {
     const run = this.run;
+    const zone = run.auto && run.started ? null : greenZone(run);
+    this.inZone = Boolean(zone && run.rpm >= zone[0] && run.rpm <= zone[1]);
+    let gear = String(run.gear);
+    if (!run.started) gear = 'N';
+    else if (run.shiftTimer > 0) gear = '·';
     this.tacho.render({
-      rpm: run.rpm,
-      gear: run.gear,
-      redline: run.stats.redline,
-      zone: run.auto && run.started ? null : greenZone(run),
-      shifting: run.shiftTimer > 0,
-      limiter: run.limiter,
-      auto: run.auto,
+      value: run.rpm,
+      text: gear,
+      sub: run.auto ? t('race.modeAuto') : t('race.modeManual'),
+      zone,
+      inZone: this.inZone,
+      alarm: run.limiter,
     });
-    this.$speed.textContent = String(Math.round(run.v * 3.6));
+    this.speedo.render({ value: run.v * 3.6, text: String(Math.round(run.v * 3.6)) });
   }
 }
