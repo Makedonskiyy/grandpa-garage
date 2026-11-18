@@ -18,7 +18,7 @@ function wire(node, onClick) {
 }
 
 /**
- * Обычная веб-кнопка нового стиля (макет меню): скруглённая, со шрифтом Literata и иконкой.
+ * Обычная веб-кнопка нового стиля (макет меню): скруглённая, со шрифтом интерфейса (Onest) и иконкой.
  * Варианты: primary — оранжевая главная, light — светлая (гараж), dark — тёмная (меню, окна).
  * @param {{ variant?: 'primary'|'light'|'dark', icon?: string, disabled?: boolean, title?: string, className?: string }} [opts]
  */
