@@ -1,0 +1,21 @@
+{
+  "$comment": "Силуэт кузова R34 (обычный GT-R, без крыла) по чертеж.jpg, сетка 432×144: 1 точка = 11,27 мм, кузов x 12…420, земля y 138. Этапы 3–4, см. docs/car/r34-technical-map.md.",
+  "grid": {
+    "width": 432,
+    "height": 144,
+    "ground": 138,
+    "mmPerPoint": 11.275
+  },
+  "axles": {
+    "front": 337.15,
+    "rear": 100.77,
+    "y": 108.96
+  },
+  "tireRadius": 29.04,
+  "archRadius": 30.96,
+  "check": {
+    "lengthMm": 4623,
+    "heightMm": 1364,
+    "wheelbaseMm": 2665
+  }
+}
