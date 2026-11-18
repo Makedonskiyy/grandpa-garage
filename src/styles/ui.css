@@ -1495,3 +1495,14 @@ kbd {
     animation: none;
   }
 }
+
+/* Советы в «Как играть». */
+.howto__tips {
+  margin: 0;
+  padding-left: 24px;
+  display: grid;
+  gap: 8px;
+  font-size: 20px;
+  line-height: 1.4;
+  color: var(--ui-text-2);
+}
