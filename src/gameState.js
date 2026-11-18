@@ -7,16 +7,24 @@ import partsData from '../data/parts.json';
 import cosmetics from '../data/cosmetics.json';
 import config from '../data/config.json';
 import { TEST_IDS } from './config/constants.js';
-import { getPart } from './systems/simulate.js';
+import { getPart, getSlot } from './systems/simulate.js';
 
 const listeners = new Set();
+const HEX = /^#[0-9a-f]{6}$/i;
+/** Группы внешнего вида, где можно выбрать свой цвет, а не только готовый. */
+export const CUSTOM_COLOR_GROUPS = Object.freeze(['paint', 'rim', 'neon']);
 
 export function createInitialState() {
   return {
-    build: { wheels: null, engine: null, body: null, spoiler: null, ...partsData.initialBuild },
+    build: Object.fromEntries(
+      partsData.slots.map((s) => [s.id, partsData.initialBuild[s.id] ?? null]),
+    ),
     cosmetics: { ...cosmetics.defaults },
-    /** Состояние кузова вне характеристик: дед оставил машину грязной, моется в гараже. */
-    car: { dirty: true },
+    /**
+     * Состояние машины вне деталей (вкладка «Обслуживание»): дед оставил её грязной
+     * и со старым маслом; удары на колее обкатки копят повреждения кузова (0–1).
+     */
+    car: { dirty: true, oil: 'old', damage: 0 },
     attempts: { trial: 0, race: 0 },
     failStreak: { trial: 0, race: 0 },
     passed: { trial: false, race: false },
@@ -57,37 +65,90 @@ export function setPart(slot, partId) {
   emit();
 }
 
+/** Снять деталь. Обязательный слот без детали остаётся пустым — машина не поедет. */
 export function removePart(slot) {
+  if (!getSlot(slot)) throw new Error(`Нет слота ${slot}`);
   gameState.build[slot] = null;
   emit();
 }
 
-/** Клик по карточке: ставит деталь, а клик по уже выбранной — снимает (ТЗ 3.6). */
+/**
+ * Клик по карточке: ставит деталь. Повторный клик снимает её только в необязательном
+ * слоте (впуск, выхлоп, ЭБУ, спойлер — там вместо детали штатная) и у шин: без шин —
+ * машина на кирпичах (ТЗ 3.6).
+ */
 export function togglePart(partId) {
   const part = getPart(partId);
   if (!part) throw new Error(`Неизвестная деталь: ${partId}`);
-  if (gameState.build[part.slot] === partId) removePart(part.slot);
-  else setPart(part.slot, partId);
+  const slot = getSlot(part.slot);
+  const removable = slot.required === false || slot.id === 'tires';
+  if (gameState.build[part.slot] === partId) {
+    if (removable) removePart(part.slot);
+  } else setPart(part.slot, partId);
 }
 
-export function setCosmetic(group, id) {
-  if (!cosmetics[group]?.some((c) => c.id === id)) {
-    throw new Error(`Нет варианта ${group}.${id}`);
-  }
-  gameState.cosmetics[group] = id;
+/** Готовый вариант по id или свой цвет #rrggbb (в группах CUSTOM_COLOR_GROUPS). */
+export function setCosmetic(group, value) {
+  const known = cosmetics[group]?.some((c) => c.id === value);
+  const custom = CUSTOM_COLOR_GROUPS.includes(group) && HEX.test(String(value));
+  if (!known && !custom) throw new Error(`Нет варианта ${group}.${value}`);
+  gameState.cosmetics[group] = custom ? String(value).toLowerCase() : value;
   emit();
 }
 
-/** «Помыть машину» во вкладке «Внешний вид»: грязь не влияет на расчёт. */
+/** Цвет варианта внешнего вида: hex готового варианта или свой цвет; null — выключено. */
+export function cosmeticHex(group, value) {
+  if (HEX.test(String(value))) return value;
+  const c = cosmetics[group].find((x) => x.id === value) ?? cosmetics[group][0];
+  return c.hex;
+}
+
+// ---------- Обслуживание ----------
+
 export function washCar() {
   gameState.car.dirty = false;
   emit();
+}
+
+export function changeOil() {
+  gameState.car.oil = 'fresh';
+  emit();
+}
+
+export function repairBody() {
+  gameState.car.damage = 0;
+  emit();
+}
+
+/**
+ * Состояние машины 0–10 для плашки в гараже: масло, кузов, чистота.
+ * @returns {{ score: number, items: {id: string, level: 'good'|'fair'|'bad'}[] }}
+ */
+export function conditionScore(car = gameState.car) {
+  const body = car.damage >= 0.5 ? 'bad' : car.damage > 0.15 ? 'fair' : 'good';
+  const items = [
+    { id: 'oil', level: car.oil === 'fresh' ? 'good' : 'bad' },
+    { id: 'body', level: body },
+    { id: 'wash', level: car.dirty ? 'fair' : 'good' },
+  ];
+  const points = {
+    oil: car.oil === 'fresh' ? 4 : 1,
+    body: Math.round((1 - car.damage) * 4),
+    wash: car.dirty ? 0 : 2,
+  };
+  return { score: points.oil + points.body + points.wash, items };
 }
 
 /** Записывает исход заезда. Провал сборку не сбрасывает (ТЗ 4.5). */
 export function recordResult(testId, result) {
   gameState.attempts[testId] += 1;
   gameState.lastResult = { testId, ...result };
+  // Обкатка бьёт кузов на колее: повреждения остаются до ремонта в гараже.
+  const d = result.details;
+  if (testId === 'trial' && d?.capacity > 0 && Number.isFinite(d.capacity)) {
+    gameState.car.damage = Math.min(1, Math.max(gameState.car.damage, d.damage / d.capacity));
+    gameState.car.dirty = true;
+  }
   if (result.ok) {
     gameState.passed[testId] = true;
     gameState.failStreak[testId] = 0;

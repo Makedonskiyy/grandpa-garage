@@ -21,3 +21,11 @@ export function clear(node) {
   node.replaceChildren();
   return node;
 }
+
+/** Заменить содержимое узла: пустые значения (null, false, '') пропускаются. */
+export function fill(node, ...kids) {
+  node.replaceChildren(
+    ...kids.flat().filter((k) => k !== null && k !== undefined && k !== false && k !== ''),
+  );
+  return node;
+}

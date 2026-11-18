@@ -7,7 +7,8 @@
  *   display   — режим экрана: ask (спросить при запуске), fullscreen, window;
  *   music/sfx — громкость 0…100, muted — «Без звука»;
  *   textSpeed — скорость печати реплик: slow, normal, fast, instant;
- *   shake     — тряска экрана при ударах на обкатке.
+ *   shake     — тряска экрана при ударах на обкатке;
+ *   gearbox   — коробка в заездах: manual (передачи вручную) или auto (автомат).
  */
 import config from '../../data/config.json';
 import { STORAGE_KEY } from '../config/constants.js';
@@ -15,6 +16,7 @@ import { STORAGE_KEY } from '../config/constants.js';
 export const SCALE_MODES = Object.freeze(['auto', '1', '2', '3']);
 export const DISPLAY_MODES = Object.freeze(['ask', 'fullscreen', 'window']);
 export const TEXT_SPEEDS = Object.freeze(['slow', 'normal', 'fast', 'instant']);
+export const GEARBOX_MODES = Object.freeze(['manual', 'auto']);
 
 const DEFAULTS = Object.freeze({ ...config.settingsDefaults });
 const listeners = new Set();
@@ -40,6 +42,7 @@ export function sanitize(raw) {
   if (typeof raw.muted === 'boolean') out.muted = raw.muted;
   if (TEXT_SPEEDS.includes(raw.textSpeed)) out.textSpeed = raw.textSpeed;
   if (typeof raw.shake === 'boolean') out.shake = raw.shake;
+  if (GEARBOX_MODES.includes(raw.gearbox)) out.gearbox = raw.gearbox;
   return out;
 }
 

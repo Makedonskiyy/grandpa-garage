@@ -7,7 +7,9 @@
   /* Основа страницы; цвета интерфейса — в ui.css (--ui-*). Шрифт лежит в сборке (main.js). */
   --c-bg: #0b0a0e;
   --c-text: #efe9de;
-  --font-ui: 'Literata Variable', 'Literata', Georgia, 'Times New Roman', serif;
+  /* Интерфейс — Onest (гротеск с ровными цифрами для характеристик); реплики сюжета — Literata. */
+  --font-ui: 'Onest Variable', 'Onest', system-ui, sans-serif;
+  --font-story: 'Literata Variable', 'Literata', Georgia, 'Times New Roman', serif;
   --font: var(--font-ui);
 }
 

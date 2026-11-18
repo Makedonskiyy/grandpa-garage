@@ -34,23 +34,18 @@
     "sfx": 80,
     "muted": false,
     "textSpeed": "normal",
-    "shake": true
+    "shake": true,
+    "gearbox": "manual"
   },
   "hints": {
     "failStreakForGrandpaHint": 3
   },
-  "trial": {
-    "speedUpFactor": 2,
-    "failStopAt": {
-      "broken": 0.55,
-      "power": 0.4,
-      "traction": 0.3
-    }
-  },
   "pedals": {
     "keys": {
       "gas": ["KeyW", "ArrowUp"],
-      "brake": ["KeyS", "ArrowDown"]
+      "brake": ["KeyS", "ArrowDown"],
+      "shiftUp": ["KeyE", "ShiftLeft", "ShiftRight"],
+      "shiftDown": ["KeyQ", "ControlLeft", "ControlRight"]
     },
     "attackPerSec": 10,
     "releasePerSec": 14,
@@ -72,27 +67,19 @@
   },
   "sceneFadeMs": 300,
   "race": {
-    "startX": 190,
+    "startX": 224,
     "finishX": 600,
-    "playerLaneY": 300,
-    "rivalLaneY": 212,
+    "playerLaneY": 250,
+    "rivalLaneY": 174,
     "carScale": 0.8,
     "playerFront": 134,
     "rivalFront": 94,
     "finishHoldMs": 1500
   },
   "garage": {
-    "carX": 400,
+    "carX": 316,
     "groundY": 248,
-    "barSegments": 12,
-    "statMax": {
-      "power": 9,
-      "mass": 24,
-      "grip": 12,
-      "downforce": 3,
-      "durability": 9
-    },
-    "carScale": 1.3,
+    "carScale": 1.05,
     "wallY": 216
   }
 }

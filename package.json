@@ -19,7 +19,9 @@
     "art": "node tools/build-art.mjs",
     "garage-bg": "node tools/build-garage-bg.mjs",
     "car": "node tools/build-car.mjs",
-    "characters": "node tools/build-characters.mjs"
+    "characters": "node tools/build-characters.mjs",
+    "hud": "node tools/build-hud.mjs",
+    "start-light": "py -I tools/build-start-light.py"
   },
   "engines": {
     "node": ">=20"
@@ -28,6 +30,7 @@
     "@fontsource-variable/caveat": "^5.3.0",
     "@fontsource-variable/inter": "^5.3.0",
     "@fontsource-variable/literata": "^5.3.0",
+    "@fontsource-variable/onest": "^5.3.1",
     "@fontsource/cormorant-garamond": "^5.3.0",
     "@phosphor-icons/core": "^2.1.1",
     "phaser": "^3.90.0"
