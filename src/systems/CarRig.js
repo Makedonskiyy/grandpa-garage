@@ -4,7 +4,8 @@
  *
  * Порядок слоёв снизу вверх:
  *   тень → неон → ниши колёс → колёса (шина + диск) / кирпичи → стойки крыла →
- *   основа → краска → накладка кузова → спойлер → фара → грязь → свет фар (ночь).
+ *   основа → краска → оттенки (холодный свет, тёплые тени — поверх любого цвета) →
+ *   накладка кузова → спойлер → фара → грязь → свет фар (ночь).
  * Кузов (всё, кроме тени и колёс) качается на подвеске; колёса стоят на земле и крутятся.
  *
  * Точка (0, 0) контейнера — земля под серединой машины.
@@ -32,9 +33,11 @@ const DENSITY = car.density ?? 1;
 const TEX = 1 / DENSITY;
 
 const IMAGES = [
+  'car_shadow',
   'car_wells',
   'car_base',
   'car_paint',
+  'car_tone',
   'car_headlight',
   'car_dirt',
   'car_bricks',
@@ -89,8 +92,8 @@ export class CarRig extends Phaser.GameObjects.Container {
         .setOrigin(0)
         .setScale(TEX);
 
-    // Тень на земле.
-    this.shadow = scene.add.ellipse(0, -1, car.size.width - 30, 8, 0x000000, 0.45);
+    // Тень на земле — пиксельный слой (car.shadow.above — сколько его лежит выше земли).
+    this.shadow = scene.add.image(-AX, -car.shadow.above, 'car_shadow').setOrigin(0).setScale(TEX);
 
     // Неон: свечение под днищем.
     this.neon = scene.add
@@ -104,6 +107,7 @@ export class CarRig extends Phaser.GameObjects.Container {
       wingBase: img('car_spoiler_wing_base'),
       base: img('car_base'),
       paint: img('car_paint'),
+      tone: img('car_tone'),
       overlay: img('car_overlay_rust'),
       spoiler: img('car_spoiler_lip_paint'),
       headlight: img('car_headlight'),

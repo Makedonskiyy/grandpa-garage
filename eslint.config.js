@@ -3,7 +3,8 @@ import globals from 'globals';
 import prettier from 'eslint-config-prettier';
 
 export default [
-  { ignores: ['dist/', 'node_modules/', 'coverage/'] },
+  // .claude — локальные скиллы и инструменты Claude Code (чужой код, в git не входит).
+  { ignores: ['dist/', 'node_modules/', 'coverage/', '.claude/'] },
   js.configs.recommended,
   {
     files: ['**/*.js', '**/*.mjs'],

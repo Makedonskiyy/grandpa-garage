@@ -1,5 +1,5 @@
 {
-  "$comment": "Исходники артов → готовые пиксельные файлы игры. Пересборка: npm run art. items — фоны меню и гаража; фоны сцен истории берутся из data/story-backgrounds.json (исходники в art/source/story), их параметры — storyDefaults и story.<ключ>.",
+  "$comment": "Исходники артов → готовые пиксельные файлы игры. Пересборка: npm run art. items — фон меню (фон гаража собирает npm run garage-bg из art/source/garage_tuning.jpg); фоны сцен истории берутся из data/story-backgrounds.json (исходники в art/source/story), их параметры — storyDefaults и story.<ключ>.",
   "items": [
     {
       "source": "art/source/menu_garage.jpg",
@@ -12,20 +12,6 @@
         "sharpen": 1.2,
         "save-palette": "art/palettes/garage.json",
         "brightness": 1.25
-      }
-    },
-    {
-      "source": "art/source/garage_room.jpg",
-      "output": "public/assets/images/bg/garage_room.png",
-      "args": {
-        "extract": "0,600,2400,1192",
-        "pixel": 2,
-        "colors": 64,
-        "brightness": 0.62,
-        "contrast": 1.1,
-        "saturation": 1.1,
-        "warm": 0.12,
-        "sharpen": 1.2
       }
     }
   ],

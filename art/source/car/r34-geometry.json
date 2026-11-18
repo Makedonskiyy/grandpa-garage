@@ -1,0 +1,15 @@
+{
+  "$comment": "Сгенерировано tools/trace-car.mjs по чертежу R34 (вид сбоку). Сетка 864×288: кузов x 24…840, земля y 276. См. docs/car/r34-technical-map.md.",
+  "grid": { "width": 864, "height": 288, "ground": 276, "mmPerPoint": 5.6373 },
+  "axles": { "front": 674.29, "rear": 201.55, "y": 217.92 },
+  "tireRadius": 58.08,
+  "rimRadius": 46.3,
+  "archRadius": 61.93,
+  "check": {
+    "lengthMm": 4628,
+    "heightMm": 1359,
+    "wheelbaseMm": 2665,
+    "tireMm": 655,
+    "rimMm": 522
+  }
+}
