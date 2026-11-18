@@ -708,6 +708,48 @@ function layerHeadlight(m) {
   return p;
 }
 
+/**
+ * Тень на полу. Свет от лампы сверху, камера чуть выше машины, поэтому видна полоса пола
+ * под порогом: она в густой тени, у шин — самые тёмные пятна контакта, вокруг машины —
+ * мягкий край ступенями с шахматкой на последней. Слой 60 точек: земля — строка SHADOW_GROUND,
+ * выше неё 14 единиц мира (пол под днищем), ниже — 6.
+ */
+const SHADOW_H = 60;
+const SHADOW_GROUND = 42;
+function layerShadow(m) {
+  const p = new Pix(W, SHADOW_H);
+  const g = SHADOW_GROUND;
+  const cx = (24 + 840) / 2;
+  // Низ кузова в каждом столбце — до него виден пол под машиной.
+  const bottom = new Int16Array(W).fill(-1);
+  for (let x = 0; x < W; x++)
+    for (let y = H - 1; y >= 0; y--)
+      if (m.body.at(x, y)) {
+        bottom[x] = y;
+        break;
+      }
+  for (let y = 0; y < SHADOW_H; y++)
+    for (let x = 0; x < W; x++) {
+      const yy = y + 0.5 - g; // < 0 — выше земли (дальше по полу)
+      const k = Math.hypot((x + 0.5 - cx) / 440, yy / (yy < 0 ? 22 : 15));
+      let al = 0;
+      if (k < 0.6) al = 110;
+      else if (k < 0.82) al = 80;
+      else if (k < 0.94) al = 50;
+      else if (k < 1.02 && (x + y) % 2 === 0) al = 50;
+      // Пол под порогом между колёсами — от земли до низа кузова.
+      const under = bottom[x] >= 0 ? GROUND - bottom[x] : 0;
+      if (yy < 0 && -yy <= under + 1 && x > AXR + TIRE_R * 0.5 && x < AXF - TIRE_R * 0.5)
+        al = Math.max(al, -yy > under - 3 ? 120 : 165);
+      for (const ax of [AXR, AXF]) {
+        const kc = Math.hypot((x + 0.5 - ax) / (TIRE_R * 0.95), yy / 5);
+        if (kc < 1) al = Math.max(al, kc < 0.55 ? 225 : 185);
+      }
+      if (al) p.set(x, y, '#060505', al);
+    }
+  return p;
+}
+
 function layerWells(m) {
   const p = new Pix();
   for (const cx of [AXR, AXF])
@@ -1017,6 +1059,7 @@ async function main() {
 
   const m = await bodyMasks();
   const { paint, base, tone } = drawBody(m);
+  await save('car_shadow', await layerShadow(m).png());
   await save('car_wells', await layerWells(m).png());
   await save('car_base', await base.png());
   await save('car_paint', await paint.png());
@@ -1047,6 +1090,7 @@ async function main() {
     },
     wheelFrame: { width: FRAME / 3, height: FRAME / 3, frames: FRAMES },
     headlight: { x: toWorldX(818), y: toWorldY(164) },
+    shadow: { height: SHADOW_H / 3, above: SHADOW_GROUND / 3 },
     tires: {
       wheels_stock: 'stock',
       wheels_studded: 'studded',

@@ -33,6 +33,7 @@ const DENSITY = car.density ?? 1;
 const TEX = 1 / DENSITY;
 
 const IMAGES = [
+  'car_shadow',
   'car_wells',
   'car_base',
   'car_paint',
@@ -91,8 +92,8 @@ export class CarRig extends Phaser.GameObjects.Container {
         .setOrigin(0)
         .setScale(TEX);
 
-    // Тень на земле.
-    this.shadow = scene.add.ellipse(0, -1, car.size.width - 30, 8, 0x000000, 0.45);
+    // Тень на земле — пиксельный слой (car.shadow.above — сколько его лежит выше земли).
+    this.shadow = scene.add.image(-AX, -car.shadow.above, 'car_shadow').setOrigin(0).setScale(TEX);
 
     // Неон: свечение под днищем.
     this.neon = scene.add

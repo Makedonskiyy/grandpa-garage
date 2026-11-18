@@ -10,6 +10,7 @@
   },
   "wheelFrame": { "width": 48, "height": 48, "frames": 16 },
   "headlight": { "x": 272.67, "y": 54.67 },
+  "shadow": { "height": 20, "above": 14 },
   "tires": {
     "wheels_stock": "stock",
     "wheels_studded": "studded",

@@ -69,6 +69,7 @@
       "downforce": 3,
       "durability": 9
     },
-    "carScale": 1.3
+    "carScale": 1.3,
+    "wallY": 216
   }
 }
