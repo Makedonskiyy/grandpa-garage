@@ -1,7 +1,6 @@
 import Phaser from 'phaser';
 import { BaseScene } from './BaseScene.js';
-import { SCENES, MUSIC, VERSION, WORLD } from '../config/constants.js';
-import menuConfig from '../../data/menu.json';
+import { SCENES, MUSIC, VERSION } from '../config/constants.js';
 import { el } from '../ui/dom.js';
 import { webButton } from '../ui/components.js';
 import { openSettings } from '../ui/SettingsPanel.js';
@@ -25,9 +24,10 @@ export class MenuScene extends BaseScene {
     audio.playMusic(MUSIC.MENU);
 
     this.add.image(0, 0, 'bg_menu').setOrigin(0);
-    this.#createLamps();
+    this.#createWind();
 
     this.ui.append(
+      el('div', { class: 'ui-abs menu-shade' }),
       el('img', {
         class: 'ui-abs menu-logo',
         src: 'assets/images/ui/logo.svg',
@@ -60,55 +60,45 @@ export class MenuScene extends BaseScene {
     this.goTo(SCENES.INTRO);
   }
 
-  /** Свечение ламп фона (если заданы в data/menu.json) и мигание света (ТЗ 3.3). */
-  #createLamps() {
-    const { lamps, flicker } = menuConfig;
-    if (!this.textures.exists('fx_glow')) this.#makeGlowTexture();
-
-    const glows = lamps.map((l) =>
-      this.add
-        .image(l.x, l.y, 'fx_glow')
-        .setScale(l.size)
-        .setAlpha(l.alpha)
-        .setBlendMode(Phaser.BlendModes.ADD),
-    );
-
-    // Мигание: короткая серия провалов света всей сцены и главной лампы, если она есть.
-    const main = glows[0];
-    const shade = this.add.rectangle(0, 0, WORLD.width, WORLD.height, 0x000000, 0).setOrigin(0);
-    const blink = () => {
-      if (main) {
-        this.tweens.add({
-          targets: main,
-          alpha: 0,
-          duration: 60,
-          yoyo: true,
-          repeat: flicker.times - 1,
-        });
-      }
-      this.tweens.add({
-        targets: shade,
-        fillAlpha: flicker.shade,
-        duration: 60,
-        yoyo: true,
-        repeat: flicker.times - 1,
+  /**
+   * Ветер: порывами (раз в несколько секунд) с деревьев слева и справа срывает листья,
+   * они летят вправо и падают на дорогу. Пиксельные квадратики 2×2 трёх оттенков.
+   */
+  #createWind() {
+    if (!this.textures.exists('leaf_px')) {
+      const g = this.make.graphics({ x: 0, y: 0 }, false);
+      g.fillStyle(0xffffff).fillRect(0, 0, 2, 2);
+      g.generateTexture('leaf_px', 2, 2);
+      g.destroy();
+    }
+    const leaves = (x, y, w) =>
+      this.add.particles(0, 0, 'leaf_px', {
+        x: { min: x, max: x + w },
+        y: { min: y, max: y + 50 },
+        speedX: { min: 20, max: 55 },
+        speedY: { min: -6, max: 14 },
+        accelerationY: 9,
+        rotate: { min: 0, max: 360 },
+        lifespan: 9000,
+        frequency: 420,
+        tint: [0x6f8a3a, 0x9aa548, 0xc9a24a, 0x4f6a2c],
+        alpha: { start: 1, end: 0.6 },
       });
-      this.time.delayedCall(Phaser.Math.Between(flicker.minDelayMs, flicker.maxDelayMs), blink);
+    const sides = [leaves(10, 20, 260), leaves(470, 20, 160)];
+    // Порыв: листьев больше и летят быстрее, потом стихает — цикл.
+    const gust = () => {
+      for (const e of sides) {
+        e.frequency = 60;
+        e.speedX = { min: 60, max: 120 };
+      }
+      this.time.delayedCall(1600, () => {
+        for (const e of sides) {
+          e.frequency = 420;
+          e.speedX = { min: 20, max: 55 };
+        }
+      });
+      this.time.delayedCall(Phaser.Math.Between(5000, 8000), gust);
     };
-    this.time.delayedCall(flicker.minDelayMs, blink);
-  }
-
-  /** Свечение ступенями, без плавного градиента — чтобы оставалось пиксельным. */
-  #makeGlowTexture() {
-    const g = this.make.graphics({ x: 0, y: 0 }, false);
-    const steps = [
-      [16, 0.12],
-      [12, 0.2],
-      [8, 0.35],
-      [4, 0.6],
-    ];
-    for (const [r, a] of steps) g.fillStyle(0xffc070, a).fillCircle(16, 16, r);
-    g.generateTexture('fx_glow', 32, 32);
-    g.destroy();
+    this.time.delayedCall(2500, gust);
   }
 }

@@ -1,7 +1,7 @@
 {
   "name": "dedov-garage",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Дедов гараж — браузерная 2D-игра в пиксельной графике (симулятор конструирования). Команда TRITON.",
   "license": "GPL-3.0-only",
   "type": "module",
@@ -21,7 +21,8 @@
     "car": "node tools/build-car.mjs",
     "characters": "node tools/build-characters.mjs",
     "hud": "node tools/build-hud.mjs",
-    "start-light": "py -I tools/build-start-light.py"
+    "start-light": "py -I tools/build-start-light.py",
+    "menu-bg": "node tools/build-menu-bg.mjs"
   },
   "engines": {
     "node": ">=20"

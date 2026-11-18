@@ -322,7 +322,6 @@ export class TrialScene extends BaseScene {
     const seg = segmentAt(this.test, run.x);
     if (seg.type === 'ruts' && Math.random() < dt * (1 + run.v * 0.9)) {
       this.car.bump(10 + run.v * 4);
-      if (run.v > 6 && getSettings().shake) this.cameras.main.shake(80, 0.002 * run.v);
     }
     this.car.y = GROUND_Y + run.sink * 7;
     this.car.step(dt, {
@@ -386,7 +385,6 @@ export class TrialScene extends BaseScene {
     this.result = summarize(this.run, this.best);
     const { reasonKey } = this.run;
     if (reasonKey === 'broken') {
-      if (getSettings().shake) this.cameras.main.shake(400, 0.01);
       this.car.drop(60);
       this.#puff(0x777777, this.car.x + 110, this.car.y - 50);
     } else if (reasonKey === 'traction') {
