@@ -10,6 +10,9 @@ import { el } from '../ui/dom.js';
 import { webButton } from '../ui/components.js';
 import { t } from '../systems/strings.js';
 import { getSettings } from '../systems/settings.js';
+import { createGearbox, updateGearbox } from '../systems/autoGearbox.js';
+import { PedalControls } from '../ui/PedalControls.js';
+import { createTacho } from '../ui/tacho.js';
 
 const GROUND_Y = 300;
 const CAR_START_X = 170; // машина почти в центре, дорога едет под ней
@@ -43,6 +46,9 @@ export class TrialScene extends BaseScene {
     this.elapsed = 0;
     this.speed = 1;
     this.done = false;
+    this.gearbox = createGearbox();
+    this.pedals = new PedalControls(this, { compact: true });
+    this.tacho = createTacho({ compact: true });
 
     this.#createParallax();
     this.car = buildCar(this, gameState.build, gameState.cosmetics, {
@@ -54,7 +60,7 @@ export class TrialScene extends BaseScene {
     this.engine = audio.loopSfx(SFX.ENGINE);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.engine?.destroy());
 
-    // Панель внизу: путь, прочность, ускорение — в стиле гаража.
+    // Панель внизу: педали, путь, прочность, тахометр и ускорение — в стиле гаража.
     this.$path = el('div', { class: 'meter__fill' });
     this.$pathValue = el('span', { text: '0%' });
     this.$dur = el('div', { class: 'meter__fill is-good', style: { transform: 'scaleX(1)' } });
@@ -70,11 +76,18 @@ export class TrialScene extends BaseScene {
     });
     this.ui.append(
       el('div', { class: 'ui-abs surface trial-hud' }, [
+        this.pedals.node,
         meter(t('trial.distance'), this.$pathValue, this.$path),
         meter(t('trial.durability'), this.$durValue, this.$dur),
+        this.tacho.node,
         speedUp,
       ]),
     );
+    this.tacho.render({
+      rpm: config.gearbox.idleRpm,
+      gear: 1,
+      redline: config.gearbox.redlineRpm,
+    });
   }
 
   /**
@@ -174,9 +187,14 @@ export class TrialScene extends BaseScene {
   }
 
   update(_time, delta) {
+    const input = this.pedals.update(delta / 1000);
     if (this.done) {
       // После остановки подвеска успокаивается; при пробуксовке колёса крутятся на месте.
-      this.car.step(delta / 1000, { distance: this.spinInPlace ? delta * 0.5 : 0 });
+      this.#renderTacho(0, input, delta / 1000);
+      this.car.step(delta / 1000, {
+        distance: this.spinInPlace ? delta * 0.5 : 0,
+        accel: -input.brake * 2,
+      });
       return;
     }
     const dt = delta * this.speed;
@@ -189,11 +207,12 @@ export class TrialScene extends BaseScene {
     const prevX = this.car.x;
     this.car.x = CAR_START_X + progress * CAR_TRAVEL;
     if (Math.random() < (dt / 1000) * BUMPS_PER_SEC) this.car.bump(20 + Math.random() * 20);
+    const gb = this.#renderTacho(progress, input, delta / 1000);
     this.car.step(dt / 1000, {
       distance: roadShift + (this.car.x - prevX),
-      accel: progress < 0.12 ? 2.5 : 0,
+      accel: (progress < 0.12 ? 2.5 : 0) + input.gas * 1.5 - input.brake * 3,
     });
-    this.engine?.setRate?.(0.8 + progress * 0.6);
+    this.engine?.setRate?.(0.7 + (gb.rpm / config.gearbox.redlineRpm) * 0.8);
 
     this.$path.style.transform = `scaleX(${progress})`;
     this.$pathValue.textContent = `${Math.round(progress * 100)}%`;
@@ -206,8 +225,21 @@ export class TrialScene extends BaseScene {
     if (progress >= this.stopAt) this.#finish();
   }
 
+  /** Шаг автомата и отрисовка тахометра; возвращает состояние коробки. */
+  #renderTacho(speed01, input, dt) {
+    const gb = updateGearbox(this.gearbox, { speed01, gas: input.gas, brake: input.brake }, dt);
+    this.tacho.render({
+      rpm: gb.rpm,
+      gear: gb.gear,
+      redline: config.gearbox.redlineRpm,
+      shifting: gb.shifting,
+    });
+    return gb;
+  }
+
   #finish() {
     this.done = true;
+    this.pedals.setEnabled(false);
     this.engine?.stop();
     const { reasonKey } = this.result;
     if (reasonKey === 'broken') {
