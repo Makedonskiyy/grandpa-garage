@@ -120,7 +120,7 @@ export function createGauge(o) {
       s,
     );
     if (isMajor) {
-      const [tx, ty] = pt(118, deg);
+      const [tx, ty] = pt(126, deg);
       const t = svg(
         'text',
         {
@@ -142,10 +142,10 @@ export function createGauge(o) {
   const win = svg(
     'rect',
     {
-      x: -58,
-      y: -94,
-      width: 116,
-      height: 54,
+      x: -46,
+      y: -86,
+      width: 92,
+      height: 46,
       rx: 12,
       fill: '#050607',
       stroke: '#2b2e34',
@@ -155,7 +155,7 @@ export function createGauge(o) {
   );
   const readout = svg(
     'text',
-    { x: 0, y: -51, 'text-anchor': 'middle', class: 'gauge__readout' },
+    { x: 0, y: -49, 'text-anchor': 'middle', class: 'gauge__readout' },
     s,
   );
   const sub = svg('text', { x: 0, y: -27, 'text-anchor': 'middle', class: 'gauge__sub' }, s);

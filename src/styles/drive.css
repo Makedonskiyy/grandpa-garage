@@ -70,7 +70,7 @@
 .shift {
   position: absolute;
   z-index: 0;
-  bottom: 64px;
+  bottom: 24px;
   width: 168px;
   pointer-events: auto;
   padding: 0;
@@ -82,11 +82,11 @@
 }
 
 .shift--down {
-  left: -112px;
+  left: -104px;
 }
 
 .shift--up {
-  right: -112px;
+  right: -76px;
 }
 
 .shift__img {
@@ -205,18 +205,18 @@
 
 .gauge__unit {
   font: 600 16px/1 var(--font-ui);
-  fill: #9aa0a8;
+  fill: #f4f4f2;
 }
 
 .gauge__readout {
-  font: 700 40px/1 var(--font-ui);
+  font: 700 34px/1 var(--font-ui);
   font-variant-numeric: tabular-nums;
-  fill: #f2c26b;
+  fill: #f4f4f2;
 }
 
 .gauge__sub {
   font: 600 14px/1 var(--font-ui);
-  fill: #8a9098;
+  fill: #f4f4f2;
 }
 
 /* ---------- Карточка сцены сверху слева (обкатка: путь и прочность) ---------- */
