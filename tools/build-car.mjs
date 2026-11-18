@@ -89,7 +89,7 @@ const C = {
   tailHi: '#ff7a7a',
   tailLo: '#5e0f15',
   tailEdge: '#300709',
-  tailCore: '#c42630',
+  tailCore: '#d8323c',
   metal: '#7a7e86',
   metalHi: '#b8bcc4',
   metalDark: '#45484f',
@@ -285,11 +285,26 @@ function polyMask(points) {
   return m;
 }
 
-function ellipseMask(cx, cy, rx, ry) {
+/** Эллипс, повёрнутый на tilt градусов (верх — вправо). k(x, y) — 0 в центре, 1 на краю. */
+function ellipseK(cx, cy, rx, ry, tilt = 0) {
+  const a = (tilt * Math.PI) / 180;
+  const cos = Math.cos(a);
+  const sin = Math.sin(a);
+  return (x, y) => {
+    const dx = x + 0.5 - cx;
+    const dy = y + 0.5 - cy;
+    const u = dx * cos + dy * sin;
+    const v = -dx * sin + dy * cos;
+    return Math.hypot(u / rx, v / ry);
+  };
+}
+
+function ellipseMask(cx, cy, rx, ry, tilt = 0) {
   const m = new Mask();
-  for (let y = Math.floor(cy - ry); y <= cy + ry; y++)
-    for (let x = Math.floor(cx - rx); x <= cx + rx; x++)
-      if (((x + 0.5 - cx) / rx) ** 2 + ((y + 0.5 - cy) / ry) ** 2 <= 1) m.put(x, y);
+  const k = ellipseK(cx, cy, rx, ry, tilt);
+  const R = Math.max(rx, ry) + 1;
+  for (let y = Math.floor(cy - R); y <= cy + R; y++)
+    for (let x = Math.floor(cx - R); x <= cx + R; x++) if (k(x, y) <= 1) m.put(x, y);
   return m;
 }
 
@@ -341,8 +356,14 @@ const SIDE_DUCT = X2([
   [382.4, 115.4],
   [373.4, 115.4],
 ]);
-const TAIL_UPPER = { cx: 46.4, cy: 115.2, rx: 4.8, ry: 9.2 };
-const TAIL_LOWER = { cx: 43.6, cy: 133.2, rx: 4.8, ry: 9.6 };
+// Задний фонарь по чертежу: в профиль виден один крупный наклонный овал линзы на углу кормы
+// (верх отклонён назад-вверх к крышке багажника), внутри — две круглые лампы, перекрывающие
+// друг друга в ракурсе. Наклон tilt — градусы от вертикали.
+const TAIL = { cx: 47, cy: 126, rx: 7, ry: 19.5, tilt: 11 };
+const TAIL_LAMPS = [
+  { cx: 49, cy: 119, rx: 4, ry: 9 },
+  { cx: 45, cy: 133, rx: 4, ry: 9.5 },
+];
 // Фара: две секции, перегородка по чертежу у x ≈ 786; в каждой — отражатель и лампа.
 const HEAD_DIVIDER = 786; // перегородка между секциями по чертежу
 const LAMPS = [
@@ -397,9 +418,7 @@ async function bodyMasks() {
   m.turn = polyMask(TURN);
   m.vent = polyMask(LOWER_VENT);
   m.duct = polyMask(SIDE_DUCT);
-  m.tail = ellipseMask(TAIL_UPPER.cx, TAIL_UPPER.cy, TAIL_UPPER.rx, TAIL_UPPER.ry).or(
-    ellipseMask(TAIL_LOWER.cx, TAIL_LOWER.cy, TAIL_LOWER.rx, TAIL_LOWER.ry),
-  );
+  m.tail = ellipseMask(TAIL.cx, TAIL.cy, TAIL.rx, TAIL.ry, TAIL.tilt);
   m.trim = m.dark.or(m.head, m.turn, m.vent, m.duct, m.marker, m.tail);
   m.hood = new Mask();
   const hood = X2([
@@ -632,18 +651,26 @@ function drawLights(base, m) {
     }
   paintLens(base, m.turn, C.amberEdge, C.amber, C.amberHi, C.amberLo);
   paintLens(base, m.marker, C.amberEdge, C.amber, C.amberHi, C.amberLo);
-  // Задние фонари: два круглых, в профиль — овалы с кольцами.
-  for (const L of [TAIL_UPPER, TAIL_LOWER]) {
-    const e = ellipseMask(L.cx, L.cy, L.rx, L.ry);
-    for (let y = 0; y < H; y++)
-      for (let x = 20; x < 68; x++) {
-        if (!e.at(x, y)) continue;
-        const k = Math.hypot((x + 0.5 - L.cx) / L.rx, (y + 0.5 - L.cy) / L.ry);
-        let c = e.edge(x, y) ? C.tailEdge : k > 0.62 ? C.tail : k > 0.4 ? C.tailLo : C.tailCore;
-        if (!e.edge(x, y) && y + 0.5 < L.cy - L.ry * 0.5 && x + 0.5 < L.cx + 1) c = C.tailHi;
-        base.set(x, y, c);
+  // Задний фонарь: тёмная рамка, красная линза с бликом по верху, две лампы внутри —
+  // тёмное кольцо, светлое кольцо отражателя и яркая середина.
+  const outer = ellipseK(TAIL.cx, TAIL.cy, TAIL.rx, TAIL.ry, TAIL.tilt);
+  const lamps = TAIL_LAMPS.map((L) => ellipseK(L.cx, L.cy, L.rx, L.ry, TAIL.tilt));
+  for (let y = 0; y < H; y++)
+    for (let x = 20; x < 76; x++) {
+      if (!m.tail.at(x, y)) continue;
+      const k = outer(x, y);
+      let c = m.tail.edge(x, y) ? C.tailEdge : k > 0.82 ? C.tailLo : C.tail;
+      // Блик линзы — полоса у верхнего края со стороны света.
+      if (!m.tail.edge(x, y) && k > 0.62 && k < 0.84 && y < TAIL.cy - 6 && x < TAIL.cx + 3)
+        c = C.tailHi;
+      for (const lk of lamps) {
+        const v = lk(x, y);
+        if (v <= 1 && v > 0.78) c = C.tailEdge;
+        else if (v <= 0.78 && v > 0.52) c = C.tailLo;
+        else if (v <= 0.52) c = v < 0.26 ? '#ff9a8a' : C.tailCore;
       }
-  }
+      base.set(x, y, c);
+    }
 }
 
 /** Оттенки поверх краски (hue shift) — полупрозрачно, работает с любым цветом кузова. */
@@ -843,9 +870,10 @@ function layerBricks() {
 
 const TIRES = {
   stock: { rim: RIM_R, style: 'six', caliper: C.caliperGrey },
-  studded: { rim: RIM_R - 6, style: 'steel', caliper: C.caliperGrey, studs: true },
+  // Штампованные — на 1″ меньше родных, боковина чуть выше, но в пропорциях чертежа.
+  studded: { rim: RIM_R - 3, style: 'steel', caliper: C.caliperGrey, studs: true },
   slicks: { rim: RIM_R, style: 'multi', caliper: C.caliperRed },
-  old: { rim: RIM_R - 6, style: 'steelOld', caliper: C.caliperGrey, flat: true },
+  old: { rim: RIM_R - 3, style: 'steelOld', caliper: C.caliperGrey, flat: true },
 };
 
 const angDist = (a, b) => Math.abs(((((a - b) % 360) + 540) % 360) - 180);
@@ -878,12 +906,13 @@ function tirePix(t, angle) {
   return polar((rr, a, dx, dy) => {
     const r = t.flat && dy > 0 && rr > t.rim ? Math.hypot((dx * R) / (R + 6), dy) : rr;
     if (r > R) return null;
+    if (t.studs && r > R - 2.2 && toRay(a, angle, 30) < 1.1) return '#8d939b';
     if (r > R - 1.6) return C.outline;
     if (r > t.rim + 1.6) {
-      if (t.studs && r > R - 5 && r < R - 2 && toRay(a, angle, 40) < 1.6) return '#cfd4dc';
       const L = lit(a);
+      if (r > R - 4) return L > 0.6 ? C.rubberSide : C.rubber; // плечо протектора
       if (r < t.rim + 3) return C.rubber; // борт у обода
-      if (Math.abs(r - (R - 5)) < 0.8 && L > 0.3) return C.rubberHi;
+      if (Math.abs(r - (R - 6)) < 0.8 && L > 0.3) return C.rubberHi;
       return L > 0.7 ? C.rubberLit : L > 0.25 ? C.rubberSide : C.rubber;
     }
     if (r > t.rim) return C.outline;
@@ -925,9 +954,14 @@ function rimPix(t, angle) {
         return r < 5 ? gray(0.55) : r > 11 ? gray(0.6) : gray(0.86);
       }
       // Шесть спиц, как на чертеже: шире к ободу, светлая грань со стороны света.
-      const hw = ((3 + (2.6 * (r - 13)) / (R - 13)) / r) * (180 / Math.PI);
+      const hw = ((2.6 + (1.8 * (r - 13)) / (R - 13)) / r) * (180 / Math.PI);
       const d = spoke(a, angle, 6);
-      if (Math.abs(d) < hw) return gray(d < -hw * 0.3 ? 1 : d > hw * 0.45 ? 0.6 : 0.84);
+      const px = (Math.abs(d) * Math.PI * r) / 180; // ширина в точках от оси спицы
+      const hwPx = (hw * Math.PI * r) / 180;
+      if (Math.abs(d) < hw) {
+        if (hwPx - px < 1) return gray(0.46); // кромка спицы
+        return gray(d < -hw * 0.25 ? 1 : d > hw * 0.4 ? 0.62 : 0.84);
+      }
       return null;
     }
     if (t.style === 'multi') {
@@ -940,11 +974,17 @@ function rimPix(t, angle) {
       if (Math.abs(d) < hw) return gray(d < 0 ? 1 : 0.78);
       return null;
     }
-    const b = t.style === 'steelOld' ? 0.62 : 0.8;
-    if (Math.abs(r - R * 0.62) < 3.2 && toRay(a, angle, 8) * (Math.PI / 180) * r < 5.2) return null;
-    if (Math.abs(r - R * 0.42) < 1.2) return gray(b + 0.15);
-    if (r < 10) return nut(r, a, 5, 6.8) ? gray(1) : gray(b - 0.15);
-    return gray(b + 0.08 * L);
+    const b = t.style === 'steelOld' ? 0.6 : 0.78;
+    const win = toRay(a, angle, 8) * (Math.PI / 180) * r;
+    if (Math.abs(r - R * 0.66) < 3.6 && win < 5) return null; // окно — видно тормоз
+    if (Math.abs(r - R * 0.66) < 4.6 && win < 6) return gray(b - 0.22); // кромка окна
+    if (Math.abs(r - R * 0.86) < 1.2) return gray(b - 0.12); // ребро у обода
+    if (Math.abs(r - R * 0.44) < 1.4) return gray(b + 0.16); // ребро вокруг ступицы
+    if (r < 11) {
+      if (nut(r, a, 4, 7.4)) return gray(1);
+      return r < 6 ? gray(b - 0.18) : gray(b - 0.08);
+    }
+    return gray(b + 0.1 * L);
   });
 }
 
