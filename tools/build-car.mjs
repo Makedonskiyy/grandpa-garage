@@ -2,8 +2,9 @@
 /**
  * build-car — генератор модульной машины игрока («дедова японка»).
  *
- * Пропорции — купе конца 90-х по образцу R34: длина 4,6 м, база 2,67 м, высота 1,36 м,
- * колёса 18″. Марок, шильдиков и названий нет (ТЗ 2.1).
+ * Пропорции — купе конца 90-х по образцу R34 в стилистике пиксельных гоночных спрайтов:
+ * высокая линия плеч, покатая стойка C, крупные колёса с низким профилем. Марок, шильдиков
+ * и названий нет (ТЗ 2.1).
  *
  * Геометрия задана в единицах мира (288×96 на машину, 1 ед. ≈ 17 мм), а растеризуется
  * в DENSITY раз детальнее — машина чётче всех остальных объектов игры. Без сглаживания
@@ -30,31 +31,33 @@ const H = 96;
 const GROUND = 92;
 
 // ---------- Пропорции ----------
-const WHEEL_R = 19;
-const WHEEL_Y = GROUND - WHEEL_R; // 72.5
-const REAR_X = 63;
-const FRONT_X = 228;
-const ARCH_R = 22;
+// Сняты с бокового вида R34 в пиксельном стиле (стилизация: крыша чуть выше реальной,
+// колёса крупнее, низкопрофильная резина). Единицы мира, земля — GROUND.
+const WHEEL_R = 20.2;
+const WHEEL_Y = GROUND - WHEEL_R; // 71.8
+const REAR_X = 67;
+const FRONT_X = 226.5;
+const ARCH_R = 22.6;
 const SILL = 82; // низ порога
-const SKIRT = 77.5; // верх юбки порога
+const SKIRT = 78.2; // верх тёмной юбки порога
 const FRAME = 48; // кадр колеса, ед.
 const FRAMES = 16;
 const STEP = 1 / DENSITY; // одна точка текстуры в единицах мира
 
 const C = {
-  outline: '#0d0e12',
-  well: '#09090c',
-  trim: '#18191e',
-  trimHi: '#2a2c33',
-  trimLo: '#101115',
-  rubber: '#1b1c20',
-  rubberSide: '#25262b',
-  rubberHi: '#3b3d44',
-  glassTop: '#5d7393',
-  glassMid: '#2c3a55',
-  glassLow: '#18202f',
-  glassDeep: '#10151f',
-  glassShine: '#a9bcd6',
+  outline: '#0b0c10',
+  well: '#08080b',
+  trim: '#16171b',
+  trimHi: '#2c2e34',
+  trimLo: '#0f1013',
+  rubber: '#121316',
+  rubberSide: '#2b2c30',
+  rubberHi: '#3e4046',
+  glassTop: '#34363d',
+  glassMid: '#1d1e23',
+  glassLow: '#151619',
+  glassDeep: '#0e0f12',
+  glassShine: '#8d96a6',
   tail: '#9e1b26',
   tailHi: '#e0454d',
   tailLo: '#5e0f15',
@@ -62,9 +65,9 @@ const C = {
   metal: '#7a7e86',
   metalHi: '#b8bcc4',
   metalDark: '#45484f',
-  disc: '#6f737a',
-  discHi: '#9a9ea6',
-  discDark: '#4d5056',
+  disc: '#5f636a',
+  discHi: '#8a8e96',
+  discDark: '#3d4045',
   caliperRed: '#b3262c',
   caliperRedHi: '#e04a4a',
   caliperGrey: '#5c6067',
@@ -89,47 +92,81 @@ const arch = (cx) => {
 const FA = arch(FRONT_X);
 const RA = arch(REAR_X);
 
+// Линия крыши: короткий высокий багажник с утиным хвостом, длинная покатая стойка C,
+// ровная крыша, крутое лобовое, капот плавно опускается к низкому носу.
+const ROOF_LINE = [
+  'L 49.5 29.1', // багажник
+  'L 57.8 25.6',
+  'L 66.1 22.6',
+  'L 74.4 19.1',
+  'L 82.6 15.3',
+  'L 91 12.6',
+  'Q 100 10 107.5 9.4', // стойка C переходит в крышу
+  'L 145 9.4',
+  'Q 149.5 9.6 153.2 12.3', // лобовое
+  'L 161.4 15.6',
+  'L 169.7 19.4',
+  'L 178 23.9',
+  'L 186.3 28',
+  'L 194.6 33.6',
+  'Q 197.5 35.2 201 35.3', // капот
+  'L 211.2 35.6',
+  'L 215.4 36.9',
+  'L 227.8 38',
+  'L 240.2 40',
+  'L 248.5 41',
+  'L 256.8 43.4',
+  'L 265.1 45.3',
+].join(' ');
+
 const BODY_PATH = [
-  'M 12 81.5',
-  'Q 8 80.5 8 76', // низ заднего бампера
-  'L 7 58',
-  'L 7.5 40',
-  'Q 8 33.5 12 32.6', // скругление заднего торца
-  'L 48 31.5', // багажник — выше линии капота
-  'L 98 12.6', // длинное пологое заднее стекло
-  'Q 100.5 11.6 104 11.6', // крыша
-  'L 152 11.6',
-  'Q 155.5 11.8 158 13.4',
-  'L 195 38.6', // лобовое
-  'L 230 42.5', // короткий капот, опускается к носу
-  'L 256 46.6',
-  'Q 266 48.2 270.5 50.4', // скругление носа
-  'Q 274 52.4 275.5 56.5',
-  'L 279.2 66', // лицо скошено вперёд к губе
-  'Q 280.6 74 279.6 78.6', // передний бампер
-  `L 277 ${SILL}`,
+  'M 22 80.6',
+  'Q 14 80 11 75.5', // низ заднего бампера
+  'Q 8.3 71.5 8.3 66',
+  'L 8.3 56',
+  'Q 8.4 54.6 9.6 54', // ступенька над бампером
+  'L 11.2 53.4',
+  'L 11.3 36',
+  'Q 11.6 30.8 16.3 29.2', // скругление крышки багажника
+  ROOF_LINE,
+  'Q 271.6 46.8 274.4 49.2', // нос
+  'Q 277.4 51.6 278.4 54.6',
+  'L 280.6 60',
+  'Q 281.4 66 280.8 72', // передний бампер
+  'L 279.6 76.6',
+  'L 282 79.4', // губа
+  'L 280.6 81.4',
+  'L 252 81.4',
   `L ${FA.a} ${SILL}`,
   `A ${ARCH_R} ${ARCH_R} 0 1 0 ${FA.b} ${SILL}`,
   `L ${RA.a} ${SILL}`,
   `A ${ARCH_R} ${ARCH_R} 0 1 0 ${RA.b} ${SILL}`,
-  'L 16 81.2',
+  'L 30 81.2',
   'Z',
 ].join(' ');
 
-// Боковое остекление: большое дверное стекло и маленькая форточка, нижняя кромка
-// окон поднимается к стойке C; между стёклами — чёрная стойка B (39 % длины).
-const DOOR_GLASS = 'M 115.5 14.6 L 151 14.4 Q 153.5 14.6 155 15.8 L 189.5 37.8 L 115.5 37.2 Z';
+// Остекление: в профиль видно заднее стекло (тёмный клин над стойкой C) и лобовое (клин
+// перед стойкой A); сбоку — форточка и дверное стекло, между ними чёрная стойка B.
+const REAR_GLASS =
+  'M 49.5 29.1 L 57.8 25.6 L 66.1 22.6 L 74.4 19.1 L 82.6 15.3 L 91 12.6 Q 100 10 107.5 9.4 L 107.5 10.8 Q 100 11.4 91.6 14 L 83 16.9 L 74.8 20.6 L 66.4 24.1 L 58 27.3 L 52.4 29.1 Z';
 const QUARTER_GLASS =
-  'M 111.5 14.6 L 111.5 36.8 L 92 35.6 L 87 33.8 L 96.5 16.8 Q 98 14.8 101 14.6 Z';
-const B_PILLAR = 'M 111.5 14.2 L 115.5 14.2 L 115.5 37.4 L 111.5 37 Z';
-const A_PILLAR = 'M 158 13.4 L 195 38.6 L 191 38.8 L 156.5 14.6 Z';
-const C_PILLAR_EDGE = 'M 98 12.6 L 48 31.5 L 53 31.5 L 100 13.3 Z';
+  'M 92.4 13.8 Q 97.4 12.3 104 12.1 L 111 11.9 L 111 36.6 L 100 35.6 L 89.4 34.8 Q 86.6 34.2 86.8 31.2 L 87.8 19.2 Q 88.8 14.8 92.4 13.8 Z';
+const B_PILLAR = 'M 111 11.9 L 117.4 11.9 L 117.4 37.2 L 111 36.6 Z';
+const DOOR_GLASS = 'M 117.4 11.9 L 141.7 11.9 L 184 35.6 Q 184.6 37.6 182.6 38.1 L 117.4 37.2 Z';
+const WINDSHIELD =
+  'M 145 11.9 L 147.5 10.4 Q 150.6 10.8 153.2 12.3 L 161.4 15.6 L 169.7 19.4 L 178 23.9 L 186.3 28 L 194.6 33.6 Q 196.5 34.8 198.5 35.4 L 187.4 35.6 Z';
+const MIRROR =
+  'M 163 24.8 Q 163.4 23.4 165 23.4 L 174.6 23.8 Q 176.6 24.2 176.4 26.4 L 175.8 29.6 Q 175.4 30.6 174 30.6 L 165 30.6 Q 163 30.6 163 29 Z';
 const HEADLIGHT =
-  'M 257.5 47.6 L 268.6 48.8 Q 272.2 50.2 273.6 53.6 L 260.4 54.6 Q 258.4 51.4 257.5 47.6 Z';
-const HEADLIGHT_LENS =
-  'M 260 49.2 L 268 50.2 Q 270.8 51.2 271.6 53.2 L 261.6 53.8 Q 260.4 51.6 260 49.2 Z';
-const INTAKE = 'M 268.5 64.5 L 279.4 64.5 L 280.1 71 L 270.4 71.6 Q 268.8 68.4 268.5 64.5 Z';
-const VENT = 'M 201.5 51 L 207 51 L 206.4 57.6 L 202.2 57.6 Z'; // жабры за передним колесом
+  'M 254.5 50.2 L 270.6 50.6 Q 274 51.4 274.6 54 L 273.8 57.2 L 257.2 57.4 Q 255 54.2 254.5 50.2 Z';
+const LAMPS = [
+  [262.4, 53.8],
+  [268.6, 53.8],
+];
+const TAIL = { x: 11.4, y: 39.4, w: 6.4, h: 8.4 };
+const INTAKE = 'M 268.6 64 L 280.9 64 L 281 71.5 L 270.4 72 Q 268.8 68.4 268.6 64 Z';
+const HOOD =
+  'M 201 35.3 L 211.2 35.6 L 215.4 36.9 L 227.8 38 L 240.2 40 L 248.5 41 L 256.8 43.4 L 265.1 45.3 L 265.6 47.2 L 240 42.6 L 201 37.8 Z';
 
 const svg = (body, { w = W, h = H } = {}) =>
   `<svg xmlns="http://www.w3.org/2000/svg" width="${w * DENSITY}" height="${h * DENSITY}" viewBox="0 0 ${w} ${h}" shape-rendering="crispEdges">${body}</svg>`;
@@ -195,44 +232,46 @@ function layerWells() {
 function nonPaint(maskFill) {
   const f = (c) => maskFill ?? c;
   return `
-    <path d="${DOOR_GLASS}" fill="${f(C.glassMid)}"/>
+    <path d="${REAR_GLASS}" fill="${f(C.glassDeep)}"/>
+    <path d="${WINDSHIELD}" fill="${f(C.glassLow)}"/>
     <path d="${QUARTER_GLASS}" fill="${f(C.glassMid)}"/>
+    <path d="${DOOR_GLASS}" fill="${f(C.glassMid)}"/>
     <path d="${B_PILLAR}" fill="${f(C.trim)}"/>
-    <path d="${A_PILLAR}" fill="${f(C.trimLo)}"/>
-    <path d="${C_PILLAR_EDGE}" fill="${f(C.glassDeep)}"/>
     <path d="${HEADLIGHT}" fill="${f(C.trim)}"/>
     <path d="${INTAKE}" fill="${f(C.trimLo)}"/>
-    <path d="${VENT}" fill="${f(C.trimLo)}"/>
-    ${rect(7, 37, 2.6, 9, f(C.tail))}
-    ${rect(8, 72, 34, 9.5, f(C.trim))}
-    <path d="M 248 78.6 L 279.6 78.6 L 282.2 81.2 L 280.8 82.4 L 250 82.6 Z" fill="${f(C.trim)}"/>
-    ${rect(83, 80.5, 125, 2, f(C.trimLo))}
-    <path d="M 182 32.2 Q 182 30.6 184 30.6 L 190.6 31.2 Q 192.4 31.6 192.2 33.6 L 191.6 36.4 L 183 36.4 Q 182 36.4 182 34.8 Z" fill="${f(C.trim)}"/>
-    ${rect(187, 36, 3, 2, f(C.trim))}
+    ${rect(TAIL.x, TAIL.y, TAIL.w, TAIL.h, f(C.tail), 'rx="2.4"')}
+    <path d="M 9 71 Q 11 76.4 16 79 L 44 79.2 L 44.6 81.3 L 22 81 Q 13 80.4 10.4 75.6 Z" fill="${f(C.trim)}"/>
+    <path d="M 250 79.2 L 280 79.2 L 282.4 80.4 L 280.6 81.8 L 252 81.8 Z" fill="${f(C.trim)}"/>
+    ${rect(86.6, 80.4, 120, 1.8, f(C.trimLo))}
+    ${rect(169, 30.4, 4, 2, f(C.trim))}
+    ${rect(194.6, 50.4, 4, 2.2, f(C.metal))}
+    ${rect(195.2, 61, 1.6, 2.6, f(C.tail))}
   `;
 }
 
 function layerBase() {
-  // Ступенчатое стекло: светлое небо сверху, тёмный салон снизу, диагональный блик.
-  const glassColors = [C.glassDeep, C.glassLow, C.glassMid, '#3f5070', C.glassTop, '#7d93b3'];
+  // Стекло почти чёрное, как в оригинале: светлее у крыши, к низу салона темнее, слабый блик.
+  const glassColors = [C.glassDeep, C.glassLow, C.glassMid, '#26282d', C.glassTop];
   const glass = stepGradient(
     [
-      [14, 0.95],
-      [20, 0.55],
-      [29, 0.2],
-      [38, 0.05],
+      [11.9, 0.9],
+      [16, 0.55],
+      [26, 0.35],
+      [38, 0.1],
     ],
-    14,
-    38,
-    80,
-    196,
-    5,
-    (v) => glassColors[Math.round(v * 5)],
+    11.9,
+    38.2,
+    78,
+    190,
+    4,
+    (v) => glassColors[Math.round(v * 4)],
   );
   let mesh = '';
-  for (let y = 65.6; y < 71; y += 1.8) mesh += rect(270, y, 9.6, 0.6, C.trimHi);
-  let slats = '';
-  for (let x = 203; x < 207; x += 1.6) slats += rect(x, 52, 0.6, 5, C.trimHi);
+  for (let y = 65.4; y < 71; y += 1.8) mesh += rect(270, y, 10.6, 0.6, C.trimHi);
+  const lamps = LAMPS.map(
+    ([x, y]) =>
+      `<circle cx="${x}" cy="${y}" r="2.6" fill="${C.trimLo}"/><circle cx="${x}" cy="${y}" r="2.6" fill="none" stroke="${C.trimHi}" stroke-width="${STEP}"/>`,
+  ).join('');
   return svg(`
     <defs>${defs}</defs>
     <path d="${BODY_PATH}" fill="${C.outline}"/>
@@ -240,101 +279,117 @@ function layerBase() {
       ${nonPaint()}
       <g clip-path="url(#glass)">
         ${glass}
-        <path d="M 128 15 L 137 15 L 121 37 L 112 37 Z" fill="${C.glassShine}" opacity="0.35"/>
-        <path d="M 140 15 L 143 15 L 127 37 L 124 37 Z" fill="${C.glassShine}" opacity="0.25"/>
-        <!-- силуэт сиденья в салоне -->
-        <path d="M 124 37 L 125 26 Q 126 22.6 129 22.6 L 131 22.6 Q 133 22.6 132.5 26 L 131 37 Z" fill="${C.glassDeep}"/>
+        <path d="M 126 12 L 133 12 L 120 37.4 L 113 37.4 Z" fill="${C.glassShine}" opacity="0.16"/>
+        <path d="M 136 12 L 138.4 12 L 125.4 37.4 L 123 37.4 Z" fill="${C.glassShine}" opacity="0.12"/>
+        <!-- подголовник в салоне -->
+        <path d="M 121 37.4 L 122 25 Q 123 21.6 126 21.6 L 128 21.6 Q 130 21.6 129.6 25 L 128.4 37.4 Z" fill="${C.glassDeep}"/>
       </g>
-      <!-- задний фонарь, загнутый на бок -->
-      ${rect(7, 37.6, 1.6, 3.4, C.tailHi)}
-      ${rect(7, 42.5, 2.6, 3.5, C.tailLo)}
-      <!-- решётка воздухозаборника и сплиттер -->
+      <!-- заднее и лобовое — тёмные клинья, по краю светлая кромка -->
+      <path d="M 187.4 35.6 L 145 11.9" fill="none" stroke="#2a2c32" stroke-width="${STEP * 2}"/>
+      ${lamps}
+      <!-- задний фонарь: круглая линза, блик сверху -->
+      ${rect(TAIL.x + 0.8, TAIL.y + 0.8, TAIL.w - 1.6, 2.2, C.tailHi, 'rx="1"')}
+      ${rect(TAIL.x + 0.6, TAIL.y + TAIL.h - 2.4, TAIL.w - 1.2, 1.8, C.tailLo, 'rx="0.8"')}
+      <!-- решётка воздухозаборника и губа -->
       ${mesh}
-      ${rect(252, 80.2, 28, 0.8, C.trimHi)}
-      <!-- диффузор сзади -->
-      ${rect(10, 77.5, 30, 0.7, C.trimHi)}
-      <!-- жабры -->
-      ${slats}
-      <!-- зеркало: блик -->
-      ${rect(183.4, 31.4, 7.6, 0.8, C.trimHi)}
-      <!-- юбка порога: ребро -->
-      ${rect(85, 80.5, 121, 0.6, C.trimHi)}
-      <!-- боковой повторитель -->
-      ${rect(262, 59.4, 2.6, 1.2, C.marker)}
+      ${rect(252, 79.6, 28, 0.7, C.trimHi)}
+      ${rect(14, 78.4, 30, 0.7, C.trimHi)}
+      <!-- шильдик-отражатель на крыле без надписей -->
+      ${rect(195, 50.8, 3.2, 0.8, C.metalHi)}
     </g>
-    <path d="${BODY_PATH}" fill="none" stroke="${C.outline}" stroke-width="${STEP * 2}"/>
-    <path d="${DOOR_GLASS}" fill="none" stroke="${C.trim}" stroke-width="${STEP * 2}"/>
-    <path d="${QUARTER_GLASS}" fill="none" stroke="${C.trim}" stroke-width="${STEP * 2}"/>
+    <path d="${BODY_PATH}" fill="none" stroke="${C.outline}" stroke-width="${STEP * 3}"/>
+    <path d="${QUARTER_GLASS}" fill="none" stroke="${C.outline}" stroke-width="${STEP * 2}"/>
+    <path d="${DOOR_GLASS}" fill="none" stroke="${C.outline}" stroke-width="${STEP * 2}"/>
   `);
 }
 
-/** Краска: свет неба сверху, тень под плечом, отражение земли внизу; торцы темнее. */
+/**
+ * Краска, как в пиксельных гоночных спрайтах: плоские полосы света сверху вниз.
+ * Светлый верх до плеча, средний тон, тёмный низ двери, светлое ребро порога;
+ * тонкая светлая линия по борту; заднее крыло с бликом на «бедре», переднее крыло светлее.
+ */
 function layerPaint() {
-  const side = stepGradient(
-    [
-      [11.6, 0.98],
-      [15, 0.9],
-      [31, 0.88],
-      [33, 0.97],
-      [38.6, 0.95],
-      [39.3, 1],
-      [40.3, 0.74],
-      [46, 0.8],
-      [58, 0.78],
-      [68, 0.7],
-      [74, 0.66],
-      [SKIRT, 0.6],
-      [SKIRT + 0.4, 0.86],
-      [SKIRT + 1.2, 0.58],
-      [SILL, 0.5],
-    ],
-    11.6,
-    SILL,
-    0,
-    W,
-    14,
-  );
-  const hoodEdge = `<path d="M 195 38.6 L 230 42.5 L 256 46.6 L 256 47.6 L 230 43.6 L 195 39.8 Z" fill="${gray(1)}"/>`;
-  const shoulder = `<path d="M 9 38.4 L 190 39.4 L 244 45.4 L 244 46.4 L 190 40.6 L 9 39.6 Z" fill="${gray(1)}"/>`;
-  const streak = `<path d="M 134 42 L 166 42 L 144 77 L 112 77 Z" fill="${gray(0.83)}" opacity="0.6"/>`;
+  const bands = [
+    [9, 12, 0.9], // кромка крыши
+    [12, 38.2, 0.97], // стойка C и крышка багажника
+    [38.2, 40.6, 1], // под линией окон — самый светлый
+    [40.6, 45.6, 0.95],
+    [45.6, 53.6, 0.76],
+    [53.6, 58.6, 0.56],
+    [58.6, 59.8, 0.78], // линия борта
+    [59.8, 67, 0.54],
+    [67, 73.4, 0.46],
+    [73.4, 76.2, 0.56],
+    [76.2, 77.8, 0.86], // ребро порога
+    [77.8, SILL, 0.36],
+  ];
+  const side = bands.map(([y0, y1, v]) => rect(0, y0, W, y1 - y0, gray(v))).join('');
+  // Заднее крыло: плечо с бликом над аркой.
+  const haunch = [
+    [34, 37.4, 0.96],
+    [37.4, 42, 0.76],
+    [42, 43.6, 1],
+    [43.6, 53.6, 0.74],
+  ]
+    .map(([y0, y1, v]) => rect(0, y0, 108.4, y1 - y0, gray(v)))
+    .join('');
+  // Переднее крыло и бампер: светлее двери, к низу бампера темнее.
+  const fender = [
+    [36, 42, 0.97],
+    [42, 44.2, 1],
+    [44.2, 55.2, 0.97],
+    [55.2, 57.2, 0.8],
+    [57.2, 66, 0.62],
+    [66, 76.6, 0.5],
+  ]
+    .map(([y0, y1, v]) => rect(191, y0, W - 191, y1 - y0, gray(v)))
+    .join('');
+  const hood = `<path d="${HOOD}" fill="${gray(1)}"/>`;
   const ends = `
-    <rect x="0" y="31" width="5" height="52" fill="${gray(0.62)}"/>
-    <rect x="5" y="31" width="4" height="52" fill="${gray(0.7)}"/>
-    <rect x="275" y="54" width="13" height="34" fill="${gray(0.66)}"/>
-    <rect x="270" y="54" width="5" height="30" fill="${gray(0.74)}"/>
+    <rect x="0" y="28" width="11.6" height="56" fill="${gray(0.62)}"/>
+    <rect x="11.6" y="28" width="1.4" height="56" fill="${gray(0.78)}"/>
+    <rect x="277.6" y="52" width="10.4" height="32" fill="${gray(0.66)}"/>
   `;
-  const haunch = `<path d="M 36 44 Q 63 39.6 96 42.6 L 96 43.4 Q 63 40.6 36 45 Z" fill="${gray(1)}"/><path d="M 36 45 Q 63 40.8 96 43.4 L 96 45.2 Q 63 42.6 36 46.6 Z" fill="${gray(0.72)}"/>`;
-  const flare = (cx) => `
-    <circle cx="${cx}" cy="${WHEEL_Y}" r="${ARCH_R + 0.9}" fill="none" stroke="${gray(0.62)}" stroke-width="0.8"/>
-  `;
+  const flare = (cx) =>
+    `<circle cx="${cx}" cy="${WHEEL_Y}" r="${ARCH_R + 0.8}" fill="none" stroke="${gray(0.36)}" stroke-width="0.9"/>`;
   const seams = `
-    <path d="M 190.5 38.8 L 191.5 46 Q 192.5 70 190.5 80.5" fill="none" stroke="${C.outline}" stroke-width="${STEP * 1.5}"/>
-    <path d="M 113.5 37.2 L 113.5 80.5" fill="none" stroke="${C.outline}" stroke-width="${STEP * 1.5}"/>
-    <path d="M 230 42.6 Q 238 47 254 48.4" fill="none" stroke="${gray(0.6)}" stroke-width="${STEP * 1.5}"/>
-    ${rect(117.5, 41.4, 7.5, 1.6, C.outline, 'rx="0.6"')}
-    ${rect(118, 41.6, 6.5, 0.6, gray(1))}
-    <rect x="22" y="35.6" width="8" height="5.5" fill="none" stroke="${C.outline}" stroke-width="${STEP * 1.5}" rx="1"/>
+    <path d="M 108.6 37 L 108.6 79" fill="none" stroke="${C.outline}" stroke-width="${STEP * 1.5}"/>
+    <path d="M 190.2 38.4 Q 191.4 58 190.6 79" fill="none" stroke="${C.outline}" stroke-width="${STEP * 1.5}"/>
+    ${rect(116.4, 42.4, 7.2, 1.8, C.outline, 'rx="0.6"')}
+    ${rect(116.8, 42.6, 6.4, 0.7, gray(1))}
+    ${rect(116.8, 43.3, 6.4, 0.6, gray(0.7))}
+  `;
+  const mirror = `
+    <path d="${MIRROR}" fill="${gray(0.86)}"/>
+    <path d="M 164.4 24.6 L 174.6 24.9 L 174.4 26 L 164.4 25.8 Z" fill="${gray(1)}"/>
+    ${rect(164, 29, 11.4, 1.4, gray(0.6))}
+    <path d="${MIRROR}" fill="none" stroke="${C.outline}" stroke-width="${STEP * 2}"/>
   `;
   return svg(`
     <defs>${defs}</defs>
     <g clip-path="url(#body)">
-      ${side}${streak}${shoulder}${haunch}${hoodEdge}${ends}${flare(REAR_X)}${flare(FRONT_X)}${seams}
+      ${side}${haunch}${fender}${hood}${ends}${flare(REAR_X)}${flare(FRONT_X)}${seams}
     </g>
+    ${mirror}
   `);
 }
 
 function layerPaintMask() {
-  return svg(`<rect width="${W}" height="${H}" fill="#fff"/>${nonPaint('#000')}`);
+  return svg(
+    `<rect width="${W}" height="${H}" fill="#fff"/>${nonPaint('#000')}<path d="${MIRROR}" fill="#fff"/>`,
+  );
 }
 
 function layerHeadlight() {
-  return svg(`
-    <path d="${HEADLIGHT_LENS}" fill="${gray(0.72)}"/>
-    <path d="M 264.6 50.6 L 268.4 51 Q 270.2 51.8 270.6 53 L 265 53.4 Z" fill="${gray(0.92)}"/>
-    ${rect(261, 50, 3.2, 0.7, gray(1))}
-    ${rect(265.4, 51.2, 2.4, 0.7, gray(1))}
-    <path d="${HEADLIGHT_LENS}" fill="none" stroke="${C.trimLo}" stroke-width="${STEP}"/>
-  `);
+  return svg(
+    LAMPS.map(
+      ([x, y]) => `
+      <circle cx="${x}" cy="${y}" r="2" fill="${gray(0.74)}"/>
+      <circle cx="${x}" cy="${y}" r="1.2" fill="${gray(0.92)}"/>
+      ${rect(x - 1.2, y - 1.4, 1, 0.8, gray(1))}
+    `,
+    ).join(''),
+  );
 }
 
 function layerDirt() {
@@ -370,8 +425,8 @@ function layerDirt() {
   let dust = '';
   for (let i = 0; i < 420; i++) {
     dust += rect(
-      (82 + r() * 108).toFixed(2),
-      (14 + r() * 23).toFixed(2),
+      (82 + r() * 100).toFixed(2),
+      (12.4 + r() * 24).toFixed(2),
       (STEP * (1 + Math.floor(r() * 4))).toFixed(3),
       STEP,
       r() < 0.5 ? '#8d8a80' : '#a39f94',
@@ -429,11 +484,11 @@ function layerOverlay(kind) {
     return svg(`
       <defs>${defs}</defs>
       <g clip-path="url(#glass)">
-        <path d="M 98 37 L 128 15 L 130.5 15 L 100.5 37 Z" fill="${C.metal}"/>
-        <path d="M 98.6 37 L 128.6 15 L 129.3 15 L 99.3 37 Z" fill="${C.metalHi}"/>
-        ${rect(84, 22, 110, 1.6, C.metal)}
-        ${rect(84, 22, 110, 0.5, C.metalHi)}
-        ${rect(146, 15, 1.6, 22, C.metal)}
+        <path d="M 100 37 L 128 12 L 130.5 12 L 102.5 37 Z" fill="${C.metal}"/>
+        <path d="M 100.6 37 L 128.6 12 L 129.3 12 L 101.3 37 Z" fill="${C.metalHi}"/>
+        ${rect(80, 20, 106, 1.6, C.metal)}
+        ${rect(80, 20, 106, 0.5, C.metalHi)}
+        ${rect(150, 12, 1.6, 26, C.metal)}
       </g>
       <g clip-path="url(#body)">
         ${rect(83, SKIRT, 125, SILL - SKIRT, C.metalDark)}
@@ -444,15 +499,15 @@ function layerOverlay(kind) {
   }
   if (kind === 'light') {
     let weave = '';
-    for (let y = 38; y < 54; y += STEP * 2) {
-      for (let x = 195; x < 272; x += STEP * 2) {
+    for (let y = 34; y < 48; y += STEP * 2) {
+      for (let x = 200; x < 268; x += STEP * 2) {
         const odd = (Math.round(x * 1.5) + Math.round(y * 1.5)) % 2;
         weave += rect(x.toFixed(2), y.toFixed(2), STEP * 2, STEP * 2, odd ? '#24252a' : '#34363c');
       }
     }
     return svg(`
       <defs>${defs}
-        <clipPath id="hood"><path d="M 195 38.6 L 230 42.5 L 256 46.6 L 257 48 L 230 45.6 L 195 41.6 Z"/></clipPath>
+        <clipPath id="hood"><path d="${HOOD}"/></clipPath>
       </defs>
       <g clip-path="url(#hood)">${weave}</g>
       <path d="${QUARTER_GLASS}" fill="#0b1018"/>
@@ -463,31 +518,33 @@ function layerOverlay(kind) {
 
 function layerSpoiler(kind, part) {
   if (kind === 'lip') {
-    const lip = 'M 9.5 32.8 L 40 31.2 L 46.5 26.5 Q 46 25.7 44 25.9 L 12 28.9 Q 9 29.7 9.5 32.8 Z';
+    // Утиный хвост на крышке багажника.
+    const lip = 'M 16.6 30 L 46 28.8 L 51.6 25 Q 51.2 24.2 49.2 24.4 L 19 26.8 Q 16 27.6 16.6 30 Z';
     return part === 'paint'
       ? svg(
-          `<path d="${lip}" fill="${gray(0.82)}"/><path d="M 12 28.9 L 44 25.9 Q 46 25.7 46.5 26.5 L 45.6 27.2 Q 44 26.8 12 29.9 Z" fill="${gray(1)}"/><path d="M 40 31.2 L 46.5 26.5 L 46.6 27.7 L 40.6 31.9 Z" fill="${gray(0.5)}"/><path d="${lip}" fill="none" stroke="${C.outline}" stroke-width="${STEP * 2}"/>`,
+          `<path d="${lip}" fill="${gray(0.82)}"/><path d="M 19 26.8 L 49.2 24.4 Q 51.2 24.2 51.6 25 L 50.8 25.6 Q 49 25.3 19 27.8 Z" fill="${gray(1)}"/><path d="M 46 28.8 L 51.6 25 L 51.7 26.2 L 46.6 29.5 Z" fill="${gray(0.5)}"/><path d="${lip}" fill="none" stroke="${C.outline}" stroke-width="${STEP * 2}"/>`,
         )
       : svg('');
   }
   if (part === 'base') {
     // Тень под крылом на крышке багажника.
     return svg(
-      `<path d="M 8 32.6 L 44 31.4 L 44 32 L 8 33.2 Z" fill="${C.outline}" opacity="0.5"/>`,
+      `<path d="M 16 29.6 L 49 29.3 L 49 29.9 L 16 30.2 Z" fill="${C.outline}" opacity="0.5"/>`,
     );
   }
-  const blade = 'M 5 23.4 Q 24 21.8 43.6 22 Q 45.6 22.4 45.2 24.4 L 44.8 25.8 Q 25 25.4 6 27 Z';
+  // Антикрыло на высоких стойках, с торцевыми пластинами.
+  const blade = 'M 10 18.4 Q 29 16.8 48.6 17 Q 50.6 17.4 50.2 19.4 L 49.8 20.8 Q 30 20.4 11 22 Z';
   const pylons =
-    'M 15 32.6 L 21.2 32.4 L 22.6 26 L 17.4 26.2 Z M 32.6 31.8 L 38.8 31.6 L 39 25.6 L 34 25.8 Z';
+    'M 21 29.6 L 27.2 29.4 L 28.6 21 L 23.4 21.2 Z M 37.6 29.3 L 43.8 29.1 L 44 20.6 L 39 20.8 Z';
   return svg(`
     <path d="${pylons}" fill="${gray(0.74)}"/>
-    <path d="M 15 32.6 L 16.4 32.6 L 18.6 26.2 L 17.4 26.2 Z M 32.6 31.8 L 34 31.8 L 35.2 25.8 L 34 25.8 Z" fill="${gray(0.92)}"/>
+    <path d="M 21 29.6 L 22.4 29.6 L 24.6 21.2 L 23.4 21.2 Z M 37.6 29.3 L 39 29.3 L 40.2 20.8 L 39 20.8 Z" fill="${gray(0.92)}"/>
     <path d="${pylons}" fill="none" stroke="${C.outline}" stroke-width="${STEP * 2}"/>
     <path d="${blade}" fill="${gray(0.86)}"/>
-    <path d="M 5.4 23.5 Q 24 22 43.6 22.2 L 43.6 23 Q 24 22.9 5.6 24.4 Z" fill="${gray(1)}"/>
-    <path d="M 6 26 Q 25 24.6 45 24.9 L 44.8 25.8 Q 25 25.4 6 27 Z" fill="${gray(0.62)}"/>
+    <path d="M 10.4 18.5 Q 29 17 48.6 17.2 L 48.6 18 Q 29 17.9 10.6 19.4 Z" fill="${gray(1)}"/>
+    <path d="M 11 21 Q 30 19.6 50 19.9 L 49.8 20.8 Q 30 20.4 11 22 Z" fill="${gray(0.62)}"/>
     <path d="${blade}" fill="none" stroke="${C.outline}" stroke-width="${STEP * 2}"/>
-    <rect x="4" y="21.6" width="2.4" height="6.4" rx="0.6" fill="${gray(0.78)}" stroke="${C.outline}" stroke-width="${STEP * 2}"/>
+    <rect x="8.6" y="16.4" width="2.4" height="7" rx="0.6" fill="${gray(0.78)}" stroke="${C.outline}" stroke-width="${STEP * 2}"/>
   `);
 }
 
@@ -532,11 +589,12 @@ function layerBricks() {
 
 // ---------- Колёса: шина + тормоз (не перекрашиваются) и диск (серый) ----------
 
+// Низкий профиль: диск почти во всё колесо (как на референсе — 18″ на тонкой резине).
 const TIRES = {
-  stock: { rim: 12.8, style: 'twin5', caliper: C.caliperGrey },
-  studded: { rim: 11.8, style: 'steel', caliper: C.caliperGrey, studs: true },
-  slicks: { rim: 13.6, style: 'six', caliper: C.caliperRed },
-  old: { rim: 11.8, style: 'steelOld', caliper: C.caliperGrey, flat: true },
+  stock: { rim: 15.4, style: 'multi', caliper: C.caliperGrey },
+  studded: { rim: 14, style: 'steel', caliper: C.caliperGrey, studs: true },
+  slicks: { rim: 15.6, style: 'six', caliper: C.caliperRed },
+  old: { rim: 14, style: 'steelOld', caliper: C.caliperGrey, flat: true },
 };
 
 const polar = (c, r, deg) => {
@@ -611,6 +669,18 @@ function rimSvg(t, angle) {
       </g>`;
     }
     face += `<circle cx="${c}" cy="${c}" r="4.6" fill="${gray(0.8)}"/><circle cx="${c}" cy="${c}" r="2" fill="${gray(0.55)}"/>${nuts(6, 3.4)}`;
+  } else if (t.style === 'multi') {
+    face += `<circle cx="${c}" cy="${c}" r="${R - 1}" fill="${gray(0.5)}"/>`;
+    for (let i = 0; i < 10; i++) {
+      for (const off of [-4.2, 4.2]) {
+        face += `<g transform="rotate(${angle + i * 36 + off} ${c} ${c})">
+          <path d="M ${c - 0.7} ${c - 4.2} L ${c + 0.7} ${c - 4.2} L ${c + 1.3} ${c - R + 1.4} L ${c - 1.3} ${c - R + 1.4} Z" fill="${gray(0.9)}"/>
+          <path d="M ${c - 0.7} ${c - 4.2} L ${c - 0.1} ${c - 4.2} L ${c - 0.3} ${c - R + 1.4} L ${c - 1} ${c - R + 1.4} Z" fill="${gray(1)}"/>
+        </g>`;
+      }
+    }
+    face += `<circle cx="${c}" cy="${c}" r="${R - 1.2}" fill="none" stroke="${gray(0.96)}" stroke-width="1.4"/>
+      <circle cx="${c}" cy="${c}" r="5" fill="${gray(0.86)}"/><circle cx="${c}" cy="${c}" r="2.2" fill="${gray(0.55)}"/>${nuts(5, 3.6)}`;
   } else if (t.style === 'twin5') {
     for (let i = 0; i < 5; i++) {
       for (const off of [-5.5, 5.5]) {
@@ -707,7 +777,7 @@ async function main() {
     anchor: { x: W / 2, y: GROUND },
     wheels: { rear: { x: REAR_X, y: WHEEL_Y }, front: { x: FRONT_X, y: WHEEL_Y }, radius: WHEEL_R },
     wheelFrame: { width: FRAME, height: FRAME, frames: FRAMES },
-    headlight: { x: 272, y: 52 },
+    headlight: { x: 273, y: 54 },
     tires: {
       wheels_stock: 'stock',
       wheels_studded: 'studded',

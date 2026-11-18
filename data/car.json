@@ -4,12 +4,12 @@
   "size": { "width": 288, "height": 96 },
   "anchor": { "x": 144, "y": 92 },
   "wheels": {
-    "rear": { "x": 63, "y": 73 },
-    "front": { "x": 228, "y": 73 },
-    "radius": 19
+    "rear": { "x": 67, "y": 71.8 },
+    "front": { "x": 226.5, "y": 71.8 },
+    "radius": 20.2
   },
   "wheelFrame": { "width": 48, "height": 48, "frames": 16 },
-  "headlight": { "x": 272, "y": 52 },
+  "headlight": { "x": 273, "y": 54 },
   "tires": {
     "wheels_stock": "stock",
     "wheels_studded": "studded",
