@@ -1,23 +1,22 @@
 import Phaser from 'phaser';
-import config from '../../data/config.json';
 import { BaseScene } from './BaseScene.js';
 import { SCENES, MUSIC, SFX, WORLD } from '../config/constants.js';
 import { buildCar } from '../systems/buildCar.js';
-import { evaluateTrial, getTest } from '../systems/simulate.js';
+import { getTest } from '../systems/simulate.js';
+import { createRun, stepRun, startRun, runBot, summarize, segmentAt } from '../systems/drive.js';
 import { audio } from '../systems/AudioManager.js';
 import { gameState, recordResult } from '../gameState.js';
 import { el } from '../ui/dom.js';
-import { webButton } from '../ui/components.js';
 import { t } from '../systems/strings.js';
 import { getSettings } from '../systems/settings.js';
-import { createGearbox, updateGearbox } from '../systems/autoGearbox.js';
-import { PedalControls } from '../ui/PedalControls.js';
-import { createTacho } from '../ui/tacho.js';
+import { getRenderZoom } from '../systems/scale.js';
+import { DriveHud } from '../ui/DriveHud.js';
 
-const GROUND_Y = 300;
-const CAR_START_X = 170; // машина почти в центре, дорога едет под ней
-const CAR_TRAVEL = 300;
-const BUMPS_PER_SEC = 2.5; // кочки грунтовки
+const GROUND_Y = 288; // колёса над панелью приборов (верх панели — y 306)
+const CAR_X = 250; // машина стоит, дорога едет под ней
+const PPM = 62; // точек мира на метр: машина 288 точек ≈ 4,6 м
+const WARN_M = 28; // за сколько метров предупреждать об участке
+const SEG_COLORS = { mud: '#6b5236', ruts: '#a0703c', deep: '#2c2117' };
 
 /** Детерминированный генератор: фон одинаков при каждом запуске. */
 function rng(seed) {
@@ -26,8 +25,10 @@ function rng(seed) {
 }
 
 /**
- * Обкатка (ТЗ 3.7): днём, раскисшая грунтовка, параллакс в 3 слоя, 12–15 с,
- * шкала пути и прочности, «Ускорить ×2». Результат считается до старта — анимация его только показывает.
+ * Обкатка (ТЗ 3.7): раскисшая грунтовка за гаражами, параллакс в 3 слоя. Машину ведёт физика
+ * drive.js: на колее удары копят повреждения (быстрее — больнее), в глубокой грязи машина
+ * вязнет, если сбросить скорость. Перед каждым участком — знак и подсказка, внизу — карта
+ * трассы с участками, прочность и приборы.
  */
 export class TrialScene extends BaseScene {
   constructor() {
@@ -39,54 +40,60 @@ export class TrialScene extends BaseScene {
     audio.playMusic(MUSIC.DRIVE);
 
     this.test = getTest('trial');
-    this.result = evaluateTrial(gameState.build);
-    const { min, max } = this.test.durationSec;
-    this.duration = ((min + max) / 2) * 1000;
-    this.stopAt = this.result.ok ? 1 : config.trial.failStopAt[this.result.reasonKey];
-    this.elapsed = 0;
-    this.speed = 1;
+    const auto = getSettings().gearbox === 'auto';
+    this.run = createRun('trial', gameState.build, { condition: gameState.car, auto });
+    this.best = runBot('trial', gameState.build, { condition: gameState.car });
     this.done = false;
-    this.gearbox = createGearbox();
-    this.pedals = new PedalControls(this, { compact: true });
-    this.tacho = createTacho({ compact: true });
+    this.spin = 0;
 
     this.#createParallax();
+    this.track = this.#drawTrack();
     this.car = buildCar(this, gameState.build, gameState.cosmetics, {
-      x: CAR_START_X,
+      x: CAR_X,
       y: GROUND_Y,
-      dirty: gameState.car.dirty,
+      dirty: true,
     });
-    this.spinInPlace = false;
+    this.cover = this.#drawMudCover(); // грязь поверх колёс в глубоких участках
+    this.mud = this.#makeMud();
     this.engine = audio.loopSfx(SFX.ENGINE);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.engine?.destroy());
 
-    // Панель внизу: педали, путь, прочность, тахометр и ускорение — в стиле гаража.
-    this.$path = el('div', { class: 'meter__fill' });
-    this.$pathValue = el('span', { text: '0%' });
+    this.#buildHud();
+    startRun(this.run);
+    this.hud.say(auto ? 'startAuto' : 'start');
+  }
+
+  #buildHud() {
+    const segs = this.test.track.segments;
+    const len = this.test.track.length;
+    this.$marker = el('span', { class: 'trackmap__marker' });
+    const map = el('div', { class: 'trackmap', 'aria-hidden': 'true' }, [
+      ...segs.map((s) =>
+        el('span', {
+          class: `trackmap__seg is-${s.type}`,
+          style: {
+            left: `${(s.from / len) * 100}%`,
+            width: `${((s.to - s.from) / len) * 100}%`,
+            background: SEG_COLORS[s.type],
+          },
+        }),
+      ),
+      this.$marker,
+    ]);
     this.$dur = el('div', { class: 'meter__fill is-good', style: { transform: 'scaleX(1)' } });
-    this.$durValue = el('span', { text: String(this.result.stats.durability) });
-    const meter = (label, value, fill) =>
-      el('div', {}, [
+    this.$durValue = el('span', { text: '100%' });
+    this.$pathValue = el('span', { text: '0 м' });
+    const block = (label, value, body) =>
+      el('div', { class: 'drive-hud__block' }, [
         el('div', { class: 'hud-meter__head' }, [el('span', { text: label }), value]),
-        el('div', { class: 'meter' }, fill),
+        body,
       ]);
-    const speedUp = webButton(t('trial.speedUp'), () => {
-      this.speed = this.speed === 1 ? config.trial.speedUpFactor : 1;
-      speedUp.classList.toggle('is-on', this.speed !== 1);
-    });
-    this.ui.append(
-      el('div', { class: 'ui-abs surface trial-hud' }, [
-        this.pedals.node,
-        meter(t('trial.distance'), this.$pathValue, this.$path),
-        meter(t('trial.durability'), this.$durValue, this.$dur),
-        this.tacho.node,
-        speedUp,
-      ]),
-    );
-    this.tacho.render({
-      rpm: config.gearbox.idleRpm,
-      gear: 1,
-      redline: config.gearbox.redlineRpm,
+    this.hud = new DriveHud(this, this.run, {
+      className: 'drive-hud--trial',
+      middle: [
+        block(t('trial.distance'), this.$pathValue, map),
+        block(t('trial.durability'), this.$durValue, el('div', { class: 'meter' }, this.$dur)),
+      ],
     });
   }
 
@@ -186,82 +193,193 @@ export class TrialScene extends BaseScene {
     ];
   }
 
-  update(_time, delta) {
-    const input = this.pedals.update(delta / 1000);
-    if (this.done) {
-      // После остановки подвеска успокаивается; при пробуксовке колёса крутятся на месте.
-      this.#renderTacho(0, input, delta / 1000);
-      this.car.step(delta / 1000, {
-        distance: this.spinInPlace ? delta * 0.5 : 0,
-        accel: -input.brake * 2,
-      });
-      return;
+  /**
+   * Участки трассы поверх дороги, в метрах трассы (контейнер едет вместе с дорогой):
+   * колея — гребни и рытвины, глубокая грязь — тёмная жижа с бликами; у начала каждого
+   * участка — знак на столбике, на финише — флаг.
+   */
+  #drawTrack() {
+    const box = this.add.container(CAR_X, 0);
+    const g = this.add.graphics();
+    const r = rng(7);
+    box.add(g);
+    for (const s of this.test.track.segments) {
+      const x0 = s.from * PPM;
+      const w = (s.to - s.from) * PPM;
+      if (s.type === 'ruts') {
+        g.fillStyle(0x3e2f20).fillRect(x0, 266, w, 94);
+        for (let x = x0; x < x0 + w; x += 14) {
+          const h = 3 + Math.floor(r() * 4);
+          g.fillStyle(0x6e5538).fillRect(x, 280 - h, 8, h);
+          g.fillStyle(0x2b2016).fillRect(x + 8, 280, 6, 4);
+          g.fillStyle(0x6e5538).fillRect(x + 4, 298 - h, 9, h);
+          g.fillStyle(0x2b2016).fillRect(x, 298, 5, 3);
+        }
+      } else if (s.type === 'deep') {
+        g.fillStyle(0x2c2117).fillRect(x0, 265, w, 95);
+        g.fillStyle(0x3a2c1e).fillRect(x0, 265, w, 3);
+        for (let x = x0 + 6; x < x0 + w - 20; x += 26 + Math.floor(r() * 30)) {
+          g.fillStyle(0x6d6a66, 0.5).fillRect(x, 272 + Math.floor(r() * 30), 10 + r() * 14, 1);
+        }
+      }
+      if (s.type !== 'mud') this.#sign(box, x0 - 2 * PPM, t(`trial.signs.${s.type}`), s.type);
     }
-    const dt = delta * this.speed;
-    this.elapsed += dt;
-    const progress = Math.min(this.elapsed / this.duration, this.stopAt);
-
-    const dx = dt * 0.08 * (progress < this.stopAt ? 1 : 0);
-    const roadShift = dx * 3;
-    for (const l of this.layers) l.sprite.tilePositionX += roadShift * l.k;
-    const prevX = this.car.x;
-    this.car.x = CAR_START_X + progress * CAR_TRAVEL;
-    if (Math.random() < (dt / 1000) * BUMPS_PER_SEC) this.car.bump(20 + Math.random() * 20);
-    const gb = this.#renderTacho(progress, input, delta / 1000);
-    this.car.step(dt / 1000, {
-      distance: roadShift + (this.car.x - prevX),
-      accel: (progress < 0.12 ? 2.5 : 0) + input.gas * 1.5 - input.brake * 3,
-    });
-    this.engine?.setRate?.(0.7 + (gb.rpm / config.gearbox.redlineRpm) * 0.8);
-
-    this.$path.style.transform = `scaleX(${progress})`;
-    this.$pathValue.textContent = `${Math.round(progress * 100)}%`;
-    if (!this.result.ok && this.result.reasonKey === 'broken') {
-      const left = Math.max(0, 1 - progress / this.stopAt);
-      this.$dur.style.transform = `scaleX(${left})`;
-      this.$dur.classList.toggle('is-bad', left < 0.35);
-    }
-
-    if (progress >= this.stopAt) this.#finish();
+    // Финиш: столбик с клетчатым флажком.
+    const fx = this.test.track.length * PPM;
+    g.fillStyle(0xe9e4da).fillRect(fx, 220, 3, 70);
+    for (let i = 0; i < 4; i++)
+      for (let j = 0; j < 3; j++)
+        g.fillStyle((i + j) % 2 ? 0x111111 : 0xffffff).fillRect(fx + 3 + i * 5, 220 + j * 5, 5, 5);
+    return box;
   }
 
-  /** Шаг автомата и отрисовка тахометра; возвращает состояние коробки. */
-  #renderTacho(speed01, input, dt) {
-    const gb = updateGearbox(this.gearbox, { speed01, gas: input.gas, brake: input.brake }, dt);
-    this.tacho.render({
-      rpm: gb.rpm,
-      gear: gb.gear,
-      redline: config.gearbox.redlineRpm,
-      shifting: gb.shifting,
+  /** Знак на столбике у обочины: жёлтая табличка с надписью. */
+  #sign(box, x, text, kind) {
+    const g = this.add.graphics();
+    g.fillStyle(0x3a3a3a).fillRect(x, 214, 2, 52);
+    const label = this.add
+      .text(x + 1, 216, text, {
+        fontFamily: '"Onest Variable", Onest, system-ui, sans-serif',
+        fontSize: '8px',
+        fontStyle: '700',
+        color: '#1f1b16',
+        backgroundColor: kind === 'deep' ? '#e8b84a' : '#f0d36a',
+        padding: { x: 4, y: 2 },
+      })
+      .setOrigin(0.5, 1)
+      .setResolution(getRenderZoom());
+    box.add([g, label]);
+  }
+
+  /** Полоса жижи перед колёсами: в глубокой грязи колёса утопают. */
+  #drawMudCover() {
+    const g = this.add.graphics();
+    const box = this.add.container(CAR_X, 0, [g]);
+    for (const s of this.test.track.segments) {
+      if (s.type !== 'deep') continue;
+      const x0 = s.from * PPM;
+      const w = (s.to - s.from) * PPM;
+      g.fillStyle(0x2c2117).fillRect(x0, GROUND_Y - 5, w, 6);
+      for (let x = x0; x < x0 + w; x += 6) g.fillStyle(0x3d2e1f).fillRect(x, GROUND_Y - 6, 3, 1);
+    }
+    return box;
+  }
+
+  /** Брызги грязи из-под задних колёс. */
+  #makeMud() {
+    if (!this.textures.exists('mud_px')) {
+      const g = this.make.graphics({ x: 0, y: 0 }, false);
+      g.fillStyle(0xffffff).fillRect(0, 0, 3, 3);
+      g.generateTexture('mud_px', 3, 3);
+      g.destroy();
+    }
+    return this.add.particles(0, 0, 'mud_px', {
+      speedX: { min: -140, max: -40 },
+      speedY: { min: -120, max: -30 },
+      gravityY: 380,
+      lifespan: 700,
+      tint: [0x4a3827, 0x5f4a35, 0x3b2d1f],
+      frequency: 30,
+      emitting: false,
     });
-    return gb;
+  }
+
+  update(_time, delta) {
+    if (!this.hud) return;
+    const dt = delta / 1000;
+    const run = this.run;
+    const input = this.hud.input(dt);
+    if (this.done) {
+      // После остановки подвеска успокаивается; при пробуксовке колёса крутятся на месте.
+      this.car.step(dt, { distance: this.spin * delta * 0.4, accel: -input.brake * 2 });
+      return;
+    }
+    const prevX = run.x;
+    stepRun(run, input, dt);
+    const moved = (run.x - prevX) * PPM;
+
+    for (const l of this.layers) l.sprite.tilePositionX += moved * l.k;
+    this.track.x = CAR_X - run.x * PPM;
+    this.cover.x = this.track.x;
+    const seg = segmentAt(this.test, run.x);
+    if (seg.type === 'ruts' && Math.random() < dt * (1 + run.v * 0.9)) {
+      this.car.bump(10 + run.v * 4);
+      if (run.v > 6 && getSettings().shake) this.cameras.main.shake(80, 0.002 * run.v);
+    }
+    this.car.y = GROUND_Y + run.sink * 7;
+    this.car.step(dt, {
+      distance: moved * (1 + run.slip * 2) + run.slip * 4,
+      accel: run.accel ?? 0,
+    });
+
+    const splash = run.slip > 0.25 || (seg.type === 'deep' && run.v > 1);
+    this.mud.setPosition(CAR_X - 80, GROUND_Y - 6);
+    if (splash && !this.mud.emitting) this.mud.start();
+    else if (!splash && this.mud.emitting) this.mud.stop();
+
+    this.engine?.setRate?.(0.6 + (run.rpm / run.stats.redline) * 0.9);
+    this.hud.render();
+    this.#renderMeters();
+    this.#hints(run, seg);
+
+    if (run.done) this.#finish();
+  }
+
+  #renderMeters() {
+    const run = this.run;
+    const len = this.test.track.length;
+    this.$marker.style.left = `${Math.min(100, (run.x / len) * 100)}%`;
+    this.$pathValue.textContent = `${Math.round(Math.min(run.x, len))} м`;
+    const left = Math.max(0, 1 - run.damage / run.capacity);
+    this.$dur.style.transform = `scaleX(${left})`;
+    this.$dur.classList.toggle('is-bad', left < 0.35);
+    this.$durValue.textContent = `${Math.round(left * 100)}%`;
+  }
+
+  /** Подсказка: что впереди и что делать прямо сейчас. */
+  #hints(run, seg) {
+    for (const e of run.events.splice(0)) if (e.type === 'overrev') this.hud.say('overrev', 'warn');
+    if (run.sink > 0.25) return this.hud.say('sinking', 'warn');
+    if (run.slip > 0.5) return this.hud.say('spin', 'warn');
+    if (!run.auto && run.limiter && seg.type !== 'ruts') return this.hud.say('limiter', 'warn');
+    if (seg.type === 'deep') return this.hud.say('deepIn');
+    if (seg.type === 'ruts') {
+      return run.v > 6 ? this.hud.say('ruts', 'warn') : this.hud.say('rutsIn');
+    }
+    const next = this.test.track.segments.find((s) => s.from > run.x && s.type !== 'mud');
+    if (next && next.from - run.x < WARN_M) {
+      return this.hud.say(next.type === 'deep' ? 'deep' : 'ruts');
+    }
+    this.hud.quiet();
   }
 
   #finish() {
     this.done = true;
-    this.pedals.setEnabled(false);
+    this.hud.setEnabled(false);
+    this.mud.stop();
     this.engine?.stop();
-    const { reasonKey } = this.result;
+    this.result = summarize(this.run, this.best);
+    const { reasonKey } = this.run;
     if (reasonKey === 'broken') {
       if (getSettings().shake) this.cameras.main.shake(400, 0.01);
       this.car.drop(60);
       this.#puff(0x777777, this.car.x + 110, this.car.y - 50);
     } else if (reasonKey === 'traction') {
-      this.spinInPlace = true;
+      this.spin = 1;
       this.#puff(0x5a4630, this.car.x - 82, this.car.y - 6);
-    } else if (this.result.ok) {
-      this.add.rectangle(this.car.x + 160, GROUND_Y - 30, 4, 60, 0xffffff);
-      this.add.rectangle(this.car.x + 172, GROUND_Y - 52, 20, 14, 0xd9533f);
+    } else if (reasonKey === 'power') {
+      this.#puff(0x5a4630, this.car.x - 82, this.car.y - 6);
     }
+    if (this.run.ok) this.hud.say('finish', 'good');
     audio.playSfx(this.result.ok ? SFX.SUCCESS : SFX.FAIL);
 
-    this.time.delayedCall(1200, () => {
+    this.time.delayedCall(1400, () => {
       recordResult('trial', this.result);
       this.goTo(SCENES.RESULT);
     });
   }
 
-  /** Клубы дыма или грязи (заглушка вместо частиц). */
+  /** Клубы дыма или грязи. */
   #puff(color, x, y) {
     for (let i = 0; i < 8; i++) {
       const c = this.add.circle(x, y, 4 + i, color, 0.8);

@@ -283,6 +283,33 @@ function trialHazards(run, seg, surf, gas, drive, limit, h) {
 
 // ---------- Идеальный водитель ----------
 
+/**
+ * Обороты, на которых выгодно переключиться вверх: дальше тяга на следующей передаче
+ * при той же скорости уже не меньше. На последней передаче — null.
+ */
+export function shiftPoint(run, gear = run.gear) {
+  const { ratios, redline } = run.stats;
+  if (gear >= ratios.length) return null;
+  const idle = run.ph.engine.idleRpm;
+  for (let r = idle * 2; r <= redline; r += 50) {
+    const next = (r * ratios[gear]) / ratios[gear - 1];
+    if (wheelForce(run, next, gear + 1) >= wheelForce(run, r, gear))
+      return Math.min(r, redline * 0.97);
+  }
+  return redline * 0.97;
+}
+
+/** Зелёная зона тахометра: до старта — обороты старта, в движении — где переключаться. */
+export function greenZone(run) {
+  const redline = run.stats.redline;
+  if (!run.started) {
+    const best = bestLaunchRpm(run);
+    return [Math.max(run.ph.clutch.launchMinRpm, best - 600), Math.min(redline * 0.95, best + 400)];
+  }
+  const at = shiftPoint(run);
+  return at === null ? null : [Math.max(at - 350, run.ph.engine.idleRpm), redline];
+}
+
 /** Обороты старта: самые высокие, при которых тяга на первой не срывает колёса. */
 export function bestLaunchRpm(run) {
   const limit = gripLimit(run, 0) * 0.985;
@@ -450,4 +477,15 @@ export function predict(testId, build, condition) {
   if (!stats.complete) return summarize(createRun(testId, build, { condition }));
   const best = runBot(testId, build, { condition });
   return summarize(best, null);
+}
+
+/**
+ * Оценка сборки 1–10 для плашки в гараже — по лучшему времени на 400 м:
+ * 17,5 с и медленнее — 1, 11,5 с и быстрее — 10. Палыч (13,0 с) — около 8.
+ */
+export function buildRating(build, condition) {
+  const stats = computeStats(build, condition);
+  if (!stats.complete) return null;
+  const t = runBot('race', build, { condition }).t;
+  return clamp(Math.round(1 + (9 * (17.5 - t)) / (17.5 - 11.5)), 1, 10);
 }

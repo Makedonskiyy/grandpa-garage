@@ -1,43 +1,51 @@
 /**
- * PedalControls — две экранные педали и клавиатура.
+ * PedalControls — экранные педали, кнопки передач и клавиатура.
  *
- * Газ: W / ↑, тормоз: S / ↓. Педали работают и мышью, и тапом; нажатие не проваливается
- * в канвас и не листает диалог. Компонент только собирает input: решение, как его
- * показывать, остаётся за сценой.
+ * Газ: W / ↑, тормоз: S / ↓; передача вверх: E / Shift, вниз: Q / Ctrl.
+ * Педали работают и мышью, и тапом; нажатие не проваливается в канвас и не листает
+ * диалог. Компонент только собирает ввод: что с ним делать, решает сцена.
  */
+import config from '../../data/config.json';
 import { el } from './dom.js';
+import { icon } from './icons.js';
 import { t } from '../systems/strings.js';
 import { createPedalState, setPedalTarget, stepPedals, isPedalKey } from '../systems/pedals.js';
+
+const isShiftKey = (code, dir) => (config.pedals.keys[dir] ?? []).includes(code);
 
 export class PedalControls {
   /**
    * @param {import('phaser').Scene} scene
-   * @param {{compact?: boolean, className?: string}} [opts]
+   * @param {{ onShiftUp?: () => void, onShiftDown?: () => void, gears?: boolean }} [opts]
    */
-  constructor(scene, { compact = false, className = '' } = {}) {
+  constructor(scene, { onShiftUp, onShiftDown, gears = true } = {}) {
     this.scene = scene;
     this.state = createPedalState();
     this.enabled = true;
     this.pointers = { gas: false, brake: false };
     this.keys = new Set();
     this.destroyed = false;
+    this.onShiftUp = onShiftUp;
+    this.onShiftDown = onShiftDown;
 
-    this.$gas = this.#makeButton('gas', t('race.gas'), 'W', '↑');
-    this.$brake = this.#makeButton('brake', t('race.brake'), 'S', '↓');
-    this.node = el(
-      'div',
-      {
-        class: ['pedals', compact && 'pedals--compact', className].filter(Boolean).join(' '),
-        'aria-label': t('race.pedalHint'),
-      },
-      [this.$brake, this.$gas],
+    this.$gas = this.#pedal('gas', t('race.gas'), ['W', '↑']);
+    this.$brake = this.#pedal('brake', t('race.brake'), ['S', '↓']);
+    this.$up = this.#shiftButton('up', t('race.shiftUp'), 'shiftUp', 'E', () => this.onShiftUp?.());
+    this.$down = this.#shiftButton('down', t('race.shiftDown'), 'shiftDown', 'Q', () =>
+      this.onShiftDown?.(),
     );
+    this.$gears = el('div', { class: 'shifter', hidden: !gears }, [this.$up, this.$down]);
+    this.node = el('div', { class: 'pedals', 'aria-label': t('race.pedalHint') }, [
+      this.$brake,
+      this.$gears,
+      this.$gas,
+    ]);
 
     this.#bindKeyboard();
     scene.events.once('shutdown', () => this.destroy());
   }
 
-  #makeButton(kind, label, key, alt) {
+  #pedal(kind, label, keys) {
     const node = el(
       'button',
       {
@@ -45,14 +53,17 @@ export class PedalControls {
         type: 'button',
         'aria-label': label,
         'aria-pressed': 'false',
-        title: `${label} — ${key} / ${alt}`,
+        title: `${label} — ${keys.join(' / ')}`,
       },
       [
         el('span', { class: 'pedal__label', text: label }),
-        el('span', { class: 'pedal__keys' }, [el('kbd', { text: key }), el('kbd', { text: alt })]),
+        el(
+          'span',
+          { class: 'pedal__keys' },
+          keys.map((k) => el('kbd', { text: k })),
+        ),
       ],
     );
-
     const press = (e) => {
       if (!this.enabled) return;
       e.preventDefault();
@@ -68,7 +79,6 @@ export class PedalControls {
       this.pointers[kind] = false;
       this.#sync();
     };
-
     node.addEventListener('pointerdown', press);
     node.addEventListener('pointerup', release);
     node.addEventListener('pointercancel', release);
@@ -76,12 +86,46 @@ export class PedalControls {
     return node;
   }
 
+  #shiftButton(dir, label, iconName, key, fire) {
+    const node = el(
+      'button',
+      {
+        class: `shift shift--${dir}`,
+        type: 'button',
+        'aria-label': label,
+        title: `${label} — ${key}`,
+      },
+      [icon(iconName), el('kbd', { text: key })],
+    );
+    node.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!this.enabled) return;
+      this.#flash(node);
+      fire();
+    });
+    return node;
+  }
+
+  #flash(node) {
+    node.classList.remove('is-hit');
+    void node.offsetWidth; // перезапуск анимации
+    node.classList.add('is-hit');
+  }
+
   #bindKeyboard() {
     this.onKeyDown = (e) => {
+      if (isShiftKey(e.code, 'shiftUp') || isShiftKey(e.code, 'shiftDown')) {
+        e.preventDefault();
+        if (e.repeat || !this.enabled) return;
+        const up = isShiftKey(e.code, 'shiftUp');
+        this.#flash(up ? this.$up : this.$down);
+        (up ? this.onShiftUp : this.onShiftDown)?.();
+        return;
+      }
       if (!isPedalKey(e.code, 'gas') && !isPedalKey(e.code, 'brake')) return;
       e.preventDefault();
-      // Клавишу запоминаем и до старта: если игрок держит газ на «ёлке»,
-      // после зелёного педаль сразу сработает.
+      // Клавишу запоминаем и до старта: газ на «ёлке» раскручивает мотор.
       this.keys.add(e.code);
       if (this.enabled) this.#sync();
     };
@@ -97,23 +141,21 @@ export class PedalControls {
       this.pointers.brake = false;
       this.#sync();
     };
-
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('keyup', this.onKeyUp);
     window.addEventListener('blur', this.onBlur);
   }
 
   #sync() {
-    const gas =
-      this.enabled && (this.pointers.gas || [...this.keys].some((code) => isPedalKey(code, 'gas')));
-    const brake =
+    const held = (pedal) =>
       this.enabled &&
-      (this.pointers.brake || [...this.keys].some((code) => isPedalKey(code, 'brake')));
-
+      (this.pointers[pedal] || [...this.keys].some((code) => isPedalKey(code, pedal)));
+    const gas = held('gas');
+    const brake = held('brake');
     setPedalTarget(this.state, 'gas', gas);
     setPedalTarget(this.state, 'brake', brake);
-    this.$gas.classList.toggle('is-down', gas);
-    this.$brake.classList.toggle('is-down', brake);
+    this.$gas.classList.toggle('is-pressed', gas);
+    this.$brake.classList.toggle('is-pressed', brake);
     this.$gas.setAttribute('aria-pressed', String(gas));
     this.$brake.setAttribute('aria-pressed', String(brake));
   }
@@ -121,8 +163,7 @@ export class PedalControls {
   /** Выключить педали на время диалога/финиша. */
   setEnabled(enabled) {
     this.enabled = Boolean(enabled);
-    this.$gas.disabled = !this.enabled;
-    this.$brake.disabled = !this.enabled;
+    for (const b of [this.$gas, this.$brake, this.$up, this.$down]) b.disabled = !this.enabled;
     if (!this.enabled) {
       this.keys.clear();
       this.pointers.gas = false;
@@ -130,6 +171,11 @@ export class PedalControls {
     }
     this.#sync();
     return this;
+  }
+
+  /** Показывать ли кнопки передач (в режиме «автомат» они не нужны). */
+  setGearsVisible(visible) {
+    this.$gears.hidden = !visible;
   }
 
   /** Текущие сглаженные значения: { gas, brake } от 0 до 1. */

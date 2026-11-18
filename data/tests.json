@@ -9,24 +9,59 @@
       "surface": "clay",
       "surfaceName": "грунт",
       "type": "traction",
-      "goal": "Проехать раскисшую грунтовку: не завязнуть в грязи и не разбить машину на колее",
+      "goal": "Проехать грунтовку: не завязнуть в грязи и не разбиться на колее",
       "startButton": "Начать обкатку",
       "minDurability": 3,
       "track": {
         "length": 217,
         "segments": [
-          { "from": 0, "to": 30, "type": "mud" },
-          { "from": 30, "to": 60, "type": "ruts" },
-          { "from": 60, "to": 90, "type": "mud" },
-          { "from": 90, "to": 150, "type": "deep" },
-          { "from": 150, "to": 175, "type": "mud" },
-          { "from": 175, "to": 197, "type": "ruts" },
-          { "from": 197, "to": 217, "type": "mud" }
+          {
+            "from": 0,
+            "to": 30,
+            "type": "mud"
+          },
+          {
+            "from": 30,
+            "to": 60,
+            "type": "ruts"
+          },
+          {
+            "from": 60,
+            "to": 90,
+            "type": "mud"
+          },
+          {
+            "from": 90,
+            "to": 150,
+            "type": "deep"
+          },
+          {
+            "from": 150,
+            "to": 175,
+            "type": "mud"
+          },
+          {
+            "from": 175,
+            "to": 197,
+            "type": "ruts"
+          },
+          {
+            "from": 197,
+            "to": 217,
+            "type": "mud"
+          }
         ]
       },
       "surfaces": {
-        "mud": { "resistance": 0.07, "name": "Грязь" },
-        "ruts": { "resistance": 0.07, "impact": 1, "name": "Колея" },
+        "mud": {
+          "resistance": 0.07,
+          "name": "Грязь"
+        },
+        "ruts": {
+          "resistance": 0.07,
+          "impact": 1,
+          "name": "Колея"
+        },
         "deep": {
           "resistance": 0.33,
           "resistancePerSpeed": 0.012,
@@ -36,8 +71,16 @@
           "name": "Глубокая грязь"
         }
       },
-      "damage": { "baseSpeed": 4, "refSpeed": 6, "perDurability": 5.5 },
-      "bot": { "cruise": 13, "rutsFactor": 1, "runUp": 45 },
+      "damage": {
+        "baseSpeed": 4,
+        "refSpeed": 6,
+        "perDurability": 5.5
+      },
+      "bot": {
+        "cruise": 13,
+        "rutsFactor": 1,
+        "runUp": 45
+      },
       "reasons": {
         "broken": "Сломалась деталь: {part}",
         "power": "Не хватило мощности вытащить машину из грязи",
@@ -67,12 +110,19 @@
       "type": "drag",
       "goal": "Проехать 400 м быстрее Палыча (13,0 с)",
       "startButton": "Начать заезд с Палычем",
-      "formula": { "distance": 400 },
+      "formula": {
+        "distance": 400
+      },
       "rivalTime": 13,
       "minDurability": 2,
       "heavyMass": 1500,
-      "christmasTree": { "ambers": 3, "intervalSec": 0.6 },
-      "gauges": { "speedToKmh": 3.6 },
+      "christmasTree": {
+        "ambers": 3,
+        "intervalSec": 0.6
+      },
+      "gauges": {
+        "speedToKmh": 3.6
+      },
       "reasons": {
         "broken": "Сломалась деталь: {part}",
         "traction": "Колёса не держат асфальт",

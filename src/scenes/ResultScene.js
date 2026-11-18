@@ -48,20 +48,29 @@ export class ResultScene extends BaseScene {
         el('span', { class: cls, text: value }),
       ]);
     const rows = [];
-    if (r.testId === 'race') {
-      rows.push(row(t('result.time'), `${formatSeconds(r.details.time)} ${sec}`));
-      rows.push(row(t('result.rival'), `${formatSeconds(r.details.rivalTime)} ${sec}`));
-      rows.push(row(t('result.diffLabel'), r.details.diffText, r.ok ? 'is-ok' : 'is-bad'));
-    } else if (r.details) {
-      const pulls = r.details.force >= r.details.need;
-      rows.push(row(t('garage.verdict.trialNeed'), String(Math.round(r.details.need))));
+    const d = r.details;
+    const secs = (v) => t('result.secValue', { v: v.toFixed(1).replace('.', ',') });
+    if (r.testId === 'race' && d) {
+      rows.push(row(t('result.time'), `${formatSeconds(d.time)} ${sec}`));
+      rows.push(row(t('result.rival'), `${formatSeconds(d.rivalTime)} ${sec}`));
+      rows.push(row(t('result.diffLabel'), d.diffText, r.ok ? 'is-ok' : 'is-bad'));
+      if (d.bestTime) rows.push(row(t('result.bestTime'), `${formatSeconds(d.bestTime)} ${sec}`));
+      rows.push(row(t('result.spin'), secs(d.spin), d.spin > 1 ? 'is-bad' : ''));
+      rows.push(row(t('result.limiter'), secs(d.limiter), d.limiter > 0.8 ? 'is-bad' : ''));
+    } else if (d) {
+      const done = d.distance >= d.length;
       rows.push(
         row(
-          t('garage.verdict.trialHave'),
-          String(Math.round(r.details.force)),
-          pulls ? 'is-ok' : 'is-bad',
+          t('result.distance'),
+          t('result.distanceValue', { have: Math.round(d.distance), total: d.length }),
+          done ? 'is-ok' : 'is-bad',
         ),
       );
+      const left = Math.max(0, Math.round((1 - d.damage / d.capacity) * 100));
+      rows.push(row(t('result.bodyLeft'), `${left}%`, left > 0 ? 'is-ok' : 'is-bad'));
+    }
+    if (d) {
+      rows.push(row(t('result.topSpeed'), `${Math.round(d.topSpeedKmh)} ${t('race.kmh')}`));
     }
     rows.push(
       row(
