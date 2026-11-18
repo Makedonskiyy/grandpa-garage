@@ -1192,7 +1192,8 @@ async function preview(files) {
     const pos = (x) => [Math.round(x - FRAME / 2), Math.round(AXY - FRAME / 2)];
     if (v.tire) {
       for (const x of [AXR, AXF])
-        for (const b of await wheel(v.tire, v.rimStyle ?? 'six', v.rim, v.frame ?? 0)) add(b, ...pos(x));
+        for (const b of await wheel(v.tire, v.rimStyle ?? 'six', v.rim, v.frame ?? 0))
+          add(b, ...pos(x));
     } else {
       for (const b of await wheel('old', 'steelOld', '#9a9ea6', 0)) add(b, ...pos(AXR));
       add(files.car_bricks);
@@ -1214,8 +1215,24 @@ async function preview(files) {
   const variants = [
     { paint: '#a8adb3', tire: null, overlay: 'rust', dirt: true },
     { paint: '#e8e8e0', tire: 'stock', rim: '#c0c4c8' },
-    { paint: '#1f3f8f', tire: 'slicks', rimStyle: 'multi', overlay: 'light', rim: '#9a9ea6', spoiler: 'wing', frame: 3 },
-    { paint: '#8b1a2b', tire: 'studded', rimStyle: 'steel', overlay: 'cage', rim: '#c0c4c8', spoiler: 'lip', frame: 6 },
+    {
+      paint: '#1f3f8f',
+      tire: 'slicks',
+      rimStyle: 'multi',
+      overlay: 'light',
+      rim: '#9a9ea6',
+      spoiler: 'wing',
+      frame: 3,
+    },
+    {
+      paint: '#8b1a2b',
+      tire: 'studded',
+      rimStyle: 'steel',
+      overlay: 'cage',
+      rim: '#c0c4c8',
+      spoiler: 'lip',
+      frame: 6,
+    },
     { paint: '#e0b022', tire: 'mud', rimStyle: 'mesh', overlay: 'rust', rim: '#c9a23a', frame: 2 },
     { paint: '#3a3d42', tire: 'sport', rimStyle: 'five', rim: '#1c1c1f', frame: 5 },
   ];
