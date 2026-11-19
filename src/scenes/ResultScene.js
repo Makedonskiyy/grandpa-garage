@@ -31,7 +31,7 @@ export class ResultScene extends BaseScene {
       this.goTo(SCENES.MENU);
       return;
     }
-    const test = getTest(r.testId);
+    const test = getTest(r.map ?? r.testId);
 
     drawGarageRoom(this, { lampX: STAGE.carX, groundY: STAGE.groundY });
     ({ car: this.car } = placeGarageCar(this, {

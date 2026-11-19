@@ -53,14 +53,16 @@ export class EndingScene extends BaseScene {
           win?.details?.time ? `${formatSeconds(win.details.time)} ${t('garage.units.sec')}` : '—',
         ),
         stat(t('ending.partsLabel'), parts),
-        webButton(
-          t('ending.playAgain'),
-          () => {
+        el('div', { class: 'ending-panel__actions' }, [
+          webButton(t('ending.credits'), () => this.goTo(SCENES.CREDITS), {
+            variant: 'primary',
+            icon: 'play',
+          }),
+          webButton(t('ending.playAgain'), () => {
             resetGame();
             this.goTo(SCENES.MENU);
-          },
-          { variant: 'primary', icon: 'play' },
-        ),
+          }),
+        ]),
       ]),
     );
   }

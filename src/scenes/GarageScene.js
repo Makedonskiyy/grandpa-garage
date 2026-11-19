@@ -40,6 +40,7 @@ import { colorPicker } from '../ui/colorPicker.js';
 import { wheelThumb } from '../ui/wheelThumb.js';
 import { openSettings } from '../ui/SettingsPanel.js';
 import { openHowTo } from '../ui/HowToPanel.js';
+import { openMapSelect } from '../ui/MapSelect.js';
 import { t } from '../systems/strings.js';
 
 const cfg = config.garage;
@@ -931,6 +932,8 @@ export class GarageScene extends BaseScene {
 
   #launch() {
     if (!this.#stats(gameState.build).complete) return;
+    // Обкатка: сначала выбор карты.
+    if (this.testId === 'trial') return openMapSelect(() => this.goTo(this.test.scene));
     this.goTo(this.test.scene);
   }
 }

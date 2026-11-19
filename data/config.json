@@ -69,12 +69,13 @@
   "race": {
     "startX": 224,
     "finishX": 600,
-    "playerLaneY": 250,
-    "rivalLaneY": 174,
+    "playerLaneY": 252,
+    "rivalLaneY": 168,
     "carScale": 0.8,
     "playerFront": 134,
-    "rivalFront": 94,
-    "finishHoldMs": 1500
+    "rivalFront": 105,
+    "finishHoldMs": 1500,
+    "rivalScale": 0.72
   },
   "garage": {
     "carX": 316,

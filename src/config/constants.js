@@ -17,6 +17,7 @@ export const SCENES = Object.freeze({
   RACE: 'Race',
   RESULT: 'Result',
   ENDING: 'Ending',
+  CREDITS: 'Credits',
 });
 
 /** Порядок заездов. */

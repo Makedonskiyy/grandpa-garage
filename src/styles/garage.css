@@ -1109,3 +1109,120 @@
     opacity: 0;
   }
 }
+
+/* ---------- Выбор карты обкатки ---------- */
+.maps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.map {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 0 24px;
+  border-radius: 20px;
+  overflow: hidden;
+  background: var(--ui-d2);
+  box-shadow: inset 0 0 0 1px var(--ui-line-strong);
+}
+
+.map > :not(.map__art) {
+  margin-left: 24px;
+  margin-right: 24px;
+}
+
+.map__art {
+  height: 180px;
+  background-size: cover;
+  background-position: center;
+  image-rendering: pixelated;
+}
+
+.map.is-mud .map__art {
+  background:
+    linear-gradient(180deg, transparent 55%, #5f4a35 55%, #4a3827 100%),
+    repeating-linear-gradient(90deg, #7a6f66 0 54px, #4f5d52 54px 64px), #b7bfc8;
+}
+
+.map.is-track .map__art {
+  background:
+    linear-gradient(180deg, transparent 58%, #e8e8e2 58%, #e8e8e2 61%, #3d3f44 61%),
+    repeating-linear-gradient(90deg, #c23b30 0 14px, #e8e8e2 14px 28px) 0 50% / 100% 12px no-repeat,
+    linear-gradient(180deg, #abbecf 0 30%, #60666e 30% 52%);
+}
+
+.map.is-free .map__art {
+  background:
+    linear-gradient(180deg, transparent 60%, #45474c 60%),
+    linear-gradient(180deg, #ccd1d5 0 38%, #4f5a49 38% 46%, #8c8a6c 46% 60%);
+}
+
+.map__tag {
+  align-self: flex-start;
+  margin-top: -36px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font: 600 16px/1 var(--font-ui);
+  color: var(--ui-ink);
+  background: var(--ui-accent);
+}
+
+.map__tag.is-practice {
+  color: var(--ui-text);
+  background: var(--ui-d4);
+}
+
+.map__name {
+  margin: 4px 0 0;
+  font: 700 28px/1.15 var(--font-ui);
+}
+
+.map__short {
+  margin: 0;
+  font-size: 19px;
+  color: var(--ui-text-2);
+}
+
+.map__goal {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.4;
+  color: var(--ui-text-3);
+}
+
+.map__verdict {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.map__verdict .icon {
+  width: 20px;
+  height: 20px;
+}
+
+.map__verdict.is-ok {
+  color: #8fd694;
+}
+
+.map__verdict.is-bad {
+  color: #ef8a7e;
+}
+
+.map__go {
+  margin-top: auto;
+  height: 64px;
+  font-size: 22px;
+  border-radius: 16px;
+}
+
+.map__go .icon {
+  width: 24px;
+  height: 24px;
+}

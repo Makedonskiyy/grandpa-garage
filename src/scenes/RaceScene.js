@@ -54,9 +54,15 @@ export class RaceScene extends BaseScene {
     this.state = 'intro';
 
     this.#drawNight();
-    this.rival = buildRivalCar(this, { x: 0, y: cfg.rivalLaneY, scale: cfg.carScale, night: true });
-    this.rival.front = cfg.rivalFront * cfg.carScale;
-    this.rival.plateOffset = 72 * cfg.carScale; // над крышей «девятки»
+    // Палыч — на дальней полосе, чуть меньше (дальше от зрителя): машины не сливаются.
+    this.rival = buildRivalCar(this, {
+      x: 0,
+      y: cfg.rivalLaneY,
+      scale: cfg.rivalScale,
+      night: true,
+    });
+    this.rival.front = cfg.rivalFront * cfg.rivalScale;
+    this.rival.plateOffset = 62 * cfg.rivalScale; // над крышей «девятки»
     this.player = buildCar(this, gameState.build, gameState.cosmetics, {
       x: 0,
       y: cfg.playerLaneY,
@@ -111,68 +117,129 @@ export class RaceScene extends BaseScene {
     this.hud = new DriveHud(this, this.run, { className: 'dash--race' });
   }
 
-  /** Ночной пустырь за заводом: небо, корпуса с окнами, прожектор, мокрый асфальт. */
+  /**
+   * Ночной город: улица на окраине. Тёмное небо со звёздами и луной, панельные девятиэтажки
+   * с горящими окнами и антеннами, ларёк «Продукты 24 часа» с вывеской, остановка,
+   * троллейбусные провода, натриевые фонари с оранжевыми пятнами света, мокрый асфальт
+   * с бликами, две полосы — дальняя для Палыча и ближняя для игрока, бордюр между ними.
+   */
   #drawNight() {
     const { width, height } = WORLD;
     const r = rng(41);
     const g = this.add.graphics();
-    // Небо ступенями: к горизонту светлее от городского зарева.
-    [0x07080f, 0x0a0c15, 0x0e111b, 0x131622, 0x1a1c27].forEach((c, i) =>
+    // Небо ступенями, звёзды, луна.
+    [0x05060c, 0x080a13, 0x0b0e19, 0x10131f, 0x161a27].forEach((c, i) =>
       g.fillStyle(c).fillRect(0, i * 30, width, 31),
     );
-    // Заводские корпуса и трубы.
-    let x = 0;
+    for (let i = 0; i < 50; i++)
+      g.fillStyle(0xcfd6ff, 0.6).fillRect(Math.floor(r() * width), Math.floor(r() * 90), 1, 1);
+    g.fillStyle(0xe9e4cf).fillCircle(520, 34, 9);
+    g.fillStyle(0x0b0e19).fillCircle(524, 31, 8);
+    // Дальние панельки — силуэты с редкими окнами.
+    let x = -10;
     while (x < width) {
-      const w = 50 + Math.floor(r() * 70);
-      const h = 30 + Math.floor(r() * 40);
-      g.fillStyle(0x0c0d13).fillRect(x, 170 - h, w, h + 20);
-      for (let wy = 170 - h + 6; wy < 166; wy += 8) {
-        for (let wx = x + 4; wx < x + w - 6; wx += 7) {
-          if (r() < 0.12) g.fillStyle(0xd9b56a, 0.8).fillRect(wx, wy, 3, 2);
-        }
-      }
-      if (r() < 0.4) g.fillStyle(0x0c0d13).fillRect(x + w / 2, 170 - h - 40, 6, 40);
-      x += w + Math.floor(r() * 20);
+      const w = 40 + Math.floor(r() * 50);
+      const h = 50 + Math.floor(r() * 50);
+      g.fillStyle(0x0e1019).fillRect(x, 150 - h, w, h + 10);
+      for (let wy = 150 - h + 5; wy < 148; wy += 6)
+        for (let wx = x + 3; wx < x + w - 4; wx += 5)
+          if (r() < 0.14) g.fillStyle(r() < 0.8 ? 0xd9b56a : 0x8fb3ff, 0.75).fillRect(wx, wy, 2, 3);
+      x += w + Math.floor(r() * 16);
     }
-    // Бетонный забор и асфальт.
-    g.fillStyle(0x15161c).fillRect(0, 170, width, 20);
-    for (let fx = 0; fx < width; fx += 24) g.fillStyle(0x101116).fillRect(fx, 170, 1, 20);
-    g.fillStyle(0x1c1d24).fillRect(0, 190, width, height - 190 - SHIFT);
-    // Разметка полос и мокрые отблески.
-    for (let lx = 0; lx < width; lx += 32) g.fillStyle(0x3a3a40).fillRect(lx, 250, 16, 2);
-    for (let i = 0; i < 40; i++) {
+    // Ближние девятиэтажки: торцы с антеннами, балконы, окна (тёплые и «телевизорные»).
+    x = 0;
+    while (x < width) {
+      const w = 90 + Math.floor(r() * 40);
+      const top = 40 + Math.floor(r() * 30);
+      g.fillStyle(0x161925).fillRect(x, top, w, 160 - top);
+      g.fillStyle(0x1c2030).fillRect(x, top, w, 3);
+      g.fillStyle(0x0f111a).fillRect(x + w - 4, top, 4, 160 - top);
+      for (let k = 0; k < 3; k++) {
+        const ax = x + 10 + Math.floor(r() * (w - 20));
+        g.fillStyle(0x2a2e3a).fillRect(ax, top - 10, 1, 10);
+        g.fillRect(ax - 4, top - 8, 9, 1);
+      }
+      for (let wy = top + 8; wy < 150; wy += 9)
+        for (let wx = x + 6; wx < x + w - 10; wx += 11) {
+          const v = r();
+          const c = v < 0.22 ? 0xe8b864 : v < 0.27 ? 0x9ab8ff : 0x232838;
+          g.fillStyle(c).fillRect(wx, wy, 6, 5);
+          g.fillStyle(0x10121b).fillRect(wx - 1, wy + 5, 8, 1); // балконная плита
+        }
+      x += w + 14 + Math.floor(r() * 30);
+    }
+    // Ларёк «Продукты 24 часа» и остановка — на тротуаре за дальней полосой.
+    const kx = 300;
+    g.fillStyle(0x2c3a4a).fillRect(kx, 128, 64, 32);
+    g.fillStyle(0xe8b864, 0.85).fillRect(kx + 6, 136, 52, 16);
+    g.fillStyle(0x7c2a2a).fillRect(kx - 2, 122, 68, 8);
+    const sign = this.add
+      .text(kx + 32, 126, 'ПРОДУКТЫ 24', {
+        fontFamily: '"Onest Variable", Onest, system-ui, sans-serif',
+        fontSize: '6px',
+        fontStyle: '700',
+        color: '#ffe9b0',
+      })
+      .setOrigin(0.5)
+      .setResolution(getRenderZoom());
+    const bx = 120;
+    g.fillStyle(0x3a3f4a).fillRect(bx, 130, 56, 3);
+    g.fillStyle(0x3a3f4a).fillRect(bx + 2, 133, 2, 27);
+    g.fillStyle(0x3a3f4a).fillRect(bx + 52, 133, 2, 27);
+    g.fillStyle(0x5d7a92, 0.35).fillRect(bx + 4, 135, 48, 18);
+    g.fillStyle(0x2f5fb4).fillRect(bx + 58, 128, 10, 8);
+    g.fillStyle(0xffffff).fillRect(bx + 60, 131, 6, 1);
+    // Тротуар, бордюры, асфальт; троллейбусные провода.
+    g.fillStyle(0x2a2c33).fillRect(0, 160, width, 12);
+    g.fillStyle(0x6a6c72).fillRect(0, 171, width, 2);
+    g.fillStyle(0x1c1d24).fillRect(0, 173, width, height - 173 - SHIFT);
+    for (let lx = 0; lx < width; lx += 32) g.fillStyle(0xd8d0bc, 0.7).fillRect(lx, 214, 16, 2);
+    g.fillStyle(0x6a6c72).fillRect(0, 262, width, 2);
+    for (let i = 0; i < 50; i++)
       g.fillStyle(0x2b2d36).fillRect(
         Math.floor(r() * width),
-        200 + Math.floor(r() * 150),
+        176 + Math.floor(r() * 150),
         6 + Math.floor(r() * 10),
         1,
       );
+    for (let wx = 0; wx < width; wx += 2) {
+      const sag = Math.sin((wx / width) * Math.PI * 3) * 3;
+      g.fillStyle(0x0a0b10).fillRect(wx, 92 + sag, 2, 1);
+      g.fillRect(wx, 97 + sag, 2, 1);
     }
-    // Старт и финиш (по переднему бамперу).
-    g.fillStyle(0xd8d0bc).fillRect(cfg.startX, 190, 2, 106);
-    for (let fy = 190; fy < 296; fy += 4) {
+    // Старт и финиш (по переднему бамперу), обе полосы.
+    g.fillStyle(0xd8d0bc).fillRect(cfg.startX, 176, 2, 112);
+    for (let fy = 176; fy < 288; fy += 4) {
       g.fillStyle((fy / 4) % 2 ? 0xffffff : 0x111111).fillRect(cfg.finishX, fy, 2, 4);
       g.fillStyle((fy / 4) % 2 ? 0x111111 : 0xffffff).fillRect(cfg.finishX + 2, fy, 2, 4);
     }
-    // Прожектор слева и пятно света на асфальте — ступенями, режим ADD.
-    g.fillStyle(0x0c0d13).fillRect(36, 70, 3, 120);
-    g.fillStyle(0x2a2c35).fillRect(30, 64, 16, 8);
+    // Натриевые фонари: столбы, лампы, оранжевые пятна света ступенями (режим ADD).
     const light = this.add.graphics().setBlendMode(Phaser.BlendModes.ADD);
+    for (const lx of [70, 250, 430, 610]) {
+      g.fillStyle(0x0c0d13).fillRect(lx, 74, 3, 98);
+      g.fillStyle(0x0c0d13).fillRect(lx, 74, 16, 3);
+      g.fillStyle(0xffb259).fillRect(lx + 12, 77, 6, 2);
+      for (const [w, a] of [
+        [110, 0.03],
+        [80, 0.035],
+        [50, 0.04],
+      ])
+        light
+          .fillStyle(0xffa040, a)
+          .fillTriangle(lx + 15, 79, lx + 15 - w / 2, 262, lx + 15 + w / 2, 262);
+      for (const [w, h, a] of [
+        [150, 22, 0.04],
+        [90, 12, 0.05],
+      ])
+        light.fillStyle(0xffa040, a).fillEllipse(lx + 15, 236, w, h);
+    }
+    // Мокрый асфальт: отражения фонарей и окон полосками.
+    for (const lx of [70, 250, 430, 610])
+      for (let y = 240; y < 320; y += 6)
+        light.fillStyle(0xffa040, 0.05).fillRect(lx + 10, y, 10, 2);
     g.y = SHIFT;
     light.y = SHIFT;
-    for (const [w, a] of [
-      [260, 0.025],
-      [200, 0.03],
-      [140, 0.035],
-    ]) {
-      light.fillStyle(0xfff0c8, a).fillTriangle(38, 70, 38 + w, 300, 38 + w * 0.2, 300);
-    }
-    for (const [w, h, a] of [
-      [420, 60, 0.03],
-      [300, 40, 0.035],
-    ]) {
-      light.fillStyle(0xfff0c8, a).fillEllipse(220, 280, w, h);
-    }
+    sign.y += SHIFT;
   }
 
   #nameplate(car, name) {

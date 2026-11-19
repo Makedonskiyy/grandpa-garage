@@ -1634,3 +1634,78 @@ kbd {
   line-height: 1.4;
   color: var(--ui-text-2);
 }
+
+/* ---------- Финальные титры ---------- */
+.credits {
+  inset: 0;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 18%, #000 82%, transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0%, #000 18%, #000 82%, transparent 100%);
+}
+
+.credits__roll {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 1000px;
+  margin-left: -500px;
+  display: grid;
+  justify-items: center;
+  gap: 56px;
+  text-align: center;
+  color: var(--ui-text);
+  animation: credits-roll linear forwards;
+}
+
+@keyframes credits-roll {
+  from {
+    transform: translateY(1080px);
+  }
+  to {
+    transform: translateY(calc(-100% - 40px));
+  }
+}
+
+.credits__logo {
+  width: 520px;
+}
+
+.credits__subtitle {
+  margin: -24px 0 40px;
+  font: italic 400 30px/1.4 var(--font-story);
+  color: var(--ui-text-2);
+}
+
+.credits__title {
+  margin: 0 0 12px;
+  font: 600 22px/1 var(--font-ui);
+  color: var(--ui-accent);
+}
+
+.credits__line {
+  margin: 6px 0 0;
+  font: 400 32px/1.35 var(--font-story);
+}
+
+.credits__end {
+  margin-top: 160px;
+  font: 400 64px/1 var(--font-story);
+}
+
+.credits__skip {
+  top: 40px;
+  right: 40px;
+}
+
+.credits__skip .wbtn,
+.ending-panel__actions .wbtn {
+  height: 64px;
+  padding: 0 28px;
+  font-size: 22px;
+  border-radius: 16px;
+}
+
+.ending-panel__actions {
+  display: flex;
+  gap: 16px;
+}

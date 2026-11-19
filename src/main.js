@@ -29,6 +29,7 @@ import { PalychScene } from './scenes/PalychScene.js';
 import { RaceScene } from './scenes/RaceScene.js';
 import { ResultScene } from './scenes/ResultScene.js';
 import { EndingScene } from './scenes/EndingScene.js';
+import { CreditsScene } from './scenes/CreditsScene.js';
 
 loadSettings();
 
@@ -53,6 +54,7 @@ const game = new Phaser.Game({
     RaceScene,
     ResultScene,
     EndingScene,
+    CreditsScene,
   ],
 });
 

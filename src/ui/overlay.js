@@ -78,6 +78,11 @@ export function openModal(build, { id, title, size = 'md' } = {}) {
   return close;
 }
 
+/** Закрыть все окна (при смене сцены). */
+export function closeAllModals() {
+  while (openModals.length) openModals.at(-1).close();
+}
+
 export function closeTopModal() {
   const top = openModals.at(-1);
   if (!top) return false;

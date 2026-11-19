@@ -54,7 +54,7 @@ describe('parts.json', () => {
 
 describe('tests.json', () => {
   it('два заезда: обкатка и заезд с Палычем', () => {
-    expect(tests.tests.map((t) => t.id)).toEqual(['trial', 'race']);
+    expect(tests.tests.map((t) => t.id)).toEqual(['trial', 'trial_track', 'trial_free', 'race']);
   });
 
   it('трасса обкатки непрерывна, все участки известны', () => {
