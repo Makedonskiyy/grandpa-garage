@@ -6,6 +6,8 @@
 import Phaser from 'phaser';
 import { el } from './dom.js';
 import { icon } from './icons.js';
+import { audio } from '../systems/AudioManager.js';
+import { SFX } from '../config/constants.js';
 
 const root = () => document.getElementById('ui-root');
 
@@ -79,6 +81,7 @@ export function openModal(build, { id, title, size = 'md' } = {}) {
 export function closeTopModal() {
   const top = openModals.at(-1);
   if (!top) return false;
+  audio.playSfx(SFX.BACK);
   top.close();
   return true;
 }

@@ -3,7 +3,7 @@ import partsData from '../../data/parts.json';
 import cosmetics from '../../data/cosmetics.json';
 import config from '../../data/config.json';
 import { BaseScene } from './BaseScene.js';
-import { SCENES, MUSIC, SFX, TEST_IDS } from '../config/constants.js';
+import { SCENES, MUSIC, SFX, AMB, TEST_IDS } from '../config/constants.js';
 import { drawGarageRoom, placeGarageCar } from './garageBackdrop.js';
 import { StoryStage } from '../systems/StoryStage.js';
 import { audio } from '../systems/AudioManager.js';
@@ -109,6 +109,8 @@ export class GarageScene extends BaseScene {
   create() {
     this.enter();
     audio.playMusic(MUSIC.GARAGE);
+    this.ambience = AMB.GARAGE;
+    audio.playAmbience(this.ambience);
 
     this.testId = getCurrentTestId();
     this.test = getTest(this.testId);
@@ -298,7 +300,7 @@ export class GarageScene extends BaseScene {
   }
 
   #openTile(id) {
-    audio.playSfx(SFX.CLICK);
+    audio.playSfx(id ? SFX.TAB : SFX.BACK);
     this.view.tile = id;
     const group = partsData.groups.find((g) => g.id === id);
     this.view.slot = group ? group.slots[0] : null;
@@ -482,6 +484,7 @@ export class GarageScene extends BaseScene {
                   role: 'tab',
                   'aria-selected': String(sid === slotId),
                   onclick: () => {
+                    audio.playSfx(SFX.TAB);
                     this.view.slot = sid;
                     this.hover = null;
                     this.#render();
@@ -595,9 +598,14 @@ export class GarageScene extends BaseScene {
     const current = gameState.build[slot.id] ?? null;
     card.classList.add('is-installing');
     if (id === current) {
-      if (part && (slot.required === false || slot.id === 'tires')) togglePart(part.id);
+      if (part && (slot.required === false || slot.id === 'tires')) {
+        audio.playSfx(SFX.REMOVE);
+        togglePart(part.id);
+      }
       return;
     }
+    const wheel = slot.id === 'tires' || slot.id === 'rims';
+    audio.playSfx(id ? (wheel ? SFX.WHEEL : SFX.INSTALL) : SFX.REMOVE);
     if (id) setPart(slot.id, id);
     else removePart(slot.id);
     this.#dust(slot.id);
@@ -783,6 +791,7 @@ export class GarageScene extends BaseScene {
       return;
     }
     setCosmetic(group, value);
+    audio.playSfx(SFX.PAINT);
     this.car.shine?.();
   }
 
@@ -833,6 +842,7 @@ export class GarageScene extends BaseScene {
 
   /** Короткая анимация на машине: капли масла, брызги воды, удары молотка. */
   #serviceFx(id) {
+    audio.playSfx({ oil: SFX.OIL, repair: SFX.REPAIR, wash: SFX.WASH }[id]);
     const w = this.car.scaleX * 288;
     const left = cfg.carX - w / 2;
     if (id === 'wash') {

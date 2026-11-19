@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { BaseScene } from './BaseScene.js';
-import { SCENES, MUSIC, SFX, WORLD } from '../config/constants.js';
+import { SCENES, MUSIC, SFX, AMB, WORLD } from '../config/constants.js';
 import { buildCar } from '../systems/buildCar.js';
 import { getTest } from '../systems/simulate.js';
 import { createRun, stepRun, greenLight, runBot, summarize, segmentAt } from '../systems/drive.js';
@@ -11,7 +11,7 @@ import { el } from '../ui/dom.js';
 import { t } from '../systems/strings.js';
 import { getSettings } from '../systems/settings.js';
 import { getRenderZoom } from '../systems/scale.js';
-import { DriveHud } from '../ui/DriveHud.js';
+import { DriveHud, DriveSounds } from '../ui/DriveHud.js';
 
 /**
  * Весь пейзаж поднят на SHIFT, чтобы машина ехала над приборами (их верх — y ≈ 259).
@@ -45,6 +45,8 @@ export class TrialScene extends BaseScene {
   create() {
     this.enter();
     audio.playMusic(MUSIC.DRIVE);
+    this.ambience = AMB.ROAD;
+    audio.playAmbience(this.ambience);
 
     this.test = getTest('trial');
     const auto = getSettings().gearbox === 'auto';
@@ -62,7 +64,9 @@ export class TrialScene extends BaseScene {
     });
     this.cover = this.#drawMudCover(); // грязь поверх колёс в глубоких участках
     this.mud = this.#makeMud();
+    audio.playSfx(SFX.CAR_START);
     this.engine = audio.loopSfx(SFX.ENGINE);
+    this.sounds = new DriveSounds(this, 'clay');
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.engine?.destroy());
 
     this.#buildHud();
@@ -322,6 +326,7 @@ export class TrialScene extends BaseScene {
     const seg = segmentAt(this.test, run.x);
     if (seg.type === 'ruts' && Math.random() < dt * (1 + run.v * 0.9)) {
       this.car.bump(10 + run.v * 4);
+      audio.playSfx(SFX.BUMP, { volume: Math.min(1, 0.3 + run.v / 12) });
     }
     this.car.y = GROUND_Y + run.sink * 7;
     this.car.step(dt, {
@@ -336,6 +341,7 @@ export class TrialScene extends BaseScene {
 
     this.engine?.setRate?.(0.6 + (run.rpm / run.stats.redline) * 0.9);
     this.hud.render();
+    this.sounds.update(run, { mud: seg.type === 'deep' && run.v > 1 ? 0.6 : 0 });
     this.#renderMeters();
     this.#hints(run, seg);
 
@@ -382,9 +388,11 @@ export class TrialScene extends BaseScene {
     this.hud.setEnabled(false);
     this.mud.stop();
     this.engine?.stop();
+    this.sounds.stop();
     this.result = summarize(this.run, this.best);
     const { reasonKey } = this.run;
     if (reasonKey === 'broken') {
+      audio.playSfx(SFX.BREAK);
       this.car.drop(60);
       this.#puff(0x777777, this.car.x + 110, this.car.y - 50);
     } else if (reasonKey === 'traction') {

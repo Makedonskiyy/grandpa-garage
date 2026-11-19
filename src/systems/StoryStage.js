@@ -27,6 +27,7 @@ import { audio } from './AudioManager.js';
 import { charDelayMs } from './settings.js';
 import { createLayer } from '../ui/overlay.js';
 import { el, clear } from '../ui/dom.js';
+import { t } from './strings.js';
 
 const cfg = config.dialog;
 const byId = new Map(story.lines.map((l) => [l.id, l]));
@@ -131,7 +132,21 @@ export class StoryStage {
     this.$box = el('div', { class: 'ui-abs story__box' });
     this.$center = el('div', { class: 'ui-abs story__center' });
     this.$controls = el('div', { class: 'ui-abs story__controls' });
-    this.layer.append(this.$shade, this.$actors, this.$box, this.$center, this.$controls);
+    // Записка деда: сложенный листок на верстаке — игрок сам его разворачивает.
+    this.$note = el('div', { class: 'ui-abs story-note', hidden: true });
+    this.$note.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      this.advance();
+    });
+    this.note = null;
+    this.layer.append(
+      this.$shade,
+      this.$actors,
+      this.$box,
+      this.$center,
+      this.$note,
+      this.$controls,
+    );
 
     this.onPointer = () => this.advance();
     this.onKey = (e) => {
@@ -167,6 +182,7 @@ export class StoryStage {
 
   advance() {
     if (!this.line) return;
+    if (this.note) return this.#advanceNote();
     if (this.typing) {
       this.#completeTyping();
       return;
@@ -182,8 +198,12 @@ export class StoryStage {
     this.#stopTyping();
     this.holdTimer?.remove();
     this.line = null;
+    this.note = null;
+    this.$note.hidden = true;
     this.layer.classList.remove('is-open');
     for (const side of ['left', 'right']) this.#setActor(side, null);
+    // После истории — снова атмосфера самой сцены.
+    if (this.bgKey !== undefined) audio.playAmbience(this.scene.ambience ?? null);
     this.bg?.destroy();
     this.bg = null;
     this.bgKey = undefined;
@@ -209,6 +229,9 @@ export class StoryStage {
     const line = byId.get(id);
     if (!line) throw new Error(`Нет реплики ${id}`);
     this.line = line;
+    if (line.kind === 'note') return this.#openNoteGroup(line);
+    audio.playSfx(SFX.DLG_NEXT, { volume: 0.6 });
+    if (line.sfx) audio.playSfx(line.sfx);
     if (line.bg !== undefined) this.#setBackground(line.bg);
     if (line.cast) {
       for (const side of ['left', 'right']) {
@@ -219,6 +242,75 @@ export class StoryStage {
     this.layer.dataset.kind = line.kind;
     this.#layout(line);
     this.#startTyping();
+  }
+
+  // ---------- Записка ----------
+
+  /**
+   * Подряд идущие реплики-записки — один листок. Сначала он лежит сложенным на верстаке
+   * (фон остаётся прежним), по клику разворачивается; каждый следующий клик дописывает
+   * строку почерком деда, после последней листок складывается и история идёт дальше.
+   */
+  #openNoteGroup(first) {
+    const lines = [];
+    for (let l = first; l && l.kind === 'note'; l = byId.get(l.next)) lines.push(l);
+    this.note = { lines, shown: 0, phase: 'folded' };
+    this.#stopTyping();
+    clear(this.$box);
+    this.$box.className = 'ui-abs story__box is-hidden';
+    this.layer.dataset.kind = 'note';
+    this.layer.classList.add('is-done');
+    this.$note.className = 'ui-abs story-note is-folded';
+    this.$note.hidden = false;
+    clear(this.$note).append(
+      el('div', { class: 'story-note__folded', 'aria-label': t('story.noteOpen') }, [
+        el('span', { class: 'story-note__seal', text: t('story.noteFrom') }),
+      ]),
+      el('div', { class: 'story-note__hint', text: t('story.noteOpen') }),
+    );
+    audio.playSfx(SFX.NOTE_APPEAR, { volume: 0.7 });
+  }
+
+  #advanceNote() {
+    const n = this.note;
+    if (n.phase === 'folded') {
+      n.phase = 'open';
+      this.$note.className = 'ui-abs story-note is-open';
+      this.$paper = el('div', { class: 'story-note__paper' });
+      clear(this.$note).append(
+        this.$paper,
+        el('div', { class: 'story-note__hint', text: t('story.noteNext') }),
+      );
+      audio.playSfx(SFX.NOTE_UNFOLD);
+      this.#noteLine();
+      return;
+    }
+    if (n.phase === 'open' && n.shown < n.lines.length) return this.#noteLine();
+    if (n.phase === 'open') {
+      n.phase = 'closing';
+      this.$note.classList.add('is-closing');
+      audio.playSfx(SFX.NOTE_FOLD);
+      const next = n.lines[n.lines.length - 1].next;
+      this.scene.time.delayedCall(420, () => {
+        this.note = null;
+        this.$note.hidden = true;
+        if (next === null) this.finish();
+        else this.#show(next);
+      });
+    }
+  }
+
+  #noteLine() {
+    const n = this.note;
+    const line = n.lines[n.shown];
+    n.shown += 1;
+    this.line = line;
+    if (line.cast)
+      for (const side of ['left', 'right'])
+        if (side in line.cast) this.#setActor(side, line.cast[side]);
+    this.$paper.append(el('p', { class: 'story-note__line', text: line.text }));
+    this.$note.classList.toggle('is-last', n.shown >= n.lines.length);
+    audio.playSfx(SFX.NOTE_WRITE, { volume: 0.6 });
   }
 
   #layout(line) {
@@ -267,6 +359,9 @@ export class StoryStage {
   #setBackground(key) {
     if (key === this.bgKey) return;
     this.bgKey = key;
+    // Атмосфера фона (птицы, ветер, гул лампы) — из data/story-backgrounds.json.
+    const sound = storyBackgrounds.backgrounds[key]?.sound;
+    if (sound) audio.playAmbience(sound);
     const old = this.bg;
     const draw = this.#resolveBackground(key);
     if (draw === null) {

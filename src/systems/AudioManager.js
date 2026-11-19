@@ -5,6 +5,27 @@
  * Если файла ещё нет в кэше — молча пропускаем: каркас работает без ассетов.
  */
 import config from '../../data/config.json';
+import catalog from '../../data/sounds.json';
+
+/** Громкость каждого звука из каталога (data/sounds.json). */
+const BASE = Object.fromEntries(catalog.sounds.map((x) => [x.key, x.volume ?? 1]));
+
+/**
+ * Файлы звуков: src/assets/audio/<группа>/<ключ>.mp3. Vite кладёт в сборку только те,
+ * что есть, — недостающие звуки просто не играют, без ошибок загрузки.
+ */
+const FILES = import.meta.glob('../assets/audio/**/*.mp3', {
+  eager: true,
+  query: '?url',
+  import: 'default',
+});
+
+/** Ставит все найденные звуки в очередь загрузчика (BootScene). */
+export function preloadSounds(scene) {
+  for (const [path, url] of Object.entries(FILES)) {
+    scene.load.audio(path.split('/').pop().replace(/.mp3$/, ''), url);
+  }
+}
 import { effectiveVolume, onSettingsChange } from './settings.js';
 
 class AudioManager {
@@ -12,6 +33,8 @@ class AudioManager {
     this.game = null;
     this.music = null;
     this.musicKey = null;
+    this.amb = null;
+    this.ambKey = null;
     this.fades = new Set();
     this.warned = new Set();
   }
@@ -40,7 +63,7 @@ class AudioManager {
     if (!this.#has(key)) return;
     this.music = this.game.sound.add(key, { loop: true, volume: 0 });
     this.music.play();
-    this.#fade(this.music, effectiveVolume('music'));
+    this.#fade(this.music, effectiveVolume('music') * (BASE[key] ?? 1));
   }
 
   stopMusic() {
@@ -52,9 +75,22 @@ class AudioManager {
     this.musicKey = null;
   }
 
+  /** Атмосфера под сценой (петля) — отдельный канал, плавная смена; null — тишина. */
+  playAmbience(key) {
+    if (!this.game || this.ambKey === key) return;
+    const old = this.amb;
+    this.ambKey = key;
+    this.amb = null;
+    if (old) this.#fade(old, 0, () => old.destroy());
+    if (!key || !this.#has(key)) return;
+    this.amb = this.game.sound.add(key, { loop: true, volume: 0 });
+    this.amb.play();
+    this.#fade(this.amb, effectiveVolume('sfx') * (BASE[key] ?? 1));
+  }
+
   playSfx(key, extra = {}) {
     if (!this.game || !this.#has(key)) return null;
-    const volume = effectiveVolume('sfx') * (extra.volume ?? 1);
+    const volume = effectiveVolume('sfx') * (BASE[key] ?? 1) * (extra.volume ?? 1);
     if (volume <= 0) return null;
     this.game.sound.play(key, { ...extra, volume });
     return true;
@@ -63,13 +99,22 @@ class AudioManager {
   /** Зацикленный звук (мотор), громкость и высоту тона меняет вызывающий. */
   loopSfx(key) {
     if (!this.game || !this.#has(key)) return null;
-    const s = this.game.sound.add(key, { loop: true, volume: effectiveVolume('sfx') });
+    const s = this.game.sound.add(key, {
+      loop: true,
+      volume: effectiveVolume('sfx') * (BASE[key] ?? 1),
+    });
     s.play();
     return s;
   }
 
+  /** Общая громкость звуков 0–1 (настройки), для петель, которые сцена ведёт сама. */
+  sfxLevel() {
+    return effectiveVolume('sfx');
+  }
+
   applyVolume() {
-    if (this.music) this.music.setVolume(effectiveVolume('music'));
+    if (this.music) this.music.setVolume(effectiveVolume('music') * (BASE[this.musicKey] ?? 1));
+    if (this.amb) this.amb.setVolume(effectiveVolume('sfx') * (BASE[this.ambKey] ?? 1));
   }
 
   #fade(sound, to, onDone) {

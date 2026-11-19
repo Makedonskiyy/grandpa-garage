@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import config from '../../data/config.json';
 import { BaseScene } from './BaseScene.js';
-import { SCENES, MUSIC, SFX, WORLD } from '../config/constants.js';
+import { SCENES, MUSIC, SFX, AMB, WORLD } from '../config/constants.js';
 import { buildCar, buildRivalCar, spinWheels } from '../systems/buildCar.js';
 import { getTest, formatSeconds } from '../systems/simulate.js';
 import { createRun, stepRun, greenLight, runBot, summarize } from '../systems/drive.js';
@@ -13,7 +13,7 @@ import { getSettings } from '../systems/settings.js';
 import { gameState, recordResult } from '../gameState.js';
 import { el } from '../ui/dom.js';
 import { t } from '../systems/strings.js';
-import { DriveHud } from '../ui/DriveHud.js';
+import { DriveHud, DriveSounds } from '../ui/DriveHud.js';
 
 const cfg = config.race;
 const MAX_SEC = 30; // дальше ждать нет смысла — Палыч давно на финише
@@ -40,6 +40,8 @@ export class RaceScene extends BaseScene {
   async create() {
     this.enter();
     audio.playMusic(MUSIC.DRIVE);
+    this.ambience = AMB.NIGHT;
+    audio.playAmbience(this.ambience);
 
     this.test = getTest('race');
     const auto = getSettings().gearbox === 'auto';
@@ -71,7 +73,9 @@ export class RaceScene extends BaseScene {
     this.smoke = this.#makeSmoke();
 
     this.#buildHud();
+    audio.playSfx(SFX.CAR_START);
     this.engine = audio.loopSfx(SFX.ENGINE);
+    this.sounds = new DriveSounds(this, 'asphalt');
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.engine?.destroy());
 
     this.hud.setVisible(false);
@@ -258,6 +262,7 @@ export class RaceScene extends BaseScene {
     else if (!spinning && this.smoke.emitting) this.smoke.stop();
 
     this.hud.render();
+    this.sounds.update(run);
     this.$time.textContent = formatSeconds(run.t);
     this.#sound();
 
@@ -286,11 +291,13 @@ export class RaceScene extends BaseScene {
     this.state = 'finished';
     if (this.run.reasonKey === 'jump') {
       this.light.foul();
+      audio.playSfx(SFX.FOUL);
       this.hud.say('jump', 'warn');
     }
     this.hud.setEnabled(false);
     this.smoke.stop();
     this.engine?.stop();
+    this.sounds.stop();
     // Не доехал за отведённое время — итог по тому, что успел.
     if (!this.run.done) {
       this.run.done = true;
