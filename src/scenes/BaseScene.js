@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import config from '../../data/config.json';
-import { createLayer } from '../ui/overlay.js';
+import { createLayer, closeAllModals } from '../ui/overlay.js';
 import { closeShutter, openShutter, isShutterClosed } from '../ui/transition.js';
 import { fitCamera, getRenderZoom } from '../systems/scale.js';
 import { WORLD } from '../config/constants.js';
@@ -20,6 +20,7 @@ export class BaseScene extends Phaser.Scene {
 
   /** Вызывать в начале create(): сброс флагов и появление сцены. */
   enter() {
+    closeAllModals();
     this._leaving = false;
     this._ui = null;
     this.input.enabled = true;

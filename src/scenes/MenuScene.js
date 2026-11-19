@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { BaseScene } from './BaseScene.js';
-import { SCENES, MUSIC, VERSION } from '../config/constants.js';
+import { SCENES, MUSIC, VERSION, AMB } from '../config/constants.js';
 import { el } from '../ui/dom.js';
 import { webButton } from '../ui/components.js';
 import { openSettings } from '../ui/SettingsPanel.js';
@@ -22,6 +22,8 @@ export class MenuScene extends BaseScene {
   create() {
     this.enter();
     audio.playMusic(MUSIC.MENU);
+    this.ambience = AMB.COOP;
+    audio.playAmbience(this.ambience);
 
     this.add.image(0, 0, 'bg_menu').setOrigin(0);
     this.#createWind();

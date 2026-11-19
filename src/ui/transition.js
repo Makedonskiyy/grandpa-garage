@@ -6,6 +6,8 @@
  * окнами) и переживает смену сцены. При «уменьшении движения» в системе — простое затемнение.
  */
 import { el } from './dom.js';
+import { audio } from '../systems/AudioManager.js';
+import { SFX } from '../config/constants.js';
 
 const CLOSE_MS = 420;
 const OPEN_MS = 560;
@@ -32,6 +34,7 @@ export function isShutterClosed() {
 export function closeShutter() {
   const node = getShutter();
   node.classList.remove('is-opening');
+  audio.playSfx(SFX.SHUTTER_DOWN);
   // Кадр между вставкой и классом — чтобы сработал CSS-переход.
   return new Promise((resolve) => {
     requestAnimationFrame(() => {
@@ -47,5 +50,6 @@ export function openShutter() {
   const node = getShutter();
   node.classList.add('is-opening');
   node.classList.remove('is-closed');
+  audio.playSfx(SFX.SHUTTER_UP);
   setTimeout(() => node.classList.remove('is-opening'), OPEN_MS);
 }

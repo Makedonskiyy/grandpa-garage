@@ -1,5 +1,5 @@
 import { BaseScene } from './BaseScene.js';
-import { SCENES, SFX } from '../config/constants.js';
+import { SCENES, SFX, AMB } from '../config/constants.js';
 import { StoryStage } from '../systems/StoryStage.js';
 import { audio } from '../systems/AudioManager.js';
 import { formatSeconds, getTest } from '../systems/simulate.js';
@@ -23,13 +23,15 @@ export class ResultScene extends BaseScene {
 
   async create() {
     this.enter();
+    this.ambience = AMB.GARAGE;
+    audio.playAmbience(this.ambience);
     this.car = null;
     const r = gameState.lastResult;
     if (!r) {
       this.goTo(SCENES.MENU);
       return;
     }
-    const test = getTest(r.testId);
+    const test = getTest(r.map ?? r.testId);
 
     drawGarageRoom(this, { lampX: STAGE.carX, groundY: STAGE.groundY });
     ({ car: this.car } = placeGarageCar(this, {

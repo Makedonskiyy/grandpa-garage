@@ -1,0 +1,32 @@
+{
+  "$comment": "Финальные титры (CreditsScene). Блоки идут сверху вниз; title — заголовок блока, lines — строки. Имена и роли команды правьте здесь.",
+  "title": "Дедов гараж",
+  "subtitle": "Посвящается всем дедам, которые чинили машины в гаражах",
+  "blocks": [
+    {
+      "title": "Команда TRITON",
+      "lines": ["Makedonskiyy — идея, геймдизайн, код, арт", "muslakov — педали и приборы"]
+    },
+    { "title": "Сделано для", "lines": ["AI GAME JAM"] },
+    { "title": "Движок и сборка", "lines": ["Phaser 3 · Vite"] },
+    {
+      "title": "Шрифты",
+      "lines": ["Onest, Literata, Caveat, Cormorant Garamond, Inter — SIL Open Font License"]
+    },
+    { "title": "Иконки", "lines": ["Phosphor Icons — MIT"] },
+    {
+      "title": "Пиксель-арт",
+      "lines": [
+        "Машина, светофор, трассы — нарисованы в команде",
+        "Фоны — из наших фотографий, в пиксели скиллами codixel и pixel-art"
+      ]
+    },
+    { "title": "Звук", "lines": ["Авторы звуков — docs/sound/CREDITS.md"] },
+    { "title": "Код игры", "lines": ["GNU GPL v3.0 · github.com/Makedonskiyy/grandpa-garage"] },
+    {
+      "title": "Спасибо",
+      "lines": ["Деду — за гараж", "Палычу — за честный заезд", "Вам — за то, что доиграли"]
+    }
+  ],
+  "end": "Конец"
+}

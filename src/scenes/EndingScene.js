@@ -1,6 +1,6 @@
 import partsData from '../../data/parts.json';
 import { BaseScene } from './BaseScene.js';
-import { SCENES, MUSIC } from '../config/constants.js';
+import { SCENES, MUSIC, AMB } from '../config/constants.js';
 import { drawGarageRoom, placeGarageCar } from './garageBackdrop.js';
 import { StoryStage } from '../systems/StoryStage.js';
 import { audio } from '../systems/AudioManager.js';
@@ -22,6 +22,8 @@ export class EndingScene extends BaseScene {
   async create() {
     this.enter();
     audio.playMusic(MUSIC.ENDING);
+    this.ambience = AMB.DAWN;
+    audio.playAmbience(this.ambience);
     drawGarageRoom(this, { lampX: STAGE.carX, groundY: STAGE.groundY });
     ({ car: this.car } = placeGarageCar(this, {
       x: STAGE.carX,
@@ -51,14 +53,16 @@ export class EndingScene extends BaseScene {
           win?.details?.time ? `${formatSeconds(win.details.time)} ${t('garage.units.sec')}` : '—',
         ),
         stat(t('ending.partsLabel'), parts),
-        webButton(
-          t('ending.playAgain'),
-          () => {
+        el('div', { class: 'ending-panel__actions' }, [
+          webButton(t('ending.credits'), () => this.goTo(SCENES.CREDITS), {
+            variant: 'primary',
+            icon: 'play',
+          }),
+          webButton(t('ending.playAgain'), () => {
             resetGame();
             this.goTo(SCENES.MENU);
-          },
-          { variant: 'primary', icon: 'play' },
-        ),
+          }),
+        ]),
       ]),
     );
   }

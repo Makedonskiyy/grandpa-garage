@@ -9,6 +9,8 @@ import config from '../../data/config.json';
 import { el } from './dom.js';
 import { t } from '../systems/strings.js';
 import { createPedalState, setPedalTarget, stepPedals, isPedalKey } from '../systems/pedals.js';
+import { audio } from '../systems/AudioManager.js';
+import { SFX } from '../config/constants.js';
 
 /** Педали и лепестки — векторные картинки tools/build-hud.mjs. */
 const HUD = 'assets/images/hud/';
@@ -110,6 +112,7 @@ export class PedalControls {
   }
 
   #flash(node) {
+    audio.playSfx(SFX.PADDLE);
     node.classList.remove('is-hit');
     void node.offsetWidth; // перезапуск анимации
     node.classList.add('is-hit');
@@ -154,6 +157,14 @@ export class PedalControls {
       (this.pointers[pedal] || [...this.keys].some((code) => isPedalKey(code, pedal)));
     const gas = held('gas');
     const brake = held('brake');
+    // Тихий звук нажатия и отпускания педали.
+    for (const [kind, on] of [
+      ['gas', gas],
+      ['brake', brake],
+    ]) {
+      if (on !== Boolean(this.down?.[kind])) audio.playSfx(on ? SFX.PEDAL_DOWN : SFX.PEDAL_UP);
+    }
+    this.down = { gas, brake };
     setPedalTarget(this.state, 'gas', gas);
     setPedalTarget(this.state, 'brake', brake);
     this.$gas.classList.toggle('is-pressed', gas);

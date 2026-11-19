@@ -31,8 +31,14 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export function segmentAt(test, x) {
   const segs = test.track?.segments;
   if (!segs) return { type: test.surfaceType ?? 'asphalt', from: 0, to: test.formula.distance };
-  return segs.find((s) => x < s.to) ?? segs[segs.length - 1];
+  // Бесконечная трасса: участки повторяются по кругу.
+  const L = test.track.length;
+  const at = test.track.loop ? ((x % L) + L) % L : x;
+  return segs.find((s) => at < s.to) ?? segs[segs.length - 1];
 }
+
+/** Режим заезда: mud — грунтовка, track — автодром, free — бесконечная, drag — 400 м. */
+export const modeOf = (run) => run.test.mode ?? 'drag';
 
 /**
  * Новый заезд.
@@ -97,8 +103,9 @@ function wheelForce(run, rpm, gear = run.gear) {
 }
 
 function surfaceOf(run) {
-  if (run.testId === 'race') return 'asphalt';
-  return 'clay';
+  // Покрытие участка (бесконечная трасса чередует грунт и асфальт), иначе — покрытие заезда.
+  const seg = segmentAt(run.test, run.x);
+  return run.test.surfaces?.[seg.type]?.grip ?? run.test.surface;
 }
 
 /** Предел сцепления шин (Н): полный привод, вес + прижим спойлера на скорости. */
@@ -264,7 +271,7 @@ function tick(run, gas, brake, h) {
   if (shifting) rpm = Math.max(idleRpm, run.rpm + (rpm - run.rpm) * Math.min(1, h * 14));
   run.rpm = Math.min(rpm, redline * 1.01);
 
-  if (run.testId === 'trial') trialHazards(run, seg, surf, gas, drive, limit, h);
+  if (modeOf(run) !== 'drag') trialHazards(run, seg, surf, gas, drive, limit, h);
   else if (run.x >= run.length) {
     const broken = stats.durability < run.test.minDurability;
     finish(
@@ -303,7 +310,26 @@ function trialHazards(run, seg, surf, gas, drive, limit, h) {
     const traction = run.log.deepTraction >= run.log.deepPower || run.slip > 0.3;
     return finish(run, false, traction ? 'traction' : 'power');
   }
-  if (run.x >= run.length) finish(run, true);
+  const mode = modeOf(run);
+  if (mode === 'mud' && run.x >= run.length) finish(run, true);
+  if (mode === 'track') trackRules(run);
+}
+
+/**
+ * Автодром: к отметке trap.at нужно разогнаться до trap.minSpeed, затем остановиться
+ * между конусами зоны. Проехал зону — «не успел оттормозиться», встал раньше — «рано».
+ */
+function trackRules(run) {
+  const { trap, zone } = run.test;
+  if (run.trapSpeed === undefined && run.x >= trap.at) {
+    run.trapSpeed = run.v;
+    run.events.push({ type: 'trap', v: run.v });
+    if (run.v < trap.minSpeed) return finish(run, false, 'slow');
+  }
+  if (run.x > zone.to) return finish(run, false, 'overshoot');
+  if (run.trapSpeed !== undefined && run.v < 0.05) {
+    finish(run, run.x >= zone.from, run.x >= zone.from ? null : 'short');
+  }
 }
 
 // ---------- Идеальный водитель ----------
@@ -414,7 +440,24 @@ export function runBot(testId, build, opts = {}, data = defaultData) {
     if (wantsUpshift(run)) shiftUp(run);
     let gas = cleanGas(run);
     let brake = 0;
-    if (testId === 'trial') {
+    if (modeOf(run) === 'track') {
+      const { zone } = run.test;
+      const stopAt = (zone.from + zone.to) / 2;
+      const mu = run.stats.grip.asphalt * run.ph.muPerGrip.asphalt;
+      const decel = Math.min(run.ph.brakeMu, mu) * run.ph.g * 0.97;
+      const need = (run.v * run.v) / (2 * decel);
+      const bump = run.test.track.segments.find(
+        (s) => run.test.surfaces[s.type]?.impact && s.to > run.x && s.from - run.x < 25,
+      );
+      // Держит скорость, с которой ещё успеет встать в середине зоны.
+      if (run.x + need >= stopAt) {
+        gas = 0;
+        brake = 1;
+      } else if (bump && run.v > run.test.bot.bumpSpeed) {
+        gas = 0;
+        brake = clamp((run.v - run.test.bot.bumpSpeed) / 3, 0, 1);
+      }
+    } else if (modeOf(run) !== 'drag') {
       const target = trialTarget(run);
       if (run.v > target + 0.4) {
         gas = 0;
@@ -425,7 +468,7 @@ export function runBot(testId, build, opts = {}, data = defaultData) {
     }
     stepRun(run, { gas, brake }, STEP);
   }
-  if (!run.done) finish(run, false, testId === 'trial' ? 'power' : 'slow');
+  if (!run.done) finish(run, false, modeOf(run) === 'mud' ? 'power' : 'slow');
   return run;
 }
 
@@ -445,7 +488,7 @@ export function summarize(run, best = null) {
   // Сборка позволяла, а не вышло — значит, дело в езде.
   const buildCould = best?.ok;
   if (!run.ok && buildCould && !['broken', 'jump'].includes(reasonKey)) reasonKey = 'driving';
-  if (!run.ok && buildCould && reasonKey === 'broken' && run.testId === 'trial')
+  if (!run.ok && buildCould && reasonKey === 'broken' && modeOf(run) !== 'drag')
     reasonKey = 'rough';
 
   let reason = null;
@@ -469,7 +512,7 @@ export function summarize(run, best = null) {
     bestTime: best?.ok ? best.t : null,
     reaction: run.reaction,
   };
-  if (run.testId === 'race') {
+  if (modeOf(run) === 'drag') {
     details.rivalTime = test.rivalTime;
     details.diff = run.t - test.rivalTime;
     details.diffText = format(details.diff >= 0 ? test.reasons.slower : test.reasons.faster, {
@@ -493,7 +536,11 @@ function raceWeakness(run, best) {
 /** Совет по езде: что именно стоило сделать иначе. */
 function drivingHint(run) {
   const h = run.test.drivingHints;
-  if (run.testId === 'trial') {
+  if (modeOf(run) === 'track') {
+    if (run.reasonKey === 'broken') return h.bumps;
+    return h[run.reasonKey] ?? h.brake;
+  }
+  if (modeOf(run) !== 'drag') {
     if (run.reasonKey === 'broken') return h.ruts;
     return run.slip > 0.3 || run.log.deepTraction > run.log.deepPower ? h.spin : h.momentum;
   }

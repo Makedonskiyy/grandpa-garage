@@ -1055,73 +1055,100 @@ kbd {
   animation: none;
 }
 
-/* Окно реплики. */
+/*
+ * Окно реплики: широкая тёмная плашка у нижнего края, как субтитры в кино.
+ * Имя говорящего — внутри окна, сверху, цветом говорящего не выделяется: кто говорит,
+ * видно по подсвеченному персонажу. Текст — Literata, крупно; внизу справа — «дальше».
+ */
 .story__box {
-  left: 160px;
-  right: 160px;
-  bottom: 40px;
-  min-height: 200px;
-  padding: 48px 56px 40px;
-  border-radius: 20px;
-  background: rgb(22 21 19 / 0.94);
+  left: 200px;
+  right: 200px;
+  bottom: 48px;
+  min-height: 184px;
+  padding: 28px 48px 36px;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgb(20 18 16 / 0.9), rgb(12 11 10 / 0.96));
   box-shadow:
-    inset 0 0 0 1px rgb(239 233 222 / 0.08),
-    0 12px 32px rgb(0 0 0 / 0.45);
+    inset 0 1px 0 rgb(239 233 222 / 0.1),
+    inset 0 0 0 1px rgb(239 233 222 / 0.06),
+    0 24px 60px rgb(0 0 0 / 0.5);
   color: #efe9de;
   font-family: var(--font-story);
   cursor: pointer;
-  animation: ui-rise var(--ui-enter) var(--ui-ease);
+  animation: story-box-in 320ms var(--ui-ease);
+}
+
+.story__box.is-hidden {
+  display: none;
+}
+
+@keyframes story-box-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
 }
 
 .story__name {
-  position: absolute;
-  top: -24px;
-  left: 48px;
-  height: 48px;
-  padding: 0 24px;
-  border-radius: 12px;
   display: flex;
   align-items: center;
-  background: var(--ui-accent);
-  color: var(--ui-ink);
-  font-size: 24px;
-  font-weight: 500;
-  animation: story-tag 380ms var(--ui-ease);
+  gap: 12px;
+  font-family: var(--font-ui);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--ui-accent);
+  animation: story-tag 320ms var(--ui-ease);
+}
+
+/* Короткая черта перед именем — как тире в пьесе. */
+.story__name::before {
+  content: '';
+  width: 24px;
+  height: 2px;
+  border-radius: 1px;
+  background: currentColor;
 }
 
 @keyframes story-tag {
   from {
     opacity: 0;
-    transform: translateY(10px) scale(0.85);
+    transform: translateX(-8px);
   }
 }
 
 .story__box--right .story__name {
-  left: auto;
-  right: 48px;
+  justify-content: flex-end;
+}
+
+.story__box--right .story__name::before {
+  order: 2;
 }
 
 .story__text {
   font-size: 34px;
   line-height: 1.45;
   white-space: pre-wrap;
+  text-wrap: pretty;
 }
 
 .story__next {
   position: absolute;
-  right: 40px;
-  bottom: 32px;
+  right: 36px;
+  bottom: 28px;
   width: 0;
   height: 0;
-  border-left: 10px solid transparent;
-  border-right: 10px solid transparent;
-  border-top: 12px solid currentColor;
+  border-left: 9px solid transparent;
+  border-right: 9px solid transparent;
+  border-top: 11px solid var(--ui-accent);
   opacity: 0;
   transition: opacity var(--ui-fast) var(--ui-ease);
 }
 
 .story-layer.is-done .story__next {
-  opacity: 0.6;
+  opacity: 0.9;
   animation: story-next 800ms ease-in-out infinite alternate;
 }
 
@@ -1131,34 +1158,135 @@ kbd {
   }
 }
 
-/* Записка деда: бумага в линейку и почерк. */
-.story__box.is-note {
-  background:
-    repeating-linear-gradient(to bottom, transparent 0 55px, rgb(70 96 140 / 0.22) 55px 57px),
-    #f3ead7;
-  background-position: 0 44px;
-  color: #2a3348;
-  transform: rotate(-0.6deg);
-  animation: story-note-in 600ms var(--ui-ease);
+/* ---------- Записка деда на верстаке ----------
+ * Сначала — сложенный листок на столе (покачивается, зовёт кликнуть), по клику —
+ * разворачивается в лист в линейку, строки дописываются почерком по одной.
+ */
+.story-note[hidden] {
+  display: none;
 }
 
-/* Записку кладут перед глазами: выезжает снизу и чуть поворачивается. */
-@keyframes story-note-in {
-  from {
-    opacity: 0;
-    transform: translateY(60px) rotate(-3deg);
+.story-note {
+  inset: 0;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.story-note__folded {
+  position: absolute;
+  left: 50%;
+  bottom: 220px;
+  width: 260px;
+  height: 180px;
+  margin-left: -130px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  background:
+    linear-gradient(135deg, rgb(0 0 0 / 0.08) 50%, transparent 50%) no-repeat right top / 56px 56px,
+    linear-gradient(90deg, transparent 49.6%, rgb(120 100 70 / 0.35) 50%, transparent 50.4%),
+    #efe4cc;
+  box-shadow:
+    0 18px 30px rgb(0 0 0 / 0.55),
+    0 2px 0 rgb(0 0 0 / 0.2);
+  transform: rotate(-7deg);
+  animation: note-wait 1.6s ease-in-out infinite alternate;
+}
+
+.story-note__folded:hover {
+  animation-play-state: paused;
+  transform: rotate(-7deg) translateY(-8px) scale(1.04);
+}
+
+@keyframes note-wait {
+  to {
+    transform: rotate(-5deg) translateY(-6px);
   }
 }
 
-.story__box.is-note .story__text {
+.story-note__seal {
   font-family: 'Caveat Variable', 'Caveat', cursive;
-  font-size: 50px;
-  line-height: 1.14;
+  font-size: 44px;
+  color: #2a3348;
+  transform: rotate(-3deg);
 }
 
-.story__box.is-note .story__name {
-  background: #2a3348;
-  color: #f3ead7;
+.story-note__hint {
+  position: absolute;
+  left: 50%;
+  bottom: 96px;
+  transform: translateX(-50%);
+  padding: 14px 24px;
+  border-radius: 999px;
+  font: 500 24px/1 var(--font-ui);
+  color: var(--ui-text);
+  background: rgb(18 16 14 / 0.85);
+  box-shadow: inset 0 0 0 1px var(--ui-line-strong);
+  white-space: nowrap;
+}
+
+.story-note__paper {
+  width: 1040px;
+  min-height: 600px;
+  padding: 72px 96px 80px;
+  background:
+    repeating-linear-gradient(to bottom, transparent 0 63px, rgb(70 96 140 / 0.25) 63px 65px),
+    linear-gradient(90deg, transparent 72px, rgb(190 70 70 / 0.35) 72px 74px, transparent 74px),
+    #f3ead7;
+  background-position:
+    0 56px,
+    0 0,
+    0 0;
+  color: #2a3348;
+  box-shadow: 0 30px 80px rgb(0 0 0 / 0.6);
+  transform-origin: 50% 70%;
+  animation: note-unfold 520ms var(--ui-ease);
+  transform: rotate(-1deg);
+}
+
+@keyframes note-unfold {
+  0% {
+    opacity: 0;
+    transform: translateY(240px) scale(0.3, 0.12) rotate(-8deg);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(0) scale(1, 0.5) rotate(-3deg);
+  }
+}
+
+.story-note.is-closing .story-note__paper {
+  animation: note-fold 420ms var(--ui-ease) forwards;
+}
+
+@keyframes note-fold {
+  to {
+    opacity: 0;
+    transform: translateY(260px) scale(0.3, 0.12) rotate(-8deg);
+  }
+}
+
+.story-note__line {
+  margin: 0;
+  font-family: 'Caveat Variable', 'Caveat', cursive;
+  font-size: 52px;
+  line-height: 65px;
+  animation: note-write 700ms ease-out;
+}
+
+/* Строка «проявляется» слева направо — будто её пишут. */
+@keyframes note-write {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.story-note.is-open .story-note__hint {
+  bottom: 40px;
 }
 
 /* Дата и надписи — по центру, без окна. */
@@ -1505,4 +1633,79 @@ kbd {
   font-size: 20px;
   line-height: 1.4;
   color: var(--ui-text-2);
+}
+
+/* ---------- Финальные титры ---------- */
+.credits {
+  inset: 0;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 18%, #000 82%, transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0%, #000 18%, #000 82%, transparent 100%);
+}
+
+.credits__roll {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 1000px;
+  margin-left: -500px;
+  display: grid;
+  justify-items: center;
+  gap: 56px;
+  text-align: center;
+  color: var(--ui-text);
+  animation: credits-roll linear forwards;
+}
+
+@keyframes credits-roll {
+  from {
+    transform: translateY(1080px);
+  }
+  to {
+    transform: translateY(calc(-100% - 40px));
+  }
+}
+
+.credits__logo {
+  width: 520px;
+}
+
+.credits__subtitle {
+  margin: -24px 0 40px;
+  font: italic 400 30px/1.4 var(--font-story);
+  color: var(--ui-text-2);
+}
+
+.credits__title {
+  margin: 0 0 12px;
+  font: 600 22px/1 var(--font-ui);
+  color: var(--ui-accent);
+}
+
+.credits__line {
+  margin: 6px 0 0;
+  font: 400 32px/1.35 var(--font-story);
+}
+
+.credits__end {
+  margin-top: 160px;
+  font: 400 64px/1 var(--font-story);
+}
+
+.credits__skip {
+  top: 40px;
+  right: 40px;
+}
+
+.credits__skip .wbtn,
+.ending-panel__actions .wbtn {
+  height: 64px;
+  padding: 0 28px;
+  font-size: 22px;
+  border-radius: 16px;
+}
+
+.ending-panel__actions {
+  display: flex;
+  gap: 16px;
 }

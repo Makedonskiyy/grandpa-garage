@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { BaseScene } from './BaseScene.js';
-import { SCENES, MUSIC, SFX, WORLD } from '../config/constants.js';
+import { SCENES, MUSIC, SFX, AMB, WORLD } from '../config/constants.js';
 import { buildCar } from '../systems/buildCar.js';
 import { getTest } from '../systems/simulate.js';
 import { createRun, stepRun, greenLight, runBot, summarize, segmentAt } from '../systems/drive.js';
@@ -11,7 +11,9 @@ import { el } from '../ui/dom.js';
 import { t } from '../systems/strings.js';
 import { getSettings } from '../systems/settings.js';
 import { getRenderZoom } from '../systems/scale.js';
-import { DriveHud } from '../ui/DriveHud.js';
+import { webButton } from '../ui/components.js';
+import { backdrop, prop, roadsideProps, rng } from './scenery.js';
+import { DriveHud, DriveSounds } from '../ui/DriveHud.js';
 
 /**
  * Весь пейзаж поднят на SHIFT, чтобы машина ехала над приборами (их верх — y ≈ 259).
@@ -23,13 +25,15 @@ const GROUND_Y = ROAD_Y + SHIFT;
 const CAR_X = 250; // машина стоит, дорога едет под ней
 const PPM = 62; // точек мира на метр: машина 288 точек ≈ 4,6 м
 const WARN_M = 28; // за сколько метров предупреждать об участке
-const SEG_COLORS = { mud: '#6b5236', ruts: '#a0703c', deep: '#2c2117' };
-
-/** Детерминированный генератор: фон одинаков при каждом запуске. */
-function rng(seed) {
-  let v = seed;
-  return () => (v = (v * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
-}
+const SEG_COLORS = {
+  mud: '#6b5236',
+  ruts: '#a0703c',
+  deep: '#2c2117',
+  asphalt: '#55585e',
+  bump: '#e0b43a',
+};
+/** Участки, о которых предупреждаем знаком и подсказкой. */
+const HAZARDS = ['ruts', 'deep', 'bump'];
 
 /**
  * Обкатка (ТЗ 3.7): раскисшая грунтовка за гаражами, параллакс в 3 слоя. Машину ведёт физика
@@ -45,11 +49,18 @@ export class TrialScene extends BaseScene {
   create() {
     this.enter();
     audio.playMusic(MUSIC.DRIVE);
+    this.ambience = AMB.ROAD;
+    audio.playAmbience(this.ambience);
 
-    this.test = getTest('trial');
+    // Карта из выбора в гараже: грунтовка, автодром или бесконечная объездная.
+    this.test = getTest(gameState.trialMap ?? 'trial');
+    this.theme = this.test.mode;
+    this.loop = Boolean(this.test.track.loop);
     const auto = getSettings().gearbox === 'auto';
-    this.run = createRun('trial', gameState.build, { condition: gameState.car, auto });
-    this.best = runBot('trial', gameState.build, { condition: gameState.car });
+    this.run = createRun(this.test.id, gameState.build, { condition: gameState.car, auto });
+    this.best = this.test.practice
+      ? null
+      : runBot(this.test.id, gameState.build, { condition: gameState.car });
     this.done = false;
     this.spin = 0;
 
@@ -62,13 +73,26 @@ export class TrialScene extends BaseScene {
     });
     this.cover = this.#drawMudCover(); // грязь поверх колёс в глубоких участках
     this.mud = this.#makeMud();
+    audio.playSfx(SFX.CAR_START);
     this.engine = audio.loopSfx(SFX.ENGINE);
+    this.sounds = new DriveSounds(this, this.test.surface);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.engine?.destroy());
 
     this.#buildHud();
     // Светофор у обочины на старте: трогается игрок сам, на зелёный.
+    this.startBox = this.add.container(CAR_X, SHIFT);
     this.light = new StartLight(this, 4 * PPM, 146, { scale: 1.1, pole: 40 });
-    this.track.add(this.light);
+    this.startBox.add(this.light);
+    if (this.test.practice) {
+      this.ui.append(
+        el('div', { class: 'ui-abs trial-exit' }, [
+          webButton(t('trial.toGarage'), () => this.#finish(true), {
+            variant: 'dark',
+            icon: 'back',
+          }),
+        ]),
+      );
+    }
     this.hud.say(auto ? 'launchAuto' : 'launch');
     this.light.run(this.test.christmasTree, {
       onAmber: () => audio.playSfx(SFX.TREE_BEEP),
@@ -100,6 +124,19 @@ export class TrialScene extends BaseScene {
     this.$dur = el('div', { class: 'meter__fill is-good', style: { transform: 'scaleX(1)' } });
     this.$durValue = el('span', { text: '100%' });
     this.$pathValue = el('span', { text: '0 м' });
+    if (this.test.trap) {
+      const { trap, zone } = this.test;
+      map.append(
+        el('span', { class: 'trackmap__trap', style: { left: `${(trap.at / len) * 100}%` } }),
+        el('span', {
+          class: 'trackmap__zone',
+          style: {
+            left: `${(zone.from / len) * 100}%`,
+            width: `${((zone.to - zone.from) / len) * 100}%`,
+          },
+        }),
+      );
+    }
     const block = (label, value, body) =>
       el('div', { class: 'drive-hud__block' }, [
         el('div', { class: 'hud-meter__head' }, [el('span', { text: label }), value]),
@@ -108,107 +145,23 @@ export class TrialScene extends BaseScene {
     this.hud = new DriveHud(this, this.run, {
       className: 'dash--trial',
       middle: [
+        el('div', { class: 'dash-info__map', text: this.test.map.name }),
         block(t('trial.distance'), this.$pathValue, map),
         block(t('trial.durability'), this.$durValue, el('div', { class: 'meter' }, this.$dur)),
       ],
     });
   }
 
-  /**
-   * Параллакс в 3 слоя (ТЗ 3.7), нарисован кодом в пикселях мира: ноябрьское небо и панельки
-   * вдали, ряд гаражей со снегом на крышах, раскисшая колея с лужами. Слои бесшовные по ширине.
-   */
+  /** Параллакс в 3 слоя по теме карты (scenes/scenery.js), поднят на SHIFT. */
   #createParallax() {
     const { width, height } = WORLD;
-    const make = (key, draw) => {
-      if (this.textures.exists(key)) return;
-      const g = this.make.graphics({ x: 0, y: 0 }, false);
-      draw(g, rng(key.length * 97));
-      g.generateTexture(key, width, height);
-      g.destroy();
-    };
-    make('trial_far', (g, r) => {
-      // Пасмурное небо ступенями к светлому горизонту.
-      const sky = [0xaeb7c1, 0xb7bfc8, 0xc0c7ce, 0xc9ced3, 0xd1d4d6];
-      sky.forEach((c, i) => g.fillStyle(c).fillRect(0, i * 34, width, 35));
-      g.fillStyle(0xd6d8d8).fillRect(0, 170, width, 60);
-      // Панельные дома вдали с редкими горящими окнами.
-      let x = 0;
-      while (x < width) {
-        const w = 36 + Math.floor(r() * 40);
-        const h = 34 + Math.floor(r() * 30);
-        g.fillStyle(0x9aa3ad).fillRect(x, 196 - h, w, h + 40);
-        g.fillStyle(0x8c96a1).fillRect(x + w - 4, 196 - h, 4, h + 40);
-        for (let wy = 196 - h + 4; wy < 196; wy += 6) {
-          for (let wx = x + 3; wx < x + w - 6; wx += 5) {
-            g.fillStyle(r() < 0.18 ? 0xe9d7a8 : 0x7f8994).fillRect(wx, wy, 2, 2);
-          }
-        }
-        x += w + 6 + Math.floor(r() * 30);
-      }
-      // Голые деревья полосой.
-      for (let tx = 0; tx < width; tx += 3) {
-        const h = 10 + Math.floor(r() * 16);
-        g.fillStyle(0x7d7f7e).fillRect(tx, 216 - h, 1, h);
-      }
-      g.fillStyle(0x8a8c8a).fillRect(0, 212, width, 20);
-    });
-    make('trial_mid', (g, r) => {
-      // Ряд гаражей кооператива: кирпич, крашеные ворота, снег на крышах.
-      const gates = [0x4f5d52, 0x5b5f66, 0x6b5a48, 0x4b5866, 0x5f5246];
-      for (let gx = 0, i = 0; gx < width; gx += 64, i++) {
-        g.fillStyle(0x7a6f66).fillRect(gx, 200, 64, 58);
-        for (let by = 202; by < 256; by += 4) g.fillStyle(0x6e645c).fillRect(gx, by, 64, 1);
-        g.fillStyle(0x5d544d).fillRect(gx, 200, 2, 58);
-        g.fillStyle(gates[i % gates.length]).fillRect(gx + 10, 214, 44, 44);
-        g.fillStyle(0x000000, 0.2).fillRect(gx + 31, 214, 2, 44);
-        g.fillStyle(0xffffff, 0.08).fillRect(gx + 10, 214, 44, 2);
-        g.fillStyle(0xeef1f3).fillRect(gx - 2, 196, 68, 5);
-        g.fillStyle(0xd9dee2).fillRect(gx - 2, 200, 68, 2);
-        if (r() < 0.5) g.fillStyle(0xe8e3d6).fillRect(gx + 14, 208, 8, 4);
-      }
-      // Сугробы у стены.
-      for (let sx = 0; sx < width; sx += 4) {
-        const h = 2 + Math.floor(r() * 5);
-        g.fillStyle(0xe4e8eb).fillRect(sx, 262 - h, 4, h);
-      }
-      g.fillStyle(0xd3d9dd).fillRect(0, 260, width, 3);
-    });
-    make('trial_road', (g, r) => {
-      // Раскисшая грунтовка: колеи, лужи с отражением неба, комья грязи, снег по кромке.
-      const mud = [0x5f4a35, 0x584430, 0x513e2b, 0x4a3827];
-      mud.forEach((c, i) => g.fillStyle(c).fillRect(0, 263 + i * 24, width, 25));
-      for (const y of [284, 304, 324]) {
-        for (let rx = 0; rx < width; rx += 2) {
-          if (r() < 0.8) g.fillStyle(0x3b2d1f).fillRect(rx, y + Math.floor(r() * 2), 2, 2);
-        }
-      }
-      for (let i = 0; i < 6; i++) {
-        const px = Math.floor(r() * width);
-        const py = 290 + Math.floor(r() * 50);
-        const w = 24 + Math.floor(r() * 30);
-        g.fillStyle(0x3b2d1f).fillEllipse(px, py + 1, w + 4, 8);
-        g.fillStyle(0x8f9ba6).fillEllipse(px, py, w, 6);
-        g.fillStyle(0xb7c0c8).fillRect(px - w / 4, py - 1, w / 3, 1);
-      }
-      for (let i = 0; i < 220; i++) {
-        g.fillStyle(r() < 0.5 ? 0x6e5840 : 0x433323).fillRect(
-          Math.floor(r() * width),
-          266 + Math.floor(r() * 94),
-          2,
-          1,
-        );
-      }
-      for (let sx = 0; sx < width; sx += 5) {
-        g.fillStyle(0xcfd5d8).fillRect(sx, 263, 5, 1 + Math.floor(r() * 3));
-      }
-    });
-    this.layers = ['trial_far', 'trial_mid', 'trial_road'].map((key, i) => ({
+    this.layers = backdrop(this, this.theme).map(({ key, k }) => ({
       sprite: this.add.tileSprite(0, SHIFT, width, height, key).setOrigin(0),
-      k: [0.1, 0.4, 1][i],
+      k,
     }));
-    // Под поднятой дорогой — та же грязь до края экрана.
-    this.add.rectangle(0, height + SHIFT, width, -SHIFT, 0x4a3827).setOrigin(0);
+    // Под поднятой дорогой — то же покрытие до края экрана.
+    const under = this.theme === 'track' ? 0x3d3f44 : 0x4a3827;
+    this.add.rectangle(0, height + SHIFT, width, -SHIFT, under).setOrigin(0);
   }
 
   /**
@@ -218,11 +171,19 @@ export class TrialScene extends BaseScene {
    */
   #drawTrack() {
     const box = this.add.container(CAR_X, SHIFT);
+    const L = this.test.track.length;
+    const copies = this.loop ? [0, 1, 2] : [0];
+    for (const k of copies) this.#drawPattern(box, k * L * PPM);
+    if (!this.loop) this.#drawFinish(box);
+    return box;
+  }
+
+  #drawPattern(box, ox) {
     const g = this.add.graphics();
     const r = rng(7);
     box.add(g);
     for (const s of this.test.track.segments) {
-      const x0 = s.from * PPM;
+      const x0 = ox + s.from * PPM;
       const w = (s.to - s.from) * PPM;
       if (s.type === 'ruts') {
         g.fillStyle(0x3e2f20).fillRect(x0, 266, w, 94);
@@ -239,16 +200,57 @@ export class TrialScene extends BaseScene {
         for (let x = x0 + 6; x < x0 + w - 20; x += 26 + Math.floor(r() * 30)) {
           g.fillStyle(0x6d6a66, 0.5).fillRect(x, 272 + Math.floor(r() * 30), 10 + r() * 14, 1);
         }
+      } else if (s.type === 'asphalt' && this.theme === 'free') {
+        // Кусок трассы: асфальт с осевой и обочиной из щебня.
+        g.fillStyle(0x45474c).fillRect(x0, 264, w, 96);
+        g.fillStyle(0x7a7468).fillRect(x0, 264, w, 3);
+        for (let x = x0; x < x0 + w; x += 40) g.fillStyle(0xe8e6dc).fillRect(x, 312, 22, 2);
+      } else if (s.type === 'bump') {
+        // Лежачий полицейский: жёлто-чёрные полосы.
+        for (let x = x0; x < x0 + w; x += 6) {
+          g.fillStyle(((x - x0) / 6) % 2 ? 0x1b1b1d : 0xe0b43a).fillRect(x, 266, 6, 94);
+        }
+        g.fillStyle(0x000000, 0.25).fillRect(x0, 266, w, 2);
       }
-      if (s.type !== 'mud') this.#sign(box, x0 - 2 * PPM, t(`trial.signs.${s.type}`), s.type);
+      if (HAZARDS.includes(s.type)) {
+        this.#sign(box, x0 - 2 * PPM, t(`trial.signs.${s.type}`), s.type);
+      }
     }
-    // Финиш: столбик с клетчатым флажком.
+    for (const [m, name, y] of roadsideProps(this.theme, this.test.track.length)) {
+      box.add(this.add.image(ox + m * PPM, y, prop(this, name)).setOrigin(0, 1));
+    }
+    if (this.test.trap) this.#drawBrakeTest(box, g);
+  }
+
+  /** Автодром: отметка «100» с клетчатой линией и зона остановки между конусами. */
+  #drawBrakeTest(box, g) {
+    const { trap, zone } = this.test;
+    const tx = trap.at * PPM;
+    for (let y = 266; y < 360; y += 4) {
+      g.fillStyle((y / 4) % 2 ? 0x111111 : 0xffffff).fillRect(tx, y, 3, 4);
+      g.fillStyle((y / 4) % 2 ? 0xffffff : 0x111111).fillRect(tx + 3, y, 3, 4);
+    }
+    this.#sign(box, tx, t('trial.signs.trap'), 'trap');
+    const z0 = zone.from * PPM;
+    const z1 = zone.to * PPM;
+    g.fillStyle(0xe0b43a, 0.35).fillRect(z0, 266, z1 - z0, 94);
+    g.fillStyle(0xe8e8e2).fillRect(z0, 266, 2, 94);
+    g.fillStyle(0xe8e8e2).fillRect(z1 - 2, 266, 2, 94);
+    for (const x of [z0, z1])
+      for (const y of [262, 300, 344])
+        box.add(this.add.image(x, y, prop(this, 'cone')).setOrigin(0.5, 1));
+    this.#sign(box, (z0 + z1) / 2, t('trial.signs.zone'), 'zone');
+  }
+
+  /** Финиш: столбик с клетчатым флажком. */
+  #drawFinish(box) {
+    const g = this.add.graphics();
+    box.add(g);
     const fx = this.test.track.length * PPM;
     g.fillStyle(0xe9e4da).fillRect(fx, 220, 3, 70);
     for (let i = 0; i < 4; i++)
       for (let j = 0; j < 3; j++)
         g.fillStyle((i + j) % 2 ? 0x111111 : 0xffffff).fillRect(fx + 3 + i * 5, 220 + j * 5, 5, 5);
-    return box;
   }
 
   /** Знак на столбике у обочины: жёлтая табличка с надписью. */
@@ -261,7 +263,7 @@ export class TrialScene extends BaseScene {
         fontSize: '8px',
         fontStyle: '700',
         color: '#1f1b16',
-        backgroundColor: kind === 'deep' ? '#e8b84a' : '#f0d36a',
+        backgroundColor: { deep: '#e8b84a', trap: '#ffffff', zone: '#f0d36a' }[kind] ?? '#f0d36a',
         padding: { x: 4, y: 2 },
       })
       .setOrigin(0.5, 1)
@@ -273,13 +275,15 @@ export class TrialScene extends BaseScene {
   #drawMudCover() {
     const g = this.add.graphics();
     const box = this.add.container(CAR_X, SHIFT, [g]);
-    for (const s of this.test.track.segments) {
-      if (s.type !== 'deep') continue;
-      const x0 = s.from * PPM;
-      const w = (s.to - s.from) * PPM;
-      g.fillStyle(0x2c2117).fillRect(x0, ROAD_Y - 5, w, 6);
-      for (let x = x0; x < x0 + w; x += 6) g.fillStyle(0x3d2e1f).fillRect(x, ROAD_Y - 6, 3, 1);
-    }
+    const L = this.test.track.length;
+    for (const k of this.loop ? [0, 1, 2] : [0])
+      for (const s of this.test.track.segments) {
+        if (s.type !== 'deep') continue;
+        const x0 = (k * L + s.from) * PPM;
+        const w = (s.to - s.from) * PPM;
+        g.fillStyle(0x2c2117).fillRect(x0, ROAD_Y - 5, w, 6);
+        for (let x = x0; x < x0 + w; x += 6) g.fillStyle(0x3d2e1f).fillRect(x, ROAD_Y - 6, 3, 1);
+      }
     return box;
   }
 
@@ -317,11 +321,19 @@ export class TrialScene extends BaseScene {
     const moved = (run.x - prevX) * PPM;
 
     for (const l of this.layers) l.sprite.tilePositionX += moved * l.k;
-    this.track.x = CAR_X - run.x * PPM;
+    const L = this.test.track.length;
+    this.track.x = this.loop ? CAR_X - (L + (run.x % L)) * PPM : CAR_X - run.x * PPM;
     this.cover.x = this.track.x;
+    this.startBox.x = CAR_X - run.x * PPM;
     const seg = segmentAt(this.test, run.x);
+    if (seg.type === 'bump' && this.lastSeg !== 'bump' && run.v > 0.5) {
+      this.car.bump(14 + run.v * 6);
+      audio.playSfx(SFX.BUMP, { volume: Math.min(1, 0.4 + run.v / 10) });
+    }
+    this.lastSeg = seg.type;
     if (seg.type === 'ruts' && Math.random() < dt * (1 + run.v * 0.9)) {
       this.car.bump(10 + run.v * 4);
+      audio.playSfx(SFX.BUMP, { volume: Math.min(1, 0.3 + run.v / 12) });
     }
     this.car.y = GROUND_Y + run.sink * 7;
     this.car.step(dt, {
@@ -336,6 +348,7 @@ export class TrialScene extends BaseScene {
 
     this.engine?.setRate?.(0.6 + (run.rpm / run.stats.redline) * 0.9);
     this.hud.render();
+    this.sounds.update(run, { mud: seg.type === 'deep' && run.v > 1 ? 0.6 : 0 });
     this.#renderMeters();
     this.#hints(run, seg);
 
@@ -345,8 +358,14 @@ export class TrialScene extends BaseScene {
   #renderMeters() {
     const run = this.run;
     const len = this.test.track.length;
-    this.$marker.style.left = `${Math.min(100, (run.x / len) * 100)}%`;
-    this.$pathValue.textContent = `${Math.round(Math.min(run.x, len))} м`;
+    const pos = this.loop ? run.x % len : Math.min(run.x, len);
+    this.$marker.style.left = `${(pos / len) * 100}%`;
+    this.$pathValue.textContent = this.loop
+      ? t('trial.freeDistance', {
+          m: Math.round(run.x),
+          best: Math.round(gameState.flags.freeBest ?? 0),
+        })
+      : `${Math.round(pos)} м`;
     const left = Math.max(0, 1 - run.damage / run.capacity);
     this.$dur.style.transform = `scaleX(${left})`;
     this.$dur.classList.toggle('is-bad', left < 0.35);
@@ -370,21 +389,47 @@ export class TrialScene extends BaseScene {
     if (seg.type === 'ruts') {
       return run.v > 6 ? this.hud.say('ruts', 'warn') : this.hud.say('rutsIn');
     }
-    const next = this.test.track.segments.find((s) => s.from > run.x && s.type !== 'mud');
-    if (next && next.from - run.x < WARN_M) {
+    if (
+      seg.type === 'bump' ||
+      (this.#nextHazard(run)?.type === 'bump' &&
+        this.#nextHazard(run).from - this.#local(run) < WARN_M)
+    ) {
+      return this.hud.say('bump', run.v > 5 ? 'warn' : 'info');
+    }
+    if (this.test.trap) {
+      if (run.trapSpeed === undefined && this.test.trap.at - run.x < 60)
+        return this.hud.say('trap');
+      if (run.trapSpeed !== undefined) return this.hud.say('brakeZone', 'warn');
+    }
+    const next = this.#nextHazard(run);
+    if (next && next.from - this.#local(run) < WARN_M) {
       return this.hud.say(next.type === 'deep' ? 'deep' : 'ruts');
     }
     this.hud.quiet();
   }
 
-  #finish() {
+  /** Положение на рисунке трассы (на объездной — по кругу). */
+  #local(run) {
+    return this.loop ? run.x % this.test.track.length : run.x;
+  }
+
+  #nextHazard(run) {
+    const x = this.#local(run);
+    return this.test.track.segments.find((s) => s.from > x && HAZARDS.includes(s.type));
+  }
+
+  /** @param {boolean} [quit] объездная: «В гараж» */
+  #finish(quit = false) {
+    if (this.done) return;
     this.done = true;
     this.hud.setEnabled(false);
     this.mud.stop();
     this.engine?.stop();
+    this.sounds.stop();
     this.result = summarize(this.run, this.best);
     const { reasonKey } = this.run;
     if (reasonKey === 'broken') {
+      audio.playSfx(SFX.BREAK);
       this.car.drop(60);
       this.#puff(0x777777, this.car.x + 110, this.car.y - 50);
     } else if (reasonKey === 'traction') {
@@ -394,10 +439,18 @@ export class TrialScene extends BaseScene {
       this.#puff(0x5a4630, this.car.x - 82, this.car.y - 6);
     }
     if (this.run.ok) this.hud.say('finish', 'good');
-    audio.playSfx(this.result.ok ? SFX.SUCCESS : SFX.FAIL);
+    if (!quit) audio.playSfx(this.result.ok ? SFX.SUCCESS : SFX.FAIL);
 
+    // Объездная — практика: не засчитывается, только рекорд дистанции.
+    if (this.test.practice) {
+      const m = Math.round(this.run.x);
+      gameState.flags.freeBest = Math.max(gameState.flags.freeBest ?? 0, m);
+      if (!quit) this.hud.say('freeEnd', 'warn');
+      this.time.delayedCall(quit ? 200 : 1600, () => this.goTo(SCENES.GARAGE));
+      return;
+    }
     this.time.delayedCall(1400, () => {
-      recordResult('trial', this.result);
+      recordResult('trial', { ...this.result, map: this.test.id });
       this.goTo(SCENES.RESULT);
     });
   }

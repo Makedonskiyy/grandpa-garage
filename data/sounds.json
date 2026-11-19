@@ -1,0 +1,414 @@
+{
+  "$comment": "Каталог звуков игры. Файл звука — src/assets/audio/<group>/<key>.mp3; если файла нет, игра молча обходится без него. Длительность — примерная, сек; loop — бесшовная петля; volume — громкость в игре (0–1). Таблица для звукорежиссёров — docs/sound/README.md.",
+  "groups": {
+    "music": "Музыка",
+    "ambience": "Атмосфера",
+    "ui": "Интерфейс",
+    "story": "Сцены и записка",
+    "garage": "Тюнинг и обслуживание",
+    "car": "Машина",
+    "controls": "Педали и лепестки",
+    "race": "Светофор и итоги"
+  },
+  "sounds": [
+    {
+      "key": "music_menu",
+      "group": "music",
+      "duration": "90–150",
+      "loop": true,
+      "volume": 0.7,
+      "what": "Главное меню и заставка: тёплая ностальгия, гаражи на закате, гитара/синт 2000-х"
+    },
+    {
+      "key": "music_intro",
+      "group": "music",
+      "duration": "60–120",
+      "loop": true,
+      "volume": 0.5,
+      "what": "Под сюжетные сцены: тихая, грустная, без ударных — не мешает репликам"
+    },
+    {
+      "key": "music_garage",
+      "group": "music",
+      "duration": "90–150",
+      "loop": true,
+      "volume": 0.6,
+      "what": "Гараж, тюнинг: спокойный ритм, «работаем руками», лоу-фай"
+    },
+    {
+      "key": "music_drive",
+      "group": "music",
+      "duration": "60–120",
+      "loop": true,
+      "volume": 0.6,
+      "what": "Обкатка и заезд: драйв, рок/электроника, темп 120–140"
+    },
+    {
+      "key": "music_ending",
+      "group": "music",
+      "duration": "90–150",
+      "loop": false,
+      "volume": 0.7,
+      "what": "Финал и титры: светлая, тёплая, кульминация в начале, затихание к концу"
+    },
+
+    {
+      "key": "amb_coop_day",
+      "group": "ambience",
+      "duration": "60–90",
+      "loop": true,
+      "volume": 0.5,
+      "what": "Двор гаражного кооператива днём: ветер, вороны, далёкая собака, хлопок ворот"
+    },
+    {
+      "key": "amb_garage_inside",
+      "group": "ambience",
+      "duration": "60–90",
+      "loop": true,
+      "volume": 0.4,
+      "what": "Внутри гаража: гул лампы дневного света, капли, скрип, улица за воротами"
+    },
+    {
+      "key": "amb_road",
+      "group": "ambience",
+      "duration": "60–90",
+      "loop": true,
+      "volume": 0.4,
+      "what": "Грунтовка за гаражами: ветер в поле, вороны, далёкая электричка"
+    },
+    {
+      "key": "amb_night",
+      "group": "ambience",
+      "duration": "60–90",
+      "loop": true,
+      "volume": 0.5,
+      "what": "Ночной пустырь за заводом: ветер, гул завода, далёкая трасса"
+    },
+    {
+      "key": "amb_dawn",
+      "group": "ambience",
+      "duration": "60–90",
+      "loop": true,
+      "volume": 0.4,
+      "what": "Утро у гаража: первые птицы, тишина, далёкая машина"
+    },
+
+    {
+      "key": "ui_hover",
+      "group": "ui",
+      "duration": "0.05–0.1",
+      "loop": false,
+      "volume": 0.3,
+      "what": "Наведение на кнопку: еле слышный тик"
+    },
+    {
+      "key": "ui_click",
+      "group": "ui",
+      "duration": "0.1–0.2",
+      "loop": false,
+      "volume": 0.6,
+      "what": "Обычное нажатие: мягкий щелчок тумблера"
+    },
+    {
+      "key": "ui_confirm",
+      "group": "ui",
+      "duration": "0.2–0.4",
+      "loop": false,
+      "volume": 0.7,
+      "what": "Главное действие («Начать игру», «Начать обкатку»): уверенный щелчок с хвостом"
+    },
+    {
+      "key": "ui_back",
+      "group": "ui",
+      "duration": "0.1–0.2",
+      "loop": false,
+      "volume": 0.5,
+      "what": "Назад, закрыть окно: щелчок ниже по тону"
+    },
+    {
+      "key": "ui_tab",
+      "group": "ui",
+      "duration": "0.1–0.15",
+      "loop": false,
+      "volume": 0.5,
+      "what": "Переключение раздела и вкладки в гараже"
+    },
+    {
+      "key": "ui_error",
+      "group": "ui",
+      "duration": "0.2–0.3",
+      "loop": false,
+      "volume": 0.6,
+      "what": "Нельзя: нажали неактивную кнопку (машина не собрана) — глухой «бум»"
+    },
+    {
+      "key": "ui_shutter_down",
+      "group": "ui",
+      "duration": "0.8–1.2",
+      "loop": false,
+      "volume": 0.6,
+      "what": "Переход между сценами: гаражная рольставня опускается"
+    },
+    {
+      "key": "ui_shutter_up",
+      "group": "ui",
+      "duration": "0.8–1.2",
+      "loop": false,
+      "volume": 0.5,
+      "what": "Рольставня поднимается"
+    },
+
+    {
+      "key": "dlg_type",
+      "group": "story",
+      "duration": "0.03–0.06",
+      "loop": false,
+      "volume": 0.35,
+      "what": "Печать текста реплики: короткий тик пишущей машинки (2–3 варианта не нужны — тон слегка меняется в игре)"
+    },
+    {
+      "key": "dlg_next",
+      "group": "story",
+      "duration": "0.1–0.2",
+      "loop": false,
+      "volume": 0.4,
+      "what": "Следующая реплика: тихий перелист"
+    },
+    {
+      "key": "note_appear",
+      "group": "story",
+      "duration": "0.3–0.5",
+      "loop": false,
+      "volume": 0.5,
+      "what": "Записка на верстаке: шорох бумаги"
+    },
+    {
+      "key": "note_unfold",
+      "group": "story",
+      "duration": "0.5–0.8",
+      "loop": false,
+      "volume": 0.7,
+      "what": "Записку разворачивают"
+    },
+    {
+      "key": "note_write",
+      "group": "story",
+      "duration": "0.5–0.8",
+      "loop": false,
+      "volume": 0.5,
+      "what": "Строка проявляется: скрип карандаша"
+    },
+    {
+      "key": "note_fold",
+      "group": "story",
+      "duration": "0.4–0.6",
+      "loop": false,
+      "volume": 0.6,
+      "what": "Записку складывают"
+    },
+    {
+      "key": "phone_dial",
+      "group": "story",
+      "duration": "3–5",
+      "loop": false,
+      "volume": 0.6,
+      "what": "Финал: внук звонит деду — гудки в трубке"
+    },
+
+    {
+      "key": "tune_install",
+      "group": "garage",
+      "duration": "0.5–0.8",
+      "loop": false,
+      "volume": 0.7,
+      "what": "Поставить деталь: болты и глухой металлический стук"
+    },
+    {
+      "key": "tune_remove",
+      "group": "garage",
+      "duration": "0.5–0.8",
+      "loop": false,
+      "volume": 0.6,
+      "what": "Снять деталь: откручивание, деталь кладут на пол"
+    },
+    {
+      "key": "tune_wheel",
+      "group": "garage",
+      "duration": "0.6–1.0",
+      "loop": false,
+      "volume": 0.7,
+      "what": "Шины и диски: гайковёрт"
+    },
+    {
+      "key": "tune_paint",
+      "group": "garage",
+      "duration": "0.4–0.7",
+      "loop": false,
+      "volume": 0.5,
+      "what": "Покраска: пшик краскопульта"
+    },
+    {
+      "key": "svc_oil",
+      "group": "garage",
+      "duration": "0.8–1.0",
+      "loop": false,
+      "volume": 0.6,
+      "what": "Замена масла: льётся масло, крышка"
+    },
+    {
+      "key": "svc_repair",
+      "group": "garage",
+      "duration": "0.8–1.0",
+      "loop": false,
+      "volume": 0.6,
+      "what": "Ремонт кузова: удары киянки"
+    },
+    {
+      "key": "svc_wash",
+      "group": "garage",
+      "duration": "0.8–1.0",
+      "loop": false,
+      "volume": 0.6,
+      "what": "Мойка: струя воды по металлу"
+    },
+
+    {
+      "key": "car_start",
+      "group": "car",
+      "duration": "1.2–2",
+      "loop": false,
+      "volume": 0.8,
+      "what": "Запуск мотора: стартер и схватывание (рядная шестёрка)"
+    },
+    {
+      "key": "car_engine_loop",
+      "group": "car",
+      "duration": "1–3",
+      "loop": true,
+      "volume": 0.6,
+      "what": "Мотор: ровный звук ~3000 об/мин; игра меняет высоту тона по оборотам — без переходов громкости"
+    },
+    {
+      "key": "car_shift",
+      "group": "car",
+      "duration": "0.15–0.3",
+      "loop": false,
+      "volume": 0.5,
+      "what": "Переключение передачи: щелчок коробки и провал оборотов"
+    },
+    {
+      "key": "car_backfire",
+      "group": "car",
+      "duration": "0.2–0.4",
+      "loop": false,
+      "volume": 0.6,
+      "what": "Выстрел в выхлоп при переключении и сбросе газа"
+    },
+    {
+      "key": "car_limiter",
+      "group": "car",
+      "duration": "0.3–0.5",
+      "loop": true,
+      "volume": 0.5,
+      "what": "Отсечка: мотор «трещит» на пределе"
+    },
+    {
+      "key": "car_skid_loop",
+      "group": "car",
+      "duration": "1–2",
+      "loop": true,
+      "volume": 0.6,
+      "what": "Пробуксовка на асфальте: визг резины"
+    },
+    {
+      "key": "car_mud_loop",
+      "group": "car",
+      "duration": "1–2",
+      "loop": true,
+      "volume": 0.6,
+      "what": "Колёса в грязи: чавканье и брызги"
+    },
+    {
+      "key": "car_bump",
+      "group": "car",
+      "duration": "0.2–0.4",
+      "loop": false,
+      "volume": 0.6,
+      "what": "Удар подвески на колее"
+    },
+    {
+      "key": "car_break",
+      "group": "car",
+      "duration": "1–1.5",
+      "loop": false,
+      "volume": 0.9,
+      "what": "Поломка: треск металла, лязг, шипение"
+    },
+
+    {
+      "key": "pedal_down",
+      "group": "controls",
+      "duration": "0.05–0.1",
+      "loop": false,
+      "volume": 0.25,
+      "what": "Нажали педаль: резиновый «тук»"
+    },
+    {
+      "key": "pedal_up",
+      "group": "controls",
+      "duration": "0.05–0.1",
+      "loop": false,
+      "volume": 0.2,
+      "what": "Отпустили педаль"
+    },
+    {
+      "key": "paddle_click",
+      "group": "controls",
+      "duration": "0.05–0.1",
+      "loop": false,
+      "volume": 0.3,
+      "what": "Лепесток переключения: пластиковый щелчок"
+    },
+
+    {
+      "key": "light_beep",
+      "group": "race",
+      "duration": "0.2–0.3",
+      "loop": false,
+      "volume": 0.6,
+      "what": "Светофор: жёлтый — короткий писк"
+    },
+    {
+      "key": "light_go",
+      "group": "race",
+      "duration": "0.4–0.6",
+      "loop": false,
+      "volume": 0.7,
+      "what": "Светофор: зелёный — писк выше и длиннее"
+    },
+    {
+      "key": "light_foul",
+      "group": "race",
+      "duration": "0.6–1",
+      "loop": false,
+      "volume": 0.7,
+      "what": "Фальстарт: зуммер"
+    },
+    {
+      "key": "res_win",
+      "group": "race",
+      "duration": "2–3",
+      "loop": false,
+      "volume": 0.8,
+      "what": "Успех заезда: короткий подъём, гитарный аккорд"
+    },
+    {
+      "key": "res_lose",
+      "group": "race",
+      "duration": "1.5–2.5",
+      "loop": false,
+      "volume": 0.7,
+      "what": "Провал: нисходящий мотив, без издёвки"
+    }
+  ]
+}
