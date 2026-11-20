@@ -3,7 +3,9 @@ import config from '../../data/config.json';
 import { createLayer, closeAllModals } from '../ui/overlay.js';
 import { closeShutter, openShutter, isShutterClosed } from '../ui/transition.js';
 import { fitCamera, getRenderZoom } from '../systems/scale.js';
-import { WORLD } from '../config/constants.js';
+import { WORLD, SCENES } from '../config/constants.js';
+import { gameState } from '../gameState.js';
+import { saveGame } from '../systems/save.js';
 
 /**
  * Общая база сцен: HTML-слой интерфейса и переход между сценами.
@@ -50,6 +52,8 @@ export class BaseScene extends Phaser.Scene {
   /** Плавный переход в другую сцену. */
   goTo(key) {
     if (this._leaving) return;
+    // Прогресс пишется при каждом переходе (меню и заставку не трогаем).
+    if (![SCENES.MENU, SCENES.BOOT].includes(this.scene.key)) saveGame(gameState);
     this._leaving = true;
     this.input.enabled = false;
     if (this._ui) this._ui.style.pointerEvents = 'none';

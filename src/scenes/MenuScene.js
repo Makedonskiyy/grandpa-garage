@@ -1,12 +1,16 @@
 import Phaser from 'phaser';
 import { BaseScene } from './BaseScene.js';
 import { SCENES, MUSIC, VERSION, AMB } from '../config/constants.js';
+
+const REPO_URL = 'https://github.com/Makedonskiyy/grandpa-garage';
 import { el } from '../ui/dom.js';
 import { webButton } from '../ui/components.js';
 import { openSettings } from '../ui/SettingsPanel.js';
 import { openHowTo } from '../ui/HowToPanel.js';
 import { audio } from '../systems/AudioManager.js';
-import { resetGame } from '../gameState.js';
+import { resetGame, continueGame, gameState } from '../gameState.js';
+import { hasSave } from '../systems/save.js';
+import { icon } from '../ui/icons.js';
 import { t } from '../systems/strings.js';
 
 /**
@@ -37,11 +41,26 @@ export class MenuScene extends BaseScene {
         draggable: 'false',
       }),
       el('div', { class: 'ui-abs menu-actions' }, [
-        webButton(t('menu.play'), () => this.#play(), {
-          variant: 'primary',
-          icon: 'play',
-          className: 'menu-btn menu-btn--main',
-        }),
+        ...(hasSave()
+          ? [
+              webButton(t('menu.continue'), () => this.#continue(), {
+                variant: 'primary',
+                icon: 'play',
+                className: 'menu-btn menu-btn--main',
+              }),
+              webButton(t('menu.newGame'), () => this.#play(), {
+                variant: 'dark',
+                icon: 'restart',
+                className: 'menu-btn',
+              }),
+            ]
+          : [
+              webButton(t('menu.play'), () => this.#play(), {
+                variant: 'primary',
+                icon: 'play',
+                className: 'menu-btn menu-btn--main',
+              }),
+            ]),
         webButton(t('menu.howTo'), () => openHowTo(), {
           variant: 'dark',
           icon: 'help',
@@ -54,12 +73,31 @@ export class MenuScene extends BaseScene {
         }),
       ]),
       el('div', { class: 'ui-abs version', text: t('menu.version', { version: VERSION }) }),
+      // Ссылка на код игры: иконка в правом верхнем углу, открывается в новой вкладке.
+      el(
+        'a',
+        {
+          class: 'ui-abs wbtn wbtn--dark wbtn--icon menu-github',
+          href: REPO_URL,
+          target: '_blank',
+          rel: 'noopener',
+          title: t('menu.github'),
+          'aria-label': t('menu.github'),
+        },
+        [icon('github')],
+      ),
     );
   }
 
   #play() {
     resetGame();
     this.goTo(SCENES.INTRO);
+  }
+
+  /** Продолжить с сохранения: в гараж, к текущему заезду (интро уже было). */
+  #continue() {
+    if (!continueGame()) return this.#play();
+    this.goTo(gameState.flags.introSeen ? SCENES.GARAGE : SCENES.INTRO);
   }
 
   /**

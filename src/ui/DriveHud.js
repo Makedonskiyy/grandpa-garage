@@ -14,7 +14,8 @@ import { greenZone, shiftUp, shiftDown, startRun } from '../systems/drive.js';
 import { audio } from '../systems/AudioManager.js';
 import { SFX } from '../config/constants.js';
 
-const HOLD_MS = 1100;
+/** Сколько держится подсказка: успеть прочитать, не мелькая. */
+const HOLD_MS = 2600;
 
 export class DriveHud {
   /**
@@ -88,9 +89,10 @@ export class DriveHud {
   /** Ввод педалей за кадр. */
   input(dt) {
     const input = this.pedals.update(dt);
-    // Автомат: трогание — газом (до зелёного — фальстарт), на ручной — первой передачей.
+    // Автомат: газ до зелёного только раскручивает мотор (машина на тормозе),
+    // на зелёный с газом — трогается сама. На ручной старт — первой передачей.
     const run = this.run;
-    if (run.auto && !run.started && !run.done && input.gas > 0.3) startRun(run);
+    if (run.auto && run.green && !run.started && !run.done && input.gas > 0.3) startRun(run);
     return input;
   }
 
@@ -106,9 +108,14 @@ export class DriveHud {
   /** Показать подсказку: tone — info | warn | good. Срочная (warn) перебивает обычную. */
   say(key, tone = 'info', now = performance.now()) {
     if (!key) return;
-    const busy = now < this.hintUntil && this.hintKey !== key;
-    if (busy && tone !== 'warn' && this.hintTone === 'warn') return;
-    if (busy && tone === 'info' && this.hintTone !== 'info') return;
+    // Та же подсказка — просто держится дольше. Другая ждёт, пока прочитают текущую;
+    // перебить может только срочная (warn) — и не другую срочную.
+    if (key === this.hintKey && !this.$hint.hidden) {
+      this.hintUntil = now + HOLD_MS;
+      return;
+    }
+    const busy = now < this.hintUntil && !this.$hint.hidden;
+    if (busy && !(tone === 'warn' && this.hintTone !== 'warn')) return;
     this.hintKey = key;
     this.hintTone = tone;
     this.hintUntil = now + HOLD_MS;

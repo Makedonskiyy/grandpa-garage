@@ -695,7 +695,7 @@ export class GarageScene extends BaseScene {
     }
     if (part.powerMul) out.push(f('powerAdd', { pct: Math.round(part.powerMul * 100) }));
     if (part.redlineAdd) out.push(f('redlineAdd', { rpm: part.redlineAdd }));
-    if (part.ratios) out.push(f('gearbox', { ms: part.shiftMs }));
+    if (part.ratios) out.push(f('gearbox', { ms: part.shiftMs, n: part.ratios.length }));
     if (part.impact) out.push(f('impact', { k: fmt1(part.impact) }));
     if (part.downforce) out.push(f('downforce', { v: part.downforce }));
     out.push(f('mass', { kg: part.mass < 0 ? `−${Math.abs(part.mass)}` : part.mass }));

@@ -165,6 +165,8 @@ export function startRun(run) {
   run.started = true;
   run.reaction = run.t;
   run.launchRpm = Math.max(run.rpm, run.ph.clutch.launchMinRpm);
+  // Автомат трогается мягко, как с гидротрансформатором: не выше лучших оборотов старта.
+  if (run.auto) run.launchRpm = Math.min(run.launchRpm, bestLaunchRpm(run));
   run.events.push({ type: 'start', rpm: run.rpm });
   return true;
 }
@@ -214,7 +216,8 @@ function tick(run, gas, brake, h) {
 
   // Автомат: вверх у отсечки, вниз при провале оборотов под газом.
   if (run.auto && run.shiftTimer <= 0) {
-    if (run.rpm >= redline * ph.gearbox.autoUpshift) shiftUp(run);
+    // По оборотам колёс, а не мотора: на старте мотор раскручен, но машина ещё стоит.
+    if (wheelRpm(run, v) >= redline * ph.gearbox.autoUpshift) shiftUp(run);
     else if (gas > 0.3 && run.gear > 1 && run.rpm < redline * ph.gearbox.autoDownshift) {
       shiftDown(run);
     }

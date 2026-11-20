@@ -33,10 +33,11 @@ const TUNED = CORE.map((b) => ({
 const key = (b) => `${b.tires}+${b.engine}+${b.body}`;
 
 /** Прогон «игрока»: постоянный газ, переключения по правилу. */
-function drive(testId, build, { gas = 1, shiftAt = 0.97, auto = false } = {}) {
+function drive(testId, build, { gas = 1, shiftAt = 0.97, auto = false, wait = 0 } = {}) {
   const run = createRun(testId, build, { auto });
   run.rpm = gas >= 1 ? run.stats.redline * 0.8 : bestLaunchRpm(run);
   greenLight(run);
+  while (run.t < wait) stepRun(run, { gas: 0.4 }, STEP);
   startRun(run);
   while (!run.done && run.t < 120) {
     if (!auto && shiftAt && run.rpm >= run.stats.redline * shiftAt) shiftUp(run);
@@ -158,7 +159,7 @@ describe('езда игрока', () => {
   });
 
   it('автомат доезжает, но медленнее лучшей ручной езды', () => {
-    const auto = drive('race', fast, { auto: true });
+    const auto = drive('race', fast, { auto: true, wait: 0.25 });
     expect(auto.done).toBe(true);
     expect(auto.log.shifts).toBeGreaterThanOrEqual(2);
     expect(auto.t).toBeGreaterThan(runBot('race', fast).t);
