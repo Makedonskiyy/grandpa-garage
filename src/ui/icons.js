@@ -44,6 +44,8 @@ import timer from '@phosphor-icons/core/assets/regular/timer.svg?raw';
 import heartbeat from '@phosphor-icons/core/assets/regular/heartbeat.svg?raw';
 import eyedropper from '@phosphor-icons/core/assets/regular/eyedropper.svg?raw';
 import speedometer from '@phosphor-icons/core/assets/regular/speedometer.svg?raw';
+import githubLogo from '@phosphor-icons/core/assets/regular/github-logo.svg?raw';
+import restart from '@phosphor-icons/core/assets/regular/arrow-counter-clockwise.svg?raw';
 
 const line = (body) =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
@@ -81,6 +83,8 @@ const ICONS = {
   info,
   warning,
   back: caretLeft,
+  github: githubLogo,
+  restart,
   // группы и слоты тюнинга
   wheels: tire,
   tires: tire,

@@ -1709,3 +1709,9 @@ kbd {
   display: flex;
   gap: 16px;
 }
+
+/* Ссылка на GitHub в меню — иконка в правом верхнем углу. */
+.menu-github {
+  top: 40px;
+  right: 40px;
+}

@@ -344,7 +344,8 @@ export class RaceScene extends BaseScene {
     if (!run.started)
       return run.t > 1.2 ? this.hud.say(run.auto ? 'goAuto' : 'goManual', 'warn') : null;
     if (run.slip > 0.5) return this.hud.say('spin', 'warn');
-    if (!run.auto && run.limiter) return this.hud.say('limiter', 'warn');
+    if (!run.auto && run.limiter)
+      return this.hud.say(run.gear >= run.stats.ratios.length ? 'limiterTop' : 'limiter', 'warn');
     if (!run.auto && this.hud.inZone) return this.hud.say('shift');
     this.hud.quiet();
   }

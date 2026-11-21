@@ -8,6 +8,7 @@ import cosmetics from '../data/cosmetics.json';
 import config from '../data/config.json';
 import { TEST_IDS } from './config/constants.js';
 import { getPart, getSlot } from './systems/simulate.js';
+import { loadGame, saveSoon, clearSave } from './systems/save.js';
 
 const listeners = new Set();
 const HEX = /^#[0-9a-f]{6}$/i;
@@ -39,6 +40,7 @@ export function createInitialState() {
 export const gameState = createInitialState();
 
 function emit() {
+  saveSoon(gameState);
   for (const fn of listeners) fn(gameState);
 }
 
@@ -48,9 +50,29 @@ export function onStateChange(fn) {
   return () => listeners.delete(fn);
 }
 
+/** Новая игра: всё с начала, сохранение стирается. */
 export function resetGame() {
   Object.assign(gameState, createInitialState());
+  clearSave();
+  for (const fn of listeners) fn(gameState);
+}
+
+/** Продолжить: поднять сохранение поверх начального состояния. */
+export function continueGame() {
+  const save = loadGame();
+  if (!save) return false;
+  const base = createInitialState();
+  Object.assign(gameState, base, {
+    ...save,
+    build: { ...base.build, ...save.build },
+    cosmetics: { ...base.cosmetics, ...save.cosmetics },
+    car: { ...base.car, ...save.car },
+    flags: { ...base.flags, ...save.flags },
+  });
+  delete gameState.v;
+  delete gameState.at;
   emit();
+  return true;
 }
 
 /** Текущий заезд: обкатка, пока она не пройдена, затем заезд с Палычем. */

@@ -384,7 +384,8 @@ export class TrialScene extends BaseScene {
     }
     if (run.sink > 0.25) return this.hud.say('sinking', 'warn');
     if (run.slip > 0.5) return this.hud.say('spin', 'warn');
-    if (!run.auto && run.limiter && seg.type !== 'ruts') return this.hud.say('limiter', 'warn');
+    if (!run.auto && run.limiter && seg.type !== 'ruts')
+      return this.hud.say(run.gear >= run.stats.ratios.length ? 'limiterTop' : 'limiter', 'warn');
     if (seg.type === 'deep') return this.hud.say('deepIn');
     if (seg.type === 'ruts') {
       return run.v > 6 ? this.hud.say('ruts', 'warn') : this.hud.say('rutsIn');
