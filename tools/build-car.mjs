@@ -365,10 +365,27 @@ const TAIL_LAMPS = [
   { cx: 45, cy: 133, rx: 4, ry: 9.5 },
 ];
 // Фара: две секции, перегородка по чертежу у x ≈ 786; в каждой — отражатель и лампа.
-const HEAD_DIVIDER = 786; // перегородка между секциями по чертежу
+const HEAD_DIVIDER = 788; // перегородка между секциями
+// Фара крупнее чертёжной (≈1,3×): та же форма клина — верх по линии капота, скруглённый
+// задний угол, скошенный перёд до бампера. Внутри каждой секции — круглая линза в хромовом
+// отражателе; цвет линз задаёт «Покраска → Фары».
+const HEAD_BIG = [
+  [758, 146.6],
+  [772, 147.8],
+  [790, 150],
+  [806, 152.4],
+  [815, 154.2],
+  [818.6, 157.6],
+  [824.6, 176],
+  [817, 178.6],
+  [768, 178.2],
+  [761, 170.5],
+  [757, 159],
+  [756.6, 151.2],
+];
 const LAMPS = [
-  { x0: 769, x1: 784, glint: [775, 160] },
-  { x0: 789, x1: 812, glint: [799, 161] },
+  { cx: 772.5, cy: 163.5, r: 6.2 },
+  { cx: 802.5, cy: 164.5, r: 8 },
 ];
 const MIRROR_BOX = { x0: 490, x1: 526, y0: 92, y1: 114 };
 // Плечо и линия двери — для полос света (сами линии рисует чертёж).
@@ -419,6 +436,9 @@ async function bodyMasks() {
   m.vent = polyMask(LOWER_VENT);
   m.duct = polyMask(SIDE_DUCT);
   m.tail = ellipseMask(TAIL.cx, TAIL.cy, TAIL.rx, TAIL.ry, TAIL.tilt);
+  // Фара — крупнее чертёжной, но в пределах кузова.
+  const head = polyMask(HEAD_BIG);
+  m.head = head.minus(head.minus(m.body));
   m.trim = m.dark.or(m.head, m.turn, m.vent, m.duct, m.marker, m.tail);
   m.hood = new Mask();
   const hood = X2([
@@ -640,13 +660,15 @@ function drawLights(base, m) {
                 : C.reflDeep;
       // Косой блик по стеклу.
       if (Math.abs(x - 2 * y - (790 - 2 * 158)) < 1.5 && t < 0.7) c = C.lensGlare;
-      // Блик лампы в каждой секции — две точки на хроме, без нарисованных кругов.
-      for (const L of LAMPS) {
-        const [gx, gy] = L.glint;
-        if (Math.abs(x - gx) <= 1 && Math.abs(y - gy) <= 1) c = C.lensGlare;
-      }
       if (Math.abs(x + 0.5 - HEAD_DIVIDER) < 0.8 && t > 0.12) c = C.chromeLo;
-      if (m.lines.at(x, y)) c = C.lensEdge;
+      // Линза в отражателе: тёмное кольцо, хромовая чаша, светлое стекло с бликом слева сверху.
+      for (const L of LAMPS) {
+        const k = Math.hypot(x + 0.5 - L.cx, y + 0.5 - L.cy) / L.r;
+        if (k > 1) continue;
+        if (k > 0.86) c = C.reflDeep;
+        else if (k > 0.58) c = y + 0.5 < L.cy ? C.chrome : C.reflMid;
+        else c = k < 0.22 && x + 0.5 < L.cx && y + 0.5 < L.cy ? C.lensGlare : C.lensHi;
+      }
       base.set(x, y, c);
     }
   paintLens(base, m.turn, C.amberEdge, C.amber, C.amberHi, C.amberLo);
@@ -699,11 +721,12 @@ function layerHeadlight(m) {
       }
   for (let y = 0; y < H; y++)
     for (let x = 740; x < W; x++) {
-      if (!m.head.at(x, y) || m.head.edge(x, y) || m.lines.at(x, y)) continue;
-      const t = (y - top) / (bottom - top);
-      if (t < 0.32 || t > 0.62) continue;
-      if (!LAMPS.some((L) => x >= L.x0 && x <= L.x1)) continue;
-      p.set(x, y, gray(t < 0.45 ? 0.95 : 0.82), 170);
+      if (!m.head.at(x, y) || m.head.edge(x, y)) continue;
+      // Светится стекло линз: середина ярче, к краю — слабее.
+      for (const L of LAMPS) {
+        const k = Math.hypot(x + 0.5 - L.cx, y + 0.5 - L.cy) / L.r;
+        if (k <= 0.58) p.set(x, y, gray(k < 0.3 ? 1 : 0.9), k < 0.3 ? 230 : 190);
+      }
     }
   return p;
 }
@@ -1140,7 +1163,7 @@ async function main() {
       radius: +(TIRE_R / 3).toFixed(2),
     },
     wheelFrame: { width: FRAME / 3, height: FRAME / 3, frames: FRAMES },
-    headlight: { x: toWorldX(818), y: toWorldY(164) },
+    headlight: { x: toWorldX(820), y: toWorldY(165) },
     shadow: { height: SHADOW_H / 3, above: SHADOW_GROUND / 3 },
     // Шины: вид × размер диска; диски: размер. Детали ссылаются на них полем sprite.
     tires: Object.keys(TIRE_KINDS),

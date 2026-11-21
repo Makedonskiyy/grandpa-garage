@@ -199,7 +199,13 @@ export class GarageScene extends BaseScene {
       className: 'glaunch',
     });
     this.$launchSub = el('span', { class: 'glaunch__sub' });
-    this.$launch.querySelector('.wbtn__label').append(this.$launchSub);
+    // Название — отдельной строкой (обрезается многоточием), под ним — чего не хватает.
+    const label = this.$launch.querySelector('.wbtn__label');
+    label.replaceChildren(
+      el('span', { class: 'glaunch__title', text: this.test.startButton }),
+      this.$launchSub,
+    );
+    this.$launch.title = this.test.startButton;
 
     this.ui.append(
       el('header', { class: 'ui-abs gtop' }, [
@@ -455,7 +461,9 @@ export class GarageScene extends BaseScene {
       el('div', { class: `forecast ${(changed ? next : now).ok ? 'is-ok' : 'is-bad'}` }, [
         el('div', { class: 'forecast__title' }, [
           icon(this.testId === 'trial' ? 'finish' : 'timer'),
-          t('garage.forecastTitle', { test: this.test.name.toLowerCase() }),
+          t('garage.forecastTitle', {
+            test: this.test.name[0].toLowerCase() + this.test.name.slice(1),
+          }),
         ]),
         changed ? el('p', { class: 'forecast__was', text: now.text }) : null,
         el('p', { class: 'forecast__text', text: (changed ? next : now).text }),

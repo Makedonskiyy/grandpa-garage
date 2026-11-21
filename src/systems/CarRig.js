@@ -85,6 +85,71 @@ export function wheelKeys(build) {
   };
 }
 
+/** Во сколько раз текстуры свечения детальнее мира: размытие остаётся мягким при любом зуме. */
+const GLOW_K = 4;
+
+/**
+ * Текстура свечения, нарисованная на canvas с настоящим размытием (filter: blur).
+ * Белая — цвет задаёт setTint, режим ADD складывает её со сценой как свет.
+ */
+function glowTexture(scene, key, w, h, draw) {
+  if (scene.textures.exists(key)) return key;
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.ceil(w * GLOW_K);
+  canvas.height = Math.ceil(h * GLOW_K);
+  const ctx = canvas.getContext('2d');
+  ctx.scale(GLOW_K, GLOW_K);
+  draw(ctx);
+  scene.textures.addCanvas(key, canvas);
+  scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+  return key;
+}
+
+/** Неон под днищем: яркая трубка, мягкий ореол и световое пятно на земле. */
+function neonTexture(scene) {
+  const W2 = car.size.width + 60;
+  return glowTexture(scene, 'fx_neon', W2, 40, (ctx) => {
+    const x0 = 55;
+    const x1 = W2 - 55;
+    ctx.fillStyle = '#fff';
+    ctx.filter = 'blur(9px)';
+    ctx.globalAlpha = 0.55;
+    ctx.beginPath();
+    ctx.ellipse(W2 / 2, 26, (x1 - x0) / 2 + 14, 7, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.filter = 'blur(3px)';
+    ctx.globalAlpha = 0.8;
+    ctx.fillRect(x0, 17, x1 - x0, 4);
+    ctx.filter = 'none';
+    ctx.globalAlpha = 1;
+    ctx.fillRect(x0 + 2, 18, x1 - x0 - 4, 2);
+  });
+}
+
+/** Луч фары: конус, гаснущий к концу, размытый по краям, и ореол у самой фары. */
+function beamTexture(scene) {
+  return glowTexture(scene, 'fx_beam', 200, 80, (ctx) => {
+    const grad = ctx.createLinearGradient(0, 0, 200, 0);
+    grad.addColorStop(0, 'rgba(255,255,255,0.55)');
+    grad.addColorStop(0.35, 'rgba(255,255,255,0.22)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.filter = 'blur(5px)';
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(4, 36);
+    ctx.lineTo(196, 6);
+    ctx.lineTo(196, 74);
+    ctx.lineTo(4, 44);
+    ctx.closePath();
+    ctx.fill();
+    ctx.filter = 'blur(4px)';
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.beginPath();
+    ctx.arc(8, 40, 6, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
 export class CarRig extends Phaser.GameObjects.Container {
   /**
    * @param {Phaser.Scene} scene
@@ -108,11 +173,20 @@ export class CarRig extends Phaser.GameObjects.Container {
     // Тень на земле — пиксельный слой (car.shadow.above — сколько его лежит выше земли).
     this.shadow = scene.add.image(-AX, -car.shadow.above, 'car_shadow').setOrigin(0).setScale(TEX);
 
-    // Неон: свечение под днищем.
+    // Неон: трубка под порогом с размытым ореолом и пятном света на земле, медленно дышит.
     this.neon = scene.add
-      .ellipse(0, -3, car.size.width - 50, 10, 0xffffff, 0.75)
+      .image(0, 2, neonTexture(scene))
+      .setOrigin(0.5, 0.65)
+      .setScale(1 / GLOW_K)
       .setBlendMode(Phaser.BlendModes.ADD);
-    scene.tweens.add({ targets: this.neon, alpha: 0.4, duration: 1100, yoyo: true, repeat: -1 });
+    scene.tweens.add({
+      targets: this.neon,
+      alpha: { from: 1, to: 0.72 },
+      duration: 1400,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
 
     // Кузов делится на две группы: «за колёсами» (ниши) и «перед колёсами» (всё остальное).
     this.bodyBack = scene.add.container(0, PIVOT_Y, [img('car_wells')]);
@@ -127,19 +201,10 @@ export class CarRig extends Phaser.GameObjects.Container {
       dirt: img('car_dirt'),
     };
     this.beam = scene.add
-      .triangle(
-        car.headlight.x - AX,
-        car.headlight.y - AY - PIVOT_Y,
-        0,
-        0,
-        170,
-        -28,
-        170,
-        28,
-        0xffffff,
-        0.07,
-      )
+      .image(car.headlight.x - AX - 6, car.headlight.y - AY - PIVOT_Y, beamTexture(scene))
       .setOrigin(0, 0.5)
+      .setScale(1 / GLOW_K)
+      .setAlpha(0.5)
       .setBlendMode(Phaser.BlendModes.ADD);
     this.bodyFront = scene.add.container(0, PIVOT_Y, [...Object.values(this.layers), this.beam]);
 
@@ -187,11 +252,11 @@ export class CarRig extends Phaser.GameObjects.Container {
 
     const lightColor = colorOf('headlight', looks.headlight);
     L.headlight.setTint(lightColor);
-    this.beam.setVisible(this.night).setFillStyle(lightColor, 0.07);
+    this.beam.setVisible(this.night).setTint(lightColor);
 
     const neon = colorOf('neon', looks.neon);
     this.neon.setVisible(neon !== null);
-    if (neon !== null) this.neon.setFillStyle(neon, 0.75);
+    if (neon !== null) this.neon.setTint(neon);
 
     L.dirt.setVisible(Boolean(dirty));
 
