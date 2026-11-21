@@ -223,8 +223,16 @@ function spinBlurTexture(scene, key) {
   return blurKey;
 }
 
-/** Кадров листа за кадр экрана, после которых колесо рисуется размытым. */
-const BLUR_FRAMES = 1.1;
+/**
+ * Наибольший видимый поворот колеса за кадр экрана, рад. Узор спиц повторяется через 60°;
+ * шаг больше половины периода глаз читает как вращение назад или стоп. Реальный угол
+ * копится честно, а видимый догоняет его не быстрее этого шага — диск всегда крутится вперёд.
+ */
+const MAX_TURN = 0.42;
+/** С какой скорости (кадров листа за кадр экрана) поверх проступает размытие и до какой оно растёт. */
+const BLUR_FROM = 0.5;
+const BLUR_FULL = 2.5;
+const BLUR_MAX = 0.7;
 
 export class CarRig extends Phaser.GameObjects.Container {
   /**
@@ -239,6 +247,7 @@ export class CarRig extends Phaser.GameObjects.Container {
     this.night = Boolean(opts.night);
     this.suspension = createSuspension();
     this.wheelAngle = 0;
+    this.visualAngle = 0;
 
     const img = (key) =>
       scene.add
@@ -292,6 +301,9 @@ export class CarRig extends Phaser.GameObjects.Container {
         brake: scene.add.sprite(x, yy, 'wheel_brake_six', 0).setScale(TEX),
         tire: scene.add.sprite(x, yy, 'wheel_tire_stock_m', 0).setScale(TEX),
         rim: scene.add.sprite(x, yy, 'wheel_rim_six', 0).setScale(TEX),
+        // Размытие поверх шины и диска: крутится вместе с ними, прозрачность растёт со скоростью.
+        tireBlur: scene.add.image(x, yy, '__DEFAULT').setScale(TEX).setAlpha(0),
+        rimBlur: scene.add.image(x, yy, '__DEFAULT').setScale(TEX).setAlpha(0),
       };
     };
     this.wheels = { rear: wheel(car.wheels.rear), front: wheel(car.wheels.front) };
@@ -302,7 +314,9 @@ export class CarRig extends Phaser.GameObjects.Container {
       this.neon,
       this.bodyBack,
       this.bricks,
-      ...['rear', 'front'].flatMap((k) => ['brake', 'tire', 'rim'].map((p) => this.wheels[k][p])),
+      ...['rear', 'front'].flatMap((k) =>
+        ['brake', 'tire', 'tireBlur', 'rim', 'rimBlur'].map((p) => this.wheels[k][p]),
+      ),
       this.bodyFront,
     ]);
 
@@ -342,11 +356,13 @@ export class CarRig extends Phaser.GameObjects.Container {
     for (const w of [this.wheels.rear, this.wheels.front]) {
       for (const p of ['brake', 'tire', 'rim']) w[p].setTexture(keys[p], w[p].frame.name);
       w.keys = keys;
-      w.blurred = false;
+      w.spins = Boolean(build.tires); // спущенное дедово колесо не вертим — у него плоский низ
+      w.tireBlur.setTexture(spinBlurTexture(this.scene, keys.tire));
+      w.rimBlur.setTexture(spinBlurTexture(this.scene, keys.rim)).setTint(rimColor);
       w.rim.setTint(rimColor);
     }
     const hasWheels = Boolean(build.tires);
-    for (const p of ['brake', 'tire', 'rim']) this.wheels.front[p].setVisible(hasWheels);
+    for (const p of ['brake', 'tire', 'tireBlur', 'rim', 'rimBlur']) this.wheels.front[p].setVisible(hasWheels);
     this.bricks.setVisible(!hasWheels);
     this.build = build;
     return this;
@@ -396,35 +412,35 @@ export class CarRig extends Phaser.GameObjects.Container {
    * @param {{ distance?: number, accel?: number }} motion путь за шаг (px в масштабе машины) и ускорение, м/с²
    */
   step(dt, { distance = 0, accel = 0 } = {}) {
-    stepSuspension(this.suspension, dt, accel);
+    // Нагрузка на подвеску копится плавно: кузов не дёргается от рывка педали и в момент остановки.
+    this.load = (this.load ?? 0) + (accel - (this.load ?? 0)) * Math.min(1, dt * 6);
+    stepSuspension(this.suspension, dt, this.load);
     const pose = bodyPose(this.suspension);
     for (const g of [this.bodyBack, this.bodyFront]) {
       g.y = PIVOT_Y + pose.y;
       g.rotation = pose.pitch;
     }
-    if (distance) {
-      const before = this.wheelAngle;
-      this.wheelAngle = rollAngle(this.wheelAngle, distance / this.scaleX);
-      // На скорости кадры листа мелькают быстрее экрана — колесо размывается во вращении.
-      const framesPerTick =
-        (Math.abs(this.wheelAngle - before) / (Math.PI * 2)) * car.wheelFrame.frames;
-      const f = wheelFrame(this.wheelAngle);
-      for (const w of [this.wheels.rear, this.wheels.front]) {
-        // Порог с запасом: размытие включается от BLUR_FRAMES, гаснет ниже 0,8 — без мигания.
-        const blur = w.blurred ? framesPerTick > 0.8 : framesPerTick > BLUR_FRAMES;
-        if (blur !== w.blurred && w.keys) {
-          w.blurred = blur;
-          for (const p of ['brake', 'tire', 'rim']) {
-            if (blur) w[p].setTexture(spinBlurTexture(this.scene, w.keys[p]));
-            else w[p].setTexture(w.keys[p], f);
-          }
-        }
-        if (!blur) {
-          w.brake.setFrame(f);
-          w.tire.setFrame(f);
-          w.rim.setFrame(f);
-        }
-      }
+    if (!distance) return;
+    // Поворот за кадр не больше MAX_TURN и в ту же сторону; лишнее не копится в долг,
+    // иначе после разгона колесо крутилось бы быстрее машины.
+    const real = rollAngle(0, distance / this.scaleX);
+    this.wheelAngle += real;
+    this.visualAngle += Math.max(-MAX_TURN, Math.min(MAX_TURN, real));
+    // Скорость колеса — по настоящему углу: на ней растёт размытие.
+    const step = (Math.PI * 2) / car.wheelFrame.frames;
+    const framesPerTick = Math.abs(distance / this.scaleX / car.wheels.radius) / step;
+    const blur = BLUR_MAX * Math.max(0, Math.min(1, (framesPerTick - BLUR_FROM) / (BLUR_FULL - BLUR_FROM)));
+    // Кадр листа — ближайший целый поворот, остаток доворачиваем спрайтом:
+    // пиксель-арт остаётся чётким, а шина и диск крутятся плавно и вместе.
+    const f = wheelFrame(this.visualAngle);
+    const rest = this.visualAngle - Math.floor(this.visualAngle / step) * step;
+    for (const w of [this.wheels.rear, this.wheels.front]) {
+      w.brake.setFrame(f); // суппорт стоит, крутится только диск внутри кадров
+      if (!w.spins) continue;
+      w.tire.setFrame(f).setRotation(rest);
+      w.rim.setFrame(f).setRotation(rest);
+      w.tireBlur.setRotation(this.visualAngle).setAlpha(blur);
+      w.rimBlur.setRotation(this.visualAngle).setAlpha(blur);
     }
   }
 }

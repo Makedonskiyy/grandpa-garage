@@ -49,7 +49,7 @@
     },
     "attackPerSec": 10,
     "releasePerSec": 14,
-    "brakeAttackPerSec": 12,
+    "brakeAttackPerSec": 5,
     "brakeReleasePerSec": 18
   },
   "gearbox": {
