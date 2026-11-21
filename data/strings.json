@@ -313,7 +313,7 @@
       "zone": "Стоп"
     },
     "toGarage": "В гараж",
-    "freeDistance": "{m} м · рекорд {best} м"
+    "freeDistance": "{m} м · макс. {v} км/ч · рекорд {best} км/ч"
   },
   "race": {
     "you": "Ты",

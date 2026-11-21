@@ -173,9 +173,10 @@
         },
         "bump": {
           "resistance": 0.03,
-          "impact": 7,
+          "hit": 1.5,
           "name": "Лежачий полицейский",
-          "grip": "asphalt"
+          "grip": "asphalt",
+          "safeSpeed": 3
         }
       },
       "trap": {
@@ -227,15 +228,15 @@
       "name": "Объездная",
       "scene": "TrialRun",
       "mode": "free",
-      "surface": "clay",
-      "surfaceName": "грунт и асфальт",
+      "surface": "asphalt",
+      "surfaceName": "асфальт",
       "type": "practice",
       "practice": true,
       "map": {
         "name": "Объездная дорога",
-        "short": "Бесконечно, для пробы сборки — не засчитывается"
+        "short": "Ровный асфальт без конца — замерить скорость"
       },
-      "goal": "Свободная езда: проверь сборку и проедь как можно дальше",
+      "goal": "Свободная езда: разгонись и узнай, на что способна сборка",
       "startButton": "Поехать",
       "minDurability": 1,
       "jumpStartFails": false,
@@ -251,31 +252,6 @@
         "segments": [
           {
             "from": 0,
-            "to": 120,
-            "type": "asphalt"
-          },
-          {
-            "from": 120,
-            "to": 150,
-            "type": "ruts"
-          },
-          {
-            "from": 150,
-            "to": 260,
-            "type": "mud"
-          },
-          {
-            "from": 260,
-            "to": 300,
-            "type": "deep"
-          },
-          {
-            "from": 300,
-            "to": 360,
-            "type": "mud"
-          },
-          {
-            "from": 360,
             "to": 520,
             "type": "asphalt"
           }
@@ -286,26 +262,6 @@
           "resistance": 0,
           "name": "Асфальт",
           "grip": "asphalt"
-        },
-        "mud": {
-          "resistance": 0.07,
-          "name": "Грязь",
-          "grip": "clay"
-        },
-        "ruts": {
-          "resistance": 0.07,
-          "impact": 1,
-          "name": "Колея",
-          "grip": "clay"
-        },
-        "deep": {
-          "resistance": 0.33,
-          "resistancePerSpeed": 0.012,
-          "minSpeed": 12,
-          "sinkPerSec": 4,
-          "sinkResistance": 0.3,
-          "name": "Глубокая грязь",
-          "grip": "clay"
         }
       },
       "damage": {
