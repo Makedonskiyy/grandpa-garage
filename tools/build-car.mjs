@@ -984,7 +984,13 @@ function tirePix(t, rim, angle) {
   const R = TIRE_R;
   return polar((rr, a, dx, dy) => {
     const r = t.flat && dy > 0 && rr > rim ? Math.hypot((dx * R) / (R + 6), dy) : rr;
-    if (r > R || r <= rim) return null;
+    if (r > R || r <= rim - 2.2) return null;
+    // Полированная закраина обода — в слое шины, не перекрашивается: граница шины и диска
+    // видна при любом цвете дисков (на чёрных дисках раньше сливалась с резиной).
+    if (r <= rim) {
+      const L = lit(a);
+      return r > rim - 0.9 ? gray(0.42 + 0.2 * L) : gray(0.66 + 0.3 * L);
+    }
     // Грязевая: шашки протектора выступают по кромке — силуэт «зубчатый».
     if (t.lugs && r > R - 2.4) return toRay(a, angle, 26) < 3.2 ? C.outline : null;
     if (t.studs && r > R - 2.2 && toRay(a, angle, 30) < 1.1) return '#8d939b';
@@ -1017,7 +1023,8 @@ function brakePix(rimDef, angle) {
       return rimDef.caliper;
     }
     if (r > R - 3) return C.discDark;
-    if (Math.abs(r - (R - 9)) < 1.2 && toRay(a, angle, 24) < 3) return C.discDark;
+    // Перфорация: редкие мелкие отверстия, чтобы диск не читался пунктирным кольцом.
+    if (Math.abs(r - (R - 9)) < 0.9 && toRay(a, angle, 12) < 1.6) return C.discDark;
     if (r < 10) return C.discDark;
     return r > R - 12 ? C.discHi : C.disc;
   });
@@ -1046,7 +1053,7 @@ function rimPix(rimDef, style, angle) {
     if (r > R) return null;
     const L = lit(a);
     // Обод: полированная полка, светлая сверху слева; внутренняя ступень темнее.
-    if (r > R - 2.6) return gray(0.72 + 0.28 * L);
+    if (r > R - 2.2) return null; // закраина — в слое шины
     if (r > R - 4.6) return gray(0.5);
     if (style === 'six' || style === 'five') {
       if (r < 13) return hub(r, a);
