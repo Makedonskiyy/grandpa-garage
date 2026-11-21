@@ -150,6 +150,44 @@ function beamTexture(scene) {
   });
 }
 
+/**
+ * Размытый во вращении вариант листа колеса: все 16 кадров, сложенные с прозрачностью 1/16.
+ * Нужен на скорости: за кадр экрана колесо проворачивается почти на период узора спиц,
+ * и без размытия диск «стоит» или крутится назад (эффект колёс в кино).
+ */
+function spinBlurTexture(scene, key) {
+  const blurKey = `${key}_blur`;
+  if (scene.textures.exists(blurKey) || !scene.textures.exists(key)) return blurKey;
+  const tex = scene.textures.get(key);
+  const first = tex.get(0);
+  const canvas = document.createElement('canvas');
+  canvas.width = first.cutWidth;
+  canvas.height = first.cutHeight;
+  const ctx = canvas.getContext('2d');
+  const n = car.wheelFrame.frames;
+  for (let i = 0; i < n; i++) {
+    const fr = tex.get(i);
+    ctx.globalAlpha = i === 0 ? 1 : 1 / (i + 1); // накопительное среднее
+    ctx.drawImage(
+      fr.source.image,
+      fr.cutX,
+      fr.cutY,
+      fr.cutWidth,
+      fr.cutHeight,
+      0,
+      0,
+      canvas.width,
+      canvas.height,
+    );
+  }
+  scene.textures.addCanvas(blurKey, canvas);
+  scene.textures.get(blurKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
+  return blurKey;
+}
+
+/** Кадров листа за кадр экрана, после которых колесо рисуется размытым. */
+const BLUR_FRAMES = 1.1;
+
 export class CarRig extends Phaser.GameObjects.Container {
   /**
    * @param {Phaser.Scene} scene
@@ -265,6 +303,8 @@ export class CarRig extends Phaser.GameObjects.Container {
     const rimColor = build.tires ? colorOf('rim', looks.rim) : OLD_RIM_COLOR;
     for (const w of [this.wheels.rear, this.wheels.front]) {
       for (const p of ['brake', 'tire', 'rim']) w[p].setTexture(keys[p], w[p].frame.name);
+      w.keys = keys;
+      w.blurred = false;
       w.rim.setTint(rimColor);
     }
     const hasWheels = Boolean(build.tires);
@@ -325,12 +365,27 @@ export class CarRig extends Phaser.GameObjects.Container {
       g.rotation = pose.pitch;
     }
     if (distance) {
+      const before = this.wheelAngle;
       this.wheelAngle = rollAngle(this.wheelAngle, distance / this.scaleX);
+      // На скорости кадры листа мелькают быстрее экрана — колесо размывается во вращении.
+      const framesPerTick =
+        (Math.abs(this.wheelAngle - before) / (Math.PI * 2)) * car.wheelFrame.frames;
       const f = wheelFrame(this.wheelAngle);
       for (const w of [this.wheels.rear, this.wheels.front]) {
-        w.brake.setFrame(f);
-        w.tire.setFrame(f);
-        w.rim.setFrame(f);
+        // Порог с запасом: размытие включается от BLUR_FRAMES, гаснет ниже 0,8 — без мигания.
+        const blur = w.blurred ? framesPerTick > 0.8 : framesPerTick > BLUR_FRAMES;
+        if (blur !== w.blurred && w.keys) {
+          w.blurred = blur;
+          for (const p of ['brake', 'tire', 'rim']) {
+            if (blur) w[p].setTexture(spinBlurTexture(this.scene, w.keys[p]));
+            else w[p].setTexture(w.keys[p], f);
+          }
+        }
+        if (!blur) {
+          w.brake.setFrame(f);
+          w.tire.setFrame(f);
+          w.rim.setFrame(f);
+        }
       }
     }
   }

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import config from '../../data/config.json';
+import car from '../../data/car.json';
 import { BaseScene } from './BaseScene.js';
 import { SCENES, MUSIC, SFX, AMB, WORLD } from '../config/constants.js';
 import { buildCar, buildRivalCar, spinWheels } from '../systems/buildCar.js';
@@ -16,6 +17,8 @@ import { t } from '../systems/strings.js';
 import { DriveHud, DriveSounds } from '../ui/DriveHud.js';
 
 const cfg = config.race;
+/** Колесо «девятки»: 13 точек текстуры ≈ 0,29 м — точек на метр пути. */
+const RIVAL_WHEEL_PX_PER_M = 13 / 0.29;
 const MAX_SEC = 30; // дальше ждать нет смысла — Палыч давно на финише
 /** Пустырь поднят над приборами: их верх — y ≈ 259 мира. */
 const SHIFT = -40;
@@ -309,17 +312,19 @@ export class RaceScene extends BaseScene {
     const rs = Math.max(0, s - this.rivalReaction);
     const rivalDist = Math.min(this.test.formula.distance, (this.rivalAccel * rs * rs) / 2);
 
-    // Колёса крутятся быстрее пути, когда буксуют.
-    const px = (m) => (m / this.test.formula.distance) * (cfg.finishX - cfg.startX);
+    // Колёса крутятся по реальным метрам, а не по сжатой на экране дистанции:
+    // 400 м — это ~400 точек, и по экрану диски почти стояли бы. При пробуксовке — быстрее.
     const meX = this.#xFor(this.player, run.x);
+    const toWheel = (car.wheels.radius / run.ph.wheelRadius) * this.player.scaleX;
     this.player.step(dt, {
-      distance: px(run.x - prevX) * (1 + run.slip * 2) + run.slip * 3,
+      distance: (run.x - prevX) * toWheel * (1 + run.slip * 2) + run.slip * 3,
       accel: run.accel ?? 0,
     });
     this.player.x = meX;
     this.player.nameplate.x = meX;
     const rx = this.#xFor(this.rival, rivalDist);
-    spinWheels(this.rival, rx - this.rival.x);
+    spinWheels(this.rival, (rivalDist - (this.rivalPrev ?? 0)) * RIVAL_WHEEL_PX_PER_M);
+    this.rivalPrev = rivalDist;
     this.rival.x = rx;
     this.rival.nameplate.x = rx;
 
