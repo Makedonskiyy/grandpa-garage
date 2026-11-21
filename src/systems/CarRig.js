@@ -85,6 +85,147 @@ export function wheelKeys(build) {
   };
 }
 
+/** Во сколько раз текстуры свечения детальнее мира: размытие остаётся мягким при любом зуме. */
+const GLOW_K = 4;
+
+/**
+ * Текстура свечения, нарисованная на canvas с настоящим размытием (filter: blur).
+ * Белая — цвет задаёт setTint, режим ADD складывает её со сценой как свет.
+ */
+function glowTexture(scene, key, w, h, draw) {
+  if (scene.textures.exists(key)) return key;
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.ceil(w * GLOW_K);
+  canvas.height = Math.ceil(h * GLOW_K);
+  const ctx = canvas.getContext('2d');
+  ctx.scale(GLOW_K, GLOW_K);
+  draw(ctx);
+  scene.textures.addCanvas(key, canvas);
+  scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+  return key;
+}
+
+/** Размытие в единицах мира: canvas размывает в пикселях холста, а он в GLOW_K раз детальнее. */
+const blur = (v) => `blur(${v * GLOW_K}px)`;
+
+/**
+ * Неон под днищем: широкое мягкое пятно на земле, ореол вокруг трубки и сама трубка,
+ * которая к концам плавно гаснет — без резких обрезанных краёв.
+ */
+function neonTexture(scene) {
+  const W2 = car.size.width + 80;
+  const H2 = 48;
+  return glowTexture(scene, 'fx_neon', W2, H2, (ctx) => {
+    const x0 = 70;
+    const x1 = W2 - 70;
+    const len = x1 - x0;
+    const fade = (a) => {
+      const g = ctx.createLinearGradient(x0, 0, x1, 0);
+      g.addColorStop(0, `rgba(255,255,255,0)`);
+      g.addColorStop(0.12, `rgba(255,255,255,${a})`);
+      g.addColorStop(0.88, `rgba(255,255,255,${a})`);
+      g.addColorStop(1, `rgba(255,255,255,0)`);
+      return g;
+    };
+    // Свет на земле: широкий, очень мягкий.
+    ctx.filter = blur(10);
+    ctx.fillStyle = fade(0.5);
+    ctx.beginPath();
+    ctx.ellipse(W2 / 2, 30, len / 2 + 20, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Ореол вокруг трубки.
+    ctx.filter = blur(4);
+    ctx.fillStyle = fade(0.75);
+    ctx.beginPath();
+    ctx.ellipse(W2 / 2, 22, len / 2, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Трубка: тонкая и яркая, к концам гаснет.
+    ctx.filter = blur(0.8);
+    ctx.fillStyle = fade(1);
+    ctx.fillRect(x0, 21, len, 2);
+  });
+}
+
+/**
+ * Луч фары: направленный конус вперёд — узкое яркое ядро внутри широкого тусклого,
+ * оба гаснут к концу и сильно размыты по краям. Без пятна-ореола у самой фары.
+ */
+function beamTexture(scene) {
+  const L = 220;
+  const H2 = 96;
+  const c = H2 / 2;
+  return glowTexture(scene, 'fx_beam', L, H2, (ctx) => {
+    const cone = (spread, a, b) => {
+      const g = ctx.createLinearGradient(0, 0, L, 0);
+      g.addColorStop(0, `rgba(255,255,255,${a})`);
+      g.addColorStop(0.4, `rgba(255,255,255,${a * 0.45})`);
+      g.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.filter = blur(b);
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.moveTo(2, c - 1.5);
+      ctx.lineTo(L - 10, c - spread);
+      ctx.lineTo(L - 10, c + spread);
+      ctx.lineTo(2, c + 1.5);
+      ctx.closePath();
+      ctx.fill();
+    };
+    cone(34, 0.35, 9); // широкий тусклый
+    cone(16, 0.6, 5); // ядро
+  });
+}
+
+/**
+ * Размытый во вращении вариант листа колеса: среднее всех 16 кадров по каждому пикселю.
+ * Нужен на скорости: за кадр экрана колесо проворачивается почти на период узора спиц,
+ * и без размытия диск «стоит» или крутится назад (эффект колёс в кино).
+ */
+function spinBlurTexture(scene, key) {
+  const blurKey = `${key}_blur`;
+  if (scene.textures.exists(blurKey) || !scene.textures.exists(key)) return blurKey;
+  const tex = scene.textures.get(key);
+  const first = tex.get(0);
+  const canvas = document.createElement('canvas');
+  canvas.width = first.cutWidth;
+  canvas.height = first.cutHeight;
+  const ctx = canvas.getContext('2d');
+  const n = car.wheelFrame.frames;
+  // Честное среднее всех кадров по каждому пикселю (с учётом прозрачности):
+  // спицы размазываются в равномерный диск, а не остаются резкими поверх.
+  const w = canvas.width;
+  const h = canvas.height;
+  const sum = new Float32Array(w * h * 4);
+  for (let i = 0; i < n; i++) {
+    const fr = tex.get(i);
+    ctx.clearRect(0, 0, w, h);
+    ctx.drawImage(fr.source.image, fr.cutX, fr.cutY, fr.cutWidth, fr.cutHeight, 0, 0, w, h);
+    const d = ctx.getImageData(0, 0, w, h).data;
+    for (let p = 0; p < d.length; p += 4) {
+      const a = d[p + 3] / 255;
+      sum[p] += d[p] * a;
+      sum[p + 1] += d[p + 1] * a;
+      sum[p + 2] += d[p + 2] * a;
+      sum[p + 3] += a;
+    }
+  }
+  const out = ctx.createImageData(w, h);
+  for (let p = 0; p < sum.length; p += 4) {
+    const a = sum[p + 3];
+    if (a <= 0) continue;
+    out.data[p] = sum[p] / a;
+    out.data[p + 1] = sum[p + 1] / a;
+    out.data[p + 2] = sum[p + 2] / a;
+    out.data[p + 3] = (a / n) * 255;
+  }
+  ctx.putImageData(out, 0, 0);
+  scene.textures.addCanvas(blurKey, canvas);
+  scene.textures.get(blurKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
+  return blurKey;
+}
+
+/** Кадров листа за кадр экрана, после которых колесо рисуется размытым. */
+const BLUR_FRAMES = 1.1;
+
 export class CarRig extends Phaser.GameObjects.Container {
   /**
    * @param {Phaser.Scene} scene
@@ -108,11 +249,20 @@ export class CarRig extends Phaser.GameObjects.Container {
     // Тень на земле — пиксельный слой (car.shadow.above — сколько его лежит выше земли).
     this.shadow = scene.add.image(-AX, -car.shadow.above, 'car_shadow').setOrigin(0).setScale(TEX);
 
-    // Неон: свечение под днищем.
+    // Неон: трубка под порогом с размытым ореолом и пятном света на земле, медленно дышит.
     this.neon = scene.add
-      .ellipse(0, -3, car.size.width - 50, 10, 0xffffff, 0.75)
+      .image(0, 2, neonTexture(scene))
+      .setOrigin(0.5, 0.65)
+      .setScale(1 / GLOW_K)
       .setBlendMode(Phaser.BlendModes.ADD);
-    scene.tweens.add({ targets: this.neon, alpha: 0.4, duration: 1100, yoyo: true, repeat: -1 });
+    scene.tweens.add({
+      targets: this.neon,
+      alpha: { from: 1, to: 0.72 },
+      duration: 1400,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
 
     // Кузов делится на две группы: «за колёсами» (ниши) и «перед колёсами» (всё остальное).
     this.bodyBack = scene.add.container(0, PIVOT_Y, [img('car_wells')]);
@@ -127,19 +277,10 @@ export class CarRig extends Phaser.GameObjects.Container {
       dirt: img('car_dirt'),
     };
     this.beam = scene.add
-      .triangle(
-        car.headlight.x - AX,
-        car.headlight.y - AY - PIVOT_Y,
-        0,
-        0,
-        170,
-        -28,
-        170,
-        28,
-        0xffffff,
-        0.07,
-      )
+      .image(car.headlight.x - AX - 6, car.headlight.y - AY - PIVOT_Y, beamTexture(scene))
       .setOrigin(0, 0.5)
+      .setScale(1 / GLOW_K)
+      .setAlpha(0.6)
       .setBlendMode(Phaser.BlendModes.ADD);
     this.bodyFront = scene.add.container(0, PIVOT_Y, [...Object.values(this.layers), this.beam]);
 
@@ -187,11 +328,11 @@ export class CarRig extends Phaser.GameObjects.Container {
 
     const lightColor = colorOf('headlight', looks.headlight);
     L.headlight.setTint(lightColor);
-    this.beam.setVisible(this.night).setFillStyle(lightColor, 0.07);
+    this.beam.setVisible(this.night).setTint(lightColor);
 
     const neon = colorOf('neon', looks.neon);
     this.neon.setVisible(neon !== null);
-    if (neon !== null) this.neon.setFillStyle(neon, 0.75);
+    if (neon !== null) this.neon.setTint(neon);
 
     L.dirt.setVisible(Boolean(dirty));
 
@@ -200,6 +341,8 @@ export class CarRig extends Phaser.GameObjects.Container {
     const rimColor = build.tires ? colorOf('rim', looks.rim) : OLD_RIM_COLOR;
     for (const w of [this.wheels.rear, this.wheels.front]) {
       for (const p of ['brake', 'tire', 'rim']) w[p].setTexture(keys[p], w[p].frame.name);
+      w.keys = keys;
+      w.blurred = false;
       w.rim.setTint(rimColor);
     }
     const hasWheels = Boolean(build.tires);
@@ -260,12 +403,27 @@ export class CarRig extends Phaser.GameObjects.Container {
       g.rotation = pose.pitch;
     }
     if (distance) {
+      const before = this.wheelAngle;
       this.wheelAngle = rollAngle(this.wheelAngle, distance / this.scaleX);
+      // На скорости кадры листа мелькают быстрее экрана — колесо размывается во вращении.
+      const framesPerTick =
+        (Math.abs(this.wheelAngle - before) / (Math.PI * 2)) * car.wheelFrame.frames;
       const f = wheelFrame(this.wheelAngle);
       for (const w of [this.wheels.rear, this.wheels.front]) {
-        w.brake.setFrame(f);
-        w.tire.setFrame(f);
-        w.rim.setFrame(f);
+        // Порог с запасом: размытие включается от BLUR_FRAMES, гаснет ниже 0,8 — без мигания.
+        const blur = w.blurred ? framesPerTick > 0.8 : framesPerTick > BLUR_FRAMES;
+        if (blur !== w.blurred && w.keys) {
+          w.blurred = blur;
+          for (const p of ['brake', 'tire', 'rim']) {
+            if (blur) w[p].setTexture(spinBlurTexture(this.scene, w.keys[p]));
+            else w[p].setTexture(w.keys[p], f);
+          }
+        }
+        if (!blur) {
+          w.brake.setFrame(f);
+          w.tire.setFrame(f);
+          w.rim.setFrame(f);
+        }
       }
     }
   }

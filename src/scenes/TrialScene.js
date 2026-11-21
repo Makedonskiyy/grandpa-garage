@@ -160,7 +160,7 @@ export class TrialScene extends BaseScene {
       k,
     }));
     // Под поднятой дорогой — то же покрытие до края экрана.
-    const under = this.theme === 'track' ? 0x3d3f44 : 0x4a3827;
+    const under = this.theme === 'mud' ? 0x4a3827 : 0x3d3f44;
     this.add.rectangle(0, height + SHIFT, width, -SHIFT, under).setOrigin(0);
   }
 
@@ -363,7 +363,8 @@ export class TrialScene extends BaseScene {
     this.$pathValue.textContent = this.loop
       ? t('trial.freeDistance', {
           m: Math.round(run.x),
-          best: Math.round(gameState.flags.freeBest ?? 0),
+          v: Math.round(run.log.topSpeed * 3.6),
+          best: Math.round(Math.max(gameState.flags.freeTopSpeed ?? 0, run.log.topSpeed * 3.6)),
         })
       : `${Math.round(pos)} м`;
     const left = Math.max(0, 1 - run.damage / run.capacity);
@@ -446,6 +447,10 @@ export class TrialScene extends BaseScene {
     if (this.test.practice) {
       const m = Math.round(this.run.x);
       gameState.flags.freeBest = Math.max(gameState.flags.freeBest ?? 0, m);
+      gameState.flags.freeTopSpeed = Math.max(
+        gameState.flags.freeTopSpeed ?? 0,
+        Math.round(this.run.log.topSpeed * 3.6),
+      );
       if (!quit) this.hud.say('freeEnd', 'warn');
       this.time.delayedCall(quit ? 200 : 1600, () => this.goTo(SCENES.GARAGE));
       return;

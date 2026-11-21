@@ -365,10 +365,28 @@ const TAIL_LAMPS = [
   { cx: 45, cy: 133, rx: 4, ry: 9.5 },
 ];
 // Фара: две секции, перегородка по чертежу у x ≈ 786; в каждой — отражатель и лампа.
-const HEAD_DIVIDER = 786; // перегородка между секциями по чертежу
+const HEAD_DIVIDER = 788; // перегородка между секциями
+// Фара крупнее чертёжной (≈1,3×): та же форма клина — верх по линии капота, скруглённый
+// задний угол, скошенный перёд до бампера. Внутри — две секции с хромовыми отражателями;
+// цвет света задаёт «Покраска → Фары».
+const HEAD_BIG = [
+  [758, 146.6],
+  [772, 147.8],
+  [790, 150],
+  [806, 152.4],
+  [815, 154.2],
+  [818.6, 157.6],
+  [824.6, 176],
+  [817, 178.6],
+  [768, 178.2],
+  [761, 170.5],
+  [757, 159],
+  [756.6, 151.2],
+];
+// Секции фары (по x) и блики ламп — как на чертёжной фаре, только крупнее.
 const LAMPS = [
-  { x0: 769, x1: 784, glint: [775, 160] },
-  { x0: 789, x1: 812, glint: [799, 161] },
+  { x0: 760, x1: 785, glint: [771, 160] },
+  { x0: 791, x1: 816, glint: [803, 162] },
 ];
 const MIRROR_BOX = { x0: 490, x1: 526, y0: 92, y1: 114 };
 // Плечо и линия двери — для полос света (сами линии рисует чертёж).
@@ -419,6 +437,9 @@ async function bodyMasks() {
   m.vent = polyMask(LOWER_VENT);
   m.duct = polyMask(SIDE_DUCT);
   m.tail = ellipseMask(TAIL.cx, TAIL.cy, TAIL.rx, TAIL.ry, TAIL.tilt);
+  // Фара — крупнее чертёжной, но в пределах кузова.
+  const head = polyMask(HEAD_BIG);
+  m.head = head.minus(head.minus(m.body));
   m.trim = m.dark.or(m.head, m.turn, m.vent, m.duct, m.marker, m.tail);
   m.hood = new Mask();
   const hood = X2([
@@ -640,13 +661,12 @@ function drawLights(base, m) {
                 : C.reflDeep;
       // Косой блик по стеклу.
       if (Math.abs(x - 2 * y - (790 - 2 * 158)) < 1.5 && t < 0.7) c = C.lensGlare;
+      if (Math.abs(x + 0.5 - HEAD_DIVIDER) < 0.8 && t > 0.12) c = C.chromeLo;
       // Блик лампы в каждой секции — две точки на хроме, без нарисованных кругов.
       for (const L of LAMPS) {
         const [gx, gy] = L.glint;
         if (Math.abs(x - gx) <= 1 && Math.abs(y - gy) <= 1) c = C.lensGlare;
       }
-      if (Math.abs(x + 0.5 - HEAD_DIVIDER) < 0.8 && t > 0.12) c = C.chromeLo;
-      if (m.lines.at(x, y)) c = C.lensEdge;
       base.set(x, y, c);
     }
   paintLens(base, m.turn, C.amberEdge, C.amber, C.amberHi, C.amberLo);
@@ -699,7 +719,8 @@ function layerHeadlight(m) {
       }
   for (let y = 0; y < H; y++)
     for (let x = 740; x < W; x++) {
-      if (!m.head.at(x, y) || m.head.edge(x, y) || m.lines.at(x, y)) continue;
+      if (!m.head.at(x, y) || m.head.edge(x, y)) continue;
+      // Светится середина отражателей обеих секций.
       const t = (y - top) / (bottom - top);
       if (t < 0.32 || t > 0.62) continue;
       if (!LAMPS.some((L) => x >= L.x0 && x <= L.x1)) continue;
@@ -963,7 +984,13 @@ function tirePix(t, rim, angle) {
   const R = TIRE_R;
   return polar((rr, a, dx, dy) => {
     const r = t.flat && dy > 0 && rr > rim ? Math.hypot((dx * R) / (R + 6), dy) : rr;
-    if (r > R || r <= rim) return null;
+    if (r > R || r <= rim - 2.2) return null;
+    // Полированная закраина обода — в слое шины, не перекрашивается: граница шины и диска
+    // видна при любом цвете дисков (на чёрных дисках раньше сливалась с резиной).
+    if (r <= rim) {
+      const L = lit(a);
+      return r > rim - 0.9 ? gray(0.42 + 0.2 * L) : gray(0.66 + 0.3 * L);
+    }
     // Грязевая: шашки протектора выступают по кромке — силуэт «зубчатый».
     if (t.lugs && r > R - 2.4) return toRay(a, angle, 26) < 3.2 ? C.outline : null;
     if (t.studs && r > R - 2.2 && toRay(a, angle, 30) < 1.1) return '#8d939b';
@@ -996,7 +1023,8 @@ function brakePix(rimDef, angle) {
       return rimDef.caliper;
     }
     if (r > R - 3) return C.discDark;
-    if (Math.abs(r - (R - 9)) < 1.2 && toRay(a, angle, 24) < 3) return C.discDark;
+    // Перфорация: редкие мелкие отверстия, чтобы диск не читался пунктирным кольцом.
+    if (Math.abs(r - (R - 9)) < 0.9 && toRay(a, angle, 12) < 1.6) return C.discDark;
     if (r < 10) return C.discDark;
     return r > R - 12 ? C.discHi : C.disc;
   });
@@ -1025,7 +1053,7 @@ function rimPix(rimDef, style, angle) {
     if (r > R) return null;
     const L = lit(a);
     // Обод: полированная полка, светлая сверху слева; внутренняя ступень темнее.
-    if (r > R - 2.6) return gray(0.72 + 0.28 * L);
+    if (r > R - 2.2) return null; // закраина — в слое шины
     if (r > R - 4.6) return gray(0.5);
     if (style === 'six' || style === 'five') {
       if (r < 13) return hub(r, a);
@@ -1140,7 +1168,7 @@ async function main() {
       radius: +(TIRE_R / 3).toFixed(2),
     },
     wheelFrame: { width: FRAME / 3, height: FRAME / 3, frames: FRAMES },
-    headlight: { x: toWorldX(818), y: toWorldY(164) },
+    headlight: { x: toWorldX(820), y: toWorldY(165) },
     shadow: { height: SHADOW_H / 3, above: SHADOW_GROUND / 3 },
     // Шины: вид × размер диска; диски: размер. Детали ссылаются на них полем sprite.
     tires: Object.keys(TIRE_KINDS),

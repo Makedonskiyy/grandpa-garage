@@ -9,7 +9,7 @@
     "radius": 19.36
   },
   "wheelFrame": { "width": 48, "height": 48, "frames": 16 },
-  "headlight": { "x": 272.67, "y": 54.67 },
+  "headlight": { "x": 273.33, "y": 55 },
   "shadow": { "height": 20, "above": 14 },
   "tires": ["stock", "studded", "mud", "sport", "slicks", "old"],
   "rims": {

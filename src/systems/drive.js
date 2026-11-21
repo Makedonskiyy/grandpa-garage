@@ -24,6 +24,8 @@ import {
 } from './simulate.js';
 
 export const STEP = 1 / 240;
+/** Колёсная база, м: задняя ось наезжает на препятствие позже передней. */
+const WHEELBASE_M = 2.665;
 const TAU = 2 * Math.PI;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
@@ -81,6 +83,7 @@ export function createRun(testId, build, opts = {}, data = defaultData) {
     drive: 0,
     gripLimit: 0,
     limiter: false,
+    hits: new Set(),
     log: { spin: 0, limiter: 0, shifts: 0, deepTraction: 0, deepPower: 0, topSpeed: 0 },
     events: [],
   };
@@ -299,6 +302,22 @@ function trialHazards(run, seg, surf, gas, drive, limit, h) {
   } else {
     run.sink = Math.max(0, run.sink - h);
   }
+  // Лежачий полицейский: каждая ось бьётся о него один раз, удар растёт с квадратом скорости —
+  // до ~11 км/ч (safeSpeed) — без вреда, на 40 км/ч хрупкие детали не выдержат.
+  if (surf.hit) {
+    const at = segmentAt(test, run.x);
+    for (const k of [0, 1]) {
+      const id = `${at.from}:${k}`;
+      const edge = at.from + k * WHEELBASE_M;
+      if (run.x >= edge && !run.hits.has(id)) {
+        run.hits.add(id);
+        // Ниже безопасной скорости подвеска гасит удар целиком.
+        const sp = Math.max(0, run.v - (surf.safeSpeed ?? 0)) / test.damage.refSpeed;
+        run.damage += surf.hit * run.stats.impact * sp * sp;
+        run.events.push({ type: 'hit', v: run.v });
+      }
+    }
+  }
   if (surf.impact) {
     const d = test.damage;
     const vv = run.v * run.v + d.baseSpeed * d.baseSpeed;
@@ -450,7 +469,10 @@ export function runBot(testId, build, opts = {}, data = defaultData) {
       const decel = Math.min(run.ph.brakeMu, mu) * run.ph.g * 0.97;
       const need = (run.v * run.v) / (2 * decel);
       const bump = run.test.track.segments.find(
-        (s) => run.test.surfaces[s.type]?.impact && s.to > run.x && s.from - run.x < 25,
+        (s) =>
+          (run.test.surfaces[s.type]?.impact || run.test.surfaces[s.type]?.hit) &&
+          s.to > run.x &&
+          s.from - run.x < 25,
       );
       // Держит скорость, с которой ещё успеет встать в середине зоны.
       if (run.x + need >= stopAt) {
