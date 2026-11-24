@@ -50,7 +50,7 @@ export class BaseScene extends Phaser.Scene {
   }
 
   /** Плавный переход в другую сцену. */
-  goTo(key) {
+  goTo(key, data) {
     if (this._leaving) return;
     // Прогресс пишется при каждом переходе (меню и заставку не трогаем).
     if (![SCENES.MENU, SCENES.BOOT].includes(this.scene.key)) saveGame(gameState);
@@ -62,6 +62,6 @@ export class BaseScene extends Phaser.Scene {
     const zoom = cam.zoom;
     cam.setOrigin(0.5).centerOn(WORLD.width / 2, WORLD.height / 2);
     this.tweens.add({ targets: cam, zoom: zoom * 1.03, duration: 420, ease: 'Sine.easeIn' });
-    closeShutter().then(() => this.scene.start(key));
+    closeShutter().then(() => this.scene.start(key, data));
   }
 }

@@ -7,7 +7,8 @@ import { SCENES, MUSIC, SFX, AMB, WORLD } from '../config/constants.js';
 import { buildCar, buildRivalCar, spinWheels } from '../systems/buildCar.js';
 import { getTest, formatSeconds } from '../systems/simulate.js';
 import { createRun, stepRun, greenLight, runBot, summarize } from '../systems/drive.js';
-import { StartLight } from '../systems/StartLight.js';
+import { ScreenLight } from '../ui/ScreenLight.js';
+import { showRunOverlay, runOverText } from '../ui/RunOverlay.js';
 import { StoryStage } from '../systems/StoryStage.js';
 import { audio } from '../systems/AudioManager.js';
 import { getRenderZoom } from '../systems/scale.js';
@@ -41,7 +42,7 @@ export class RaceScene extends BaseScene {
     super(SCENES.RACE);
   }
 
-  async create() {
+  async create(data = {}) {
     this.enter();
     audio.playMusic(MUSIC.DRIVE);
     this.ambience = AMB.NIGHT;
@@ -79,10 +80,12 @@ export class RaceScene extends BaseScene {
     for (const car of [this.rival, this.player]) car.x = cfg.startX - car.front;
     this.#nameplate(this.player, t('race.you'));
     this.#nameplate(this.rival, t('race.rival'));
-    this.light = new StartLight(this, WORLD.width - 26, 34, { scale: 1.25, pole: 76 });
     this.fx = new TireFx(this, this.player); // дым из-под шин и след на асфальте
 
     this.#buildHud();
+    // Светофор — на экране сверху; после зелёного уходит, на его место встаёт секундомер.
+    this.light = new ScreenLight(this);
+    this.light.setVisible(false);
     audio.playSfx(SFX.CAR_START);
     this.engine = audio.loopSfx(SFX.ENGINE);
     this.sounds = new DriveSounds(this, 'asphalt');
@@ -91,10 +94,13 @@ export class RaceScene extends BaseScene {
     this.hud.setVisible(false);
     this.$clock.style.visibility = 'hidden';
     this.hud.setEnabled(false);
-    await new StoryStage(this).play('preRace');
+    // «Попробовать снова» — сразу к старту, без реплик перед заездом.
+    if (!data.retry) await new StoryStage(this).play('preRace');
     if (!this.scene.isActive()) return;
     this.hud.setVisible(true);
+    this.light.setVisible(true);
     this.$clock.style.visibility = '';
+    this.$clock.classList.add('is-hidden');
     // Газ до старта уже работает: обороты набирают на красном и жёлтых.
     this.hud.setEnabled(true);
     this.state = 'tree';
@@ -107,6 +113,7 @@ export class RaceScene extends BaseScene {
         greenLight(this.run);
         this.state = 'running';
         this.hud.say(this.run.auto ? 'goAuto' : 'goManual', 'good');
+        this.time.delayedCall(1500, () => this.$clock.classList.remove('is-hidden'));
       },
     });
   }
@@ -370,7 +377,19 @@ export class RaceScene extends BaseScene {
     audio.playSfx(this.result.ok ? SFX.SUCCESS : SFX.FAIL);
     this.time.delayedCall(cfg.finishHoldMs, () => {
       recordResult('race', this.result);
-      this.goTo(SCENES.RESULT);
+      this.hud.setVisible(false);
+      this.light.setVisible(false);
+      const ok = this.result.ok;
+      const close = showRunOverlay(this.ui, {
+        ok,
+        title: ok ? t('runOver.raceWin') : t('runOver.lose'),
+        text: runOverText(gameState.lastResult),
+        primary: ok
+          ? { label: t('runOver.next'), onClick: () => this.goTo(SCENES.ENDING) }
+          : { label: t('runOver.retry'), onClick: () => this.goTo(SCENES.RACE, { retry: true }) },
+        details: { label: t('runOver.details'), onClick: () => this.goTo(SCENES.RESULT) },
+      });
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, close);
     });
   }
 }
