@@ -236,7 +236,7 @@ function clump(ctx, r, cx, cy, rx, ry, colors, n, size) {
 function pine(ctx, o) {
   const { x, base, h, haze, r } = o;
   const lean = (r() - 0.5) * h * 0.04;
-  const top = base - h * 0.86;
+  const top = base - h * 0.94;
   const w = Math.max(1, h * 0.022);
   const g = ctx.createLinearGradient(0, base, 0, top);
   g.addColorStop(0, mix('#4e3f33', haze));
@@ -257,10 +257,10 @@ function pine(ctx, o) {
     mix('#294230', haze),
     mix('#35523b', haze),
   ];
-  const n = 3 + Math.floor(r() * 3);
-  for (let i = 0; i < n; i++) {
-    const cy = base - h * (0.72 + r() * 0.26);
-    const cx = x + lean + (r() - 0.5) * h * 0.22;
+  clump(ctx, r, x + lean, top, h * 0.085, h * 0.06, dark, 10, h * 0.018);
+  for (const side of [-1, 1]) {
+    const cy = top + h * (0.035 + r() * 0.025);
+    const cx = x + lean + side * h * (0.042 + r() * 0.02);
     const rx = h * (0.07 + r() * 0.07);
     const ry = h * (0.03 + r() * 0.025);
     clump(ctx, r, cx, cy, rx, ry, dark, 12, Math.max(1, h * 0.02));
@@ -364,20 +364,7 @@ function grassTuft(ctx, o) {
   }
 }
 
-/** Тёмная толща леса позади стволов: без неё лес «просвечивает» небом. */
-function forestMass(ctx, o) {
-  const { x, base, h, haze, r } = o;
-  const cols = [
-    mix('#15241b', haze),
-    mix('#1c2f23', haze),
-    mix('#243a2b', haze),
-    mix('#2e4733', haze),
-    mix('#39553d', haze),
-  ];
-  clump(ctx, r, x, base - h * 0.5, 20, h * 0.5, cols, 8, 4);
-}
-
-const DRAW = { spruce, pine, birch, bush, grass: grassTuft, mass: forestMass };
+const DRAW = { spruce, pine, birch, bush, grass: grassTuft };
 
 // ---------- Сооружения у дороги ----------
 
@@ -638,10 +625,6 @@ function chunkObjects(seed, layer, ci, ppm) {
       if (b.clearing > 0.5 && r() < 0.004) add('farHouses', x, 222, 0, 0.5, 90);
     }
   } else if (layer.id === 'mid') {
-    for (let x = x0; x < x0 + CW; x += 6 + r() * 8) {
-      const b = biomeAt(seed, meterOf(x));
-      if (r() < b.density) add('mass', x, 224, 70 + r() * 60, 0.22, 30);
-    }
     for (let x = x0; x < x0 + CW; x += 9 + r() * 16) {
       const b = biomeAt(seed, meterOf(x));
       if (r() > b.density) {
@@ -696,7 +679,6 @@ function chunkObjects(seed, layer, ci, ppm) {
 
 function drawRoad(ctx, seed, x0, ppm) {
   const x1 = x0 + CW;
-  const r = rand(hash(seed, x0, 5150) * 2 ** 32);
   // Трава на обочине за асфальтом.
   const g = ctx.createLinearGradient(0, 200, 0, 232);
   g.addColorStop(0, '#6f7a4c');
@@ -712,13 +694,13 @@ function drawRoad(ctx, seed, x0, ppm) {
   for (let y = 232; y < 360; y += 2)
     for (let x = Math.floor(x0 / 2) * 2; x < x1; x += 2) {
       const v = hash(seed, x, y, 9);
-      if (v < 0.18) {
-        ctx.fillStyle = v < 0.09 ? '#4b4d50' : '#626468';
+      if (v < 0.06) {
+        ctx.fillStyle = v < 0.03 ? '#545659' : '#5b5d60';
         ctx.fillRect(x, y, 2, 1);
       }
     }
   // Заплаты и трещины — объекты с привязкой к своему метру (по сиду).
-  for (let m = Math.floor(x0 / ppm / 7) * 7; m * ppm < x1 + 120; m += 7) {
+  for (let m = Math.floor((x0 - 480) / ppm / 7) * 7; m * ppm < x1 + 120; m += 7) {
     const h = hash(seed, m, 6061);
     if (h > 0.35) continue;
     const px = m * ppm + hash(seed, m, 6062) * 200;
@@ -746,12 +728,8 @@ function drawRoad(ctx, seed, x0, ppm) {
     }
     ctx.stroke();
   }
-  // Разметка: сплошная у края (местами стёртая), прерывистая осевая 3 м / 9 м, сплошная у ближнего края.
-  for (let x = x0; x < x1; x += 2)
-    if (hash(seed, x, 7001) > 0.08) {
-      ctx.fillStyle = 'rgba(232,230,220,0.85)';
-      ctx.fillRect(x, 238, 2, 1.6);
-    }
+  ctx.fillStyle = 'rgba(232,230,220,0.85)';
+  ctx.fillRect(x0, 238, CW, 1.6);
   const period = 12 * ppm;
   for (let s = Math.floor(x0 / period) * period; s < x1; s += period) {
     ctx.fillStyle = 'rgba(232,230,220,0.88)';
@@ -759,11 +737,6 @@ function drawRoad(ctx, seed, x0, ppm) {
   }
   ctx.fillStyle = 'rgba(232,230,220,0.8)';
   ctx.fillRect(x0, 352, CW, 1.6);
-  // Гравий и пыль на бровке.
-  for (let i = 0; i < 160; i++) {
-    ctx.fillStyle = r() < 0.5 ? '#9d978a' : '#6f6a5e';
-    ctx.fillRect(x0 + r() * CW, 228 + r() * 6, 0.8, 0.6);
-  }
 }
 
 /** Масштаб предметов дальней обочины: она за машиной, поэтому всё там видно мельче. */
