@@ -70,7 +70,8 @@ export class TrialScene extends BaseScene {
     this.car = buildCar(this, gameState.build, gameState.cosmetics, {
       x: CAR_X,
       y: GROUND_Y,
-      dirty: true,
+      // На асфальте машина не пачкается: грязная, только если такой приехала из гаража.
+      dirty: gameState.car.dirty || this.test.surface !== 'asphalt',
     });
     this.cover = this.#drawMudCover(); // грязь поверх колёс в глубоких участках
     this.mud = this.#makeMud();
@@ -350,8 +351,7 @@ export class TrialScene extends BaseScene {
     }
     this.car.y = GROUND_Y + run.sink * 7;
     this.car.step(dt, {
-      // На юзе колёса почти встают: шина скользит, а не катится.
-      distance: (moved * (1 + run.slip * 2) + run.slip * 4) * (1 - (run.lock ?? 0) * 0.85),
+      distance: moved * (1 + run.slip * 2) + run.slip * 4,
       accel: run.accel ?? 0,
     });
 
