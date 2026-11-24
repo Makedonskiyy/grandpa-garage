@@ -4,3 +4,4 @@ coverage/
 package-lock.json
 docs/Dedov-garage-TZ.md
 .claude/
+.agents/
