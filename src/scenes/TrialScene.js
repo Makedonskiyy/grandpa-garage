@@ -5,6 +5,7 @@ import { buildCar } from '../systems/buildCar.js';
 import { getTest } from '../systems/simulate.js';
 import { createRun, stepRun, greenLight, runBot, summarize, segmentAt } from '../systems/drive.js';
 import { StartLight } from '../systems/StartLight.js';
+import { TireFx } from '../systems/TireFx.js';
 import { audio } from '../systems/AudioManager.js';
 import { gameState, recordResult } from '../gameState.js';
 import { el } from '../ui/dom.js';
@@ -73,6 +74,7 @@ export class TrialScene extends BaseScene {
     });
     this.cover = this.#drawMudCover(); // грязь поверх колёс в глубоких участках
     this.mud = this.#makeMud();
+    this.fx = new TireFx(this, this.car); // дым и след шин на асфальте
     audio.playSfx(SFX.CAR_START);
     this.engine = audio.loopSfx(SFX.ENGINE);
     this.sounds = new DriveSounds(this, this.test.surface);
@@ -287,6 +289,16 @@ export class TrialScene extends BaseScene {
     return box;
   }
 
+  #tireFx(dt, asphalt) {
+    const run = this.run;
+    this.fx.update(dt, {
+      run,
+      toScreenX: (m) => CAR_X + (m - run.x) * PPM,
+      groundY: GROUND_Y,
+      asphalt,
+    });
+  }
+
   /** Брызги грязи из-под задних колёс. */
   #makeMud() {
     if (!this.textures.exists('mud_px')) {
@@ -314,6 +326,7 @@ export class TrialScene extends BaseScene {
     if (this.done) {
       // После остановки подвеска успокаивается; при пробуксовке колёса крутятся на месте.
       this.car.step(dt, { distance: this.spin * delta * 0.4, accel: -input.brake * 2 });
+      this.#tireFx(dt, false);
       return;
     }
     const prevX = run.x;
@@ -337,11 +350,15 @@ export class TrialScene extends BaseScene {
     }
     this.car.y = GROUND_Y + run.sink * 7;
     this.car.step(dt, {
-      distance: moved * (1 + run.slip * 2) + run.slip * 4,
+      // На юзе колёса почти встают: шина скользит, а не катится.
+      distance: (moved * (1 + run.slip * 2) + run.slip * 4) * (1 - (run.lock ?? 0) * 0.85),
       accel: run.accel ?? 0,
     });
 
-    const splash = run.slip > 0.25 || (seg.type === 'deep' && run.v > 1);
+    // Асфальт: шины дымят и чернят дорогу; грунт: из-под колёс летит грязь.
+    const asphalt = (this.test.surfaces?.[seg.type]?.grip ?? this.test.surface) === 'asphalt';
+    this.#tireFx(dt, asphalt);
+    const splash = !asphalt && (run.slip > 0.25 || (seg.type === 'deep' && run.v > 1));
     this.mud.setPosition(CAR_X - 80, GROUND_Y - 6);
     if (splash && !this.mud.emitting) this.mud.start();
     else if (!splash && this.mud.emitting) this.mud.stop();

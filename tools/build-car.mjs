@@ -760,9 +760,12 @@ function layerShadow(m) {
       const under = bottom[x] >= 0 ? GROUND - bottom[x] : 0;
       if (yy < 0 && -yy <= under + 1 && x > AXR + TIRE_R * 0.5 && x < AXF - TIRE_R * 0.5)
         al = Math.max(al, -yy > under - 3 ? 120 : 165);
+      // Пятно контакта — только на полу под шиной (ниже земли). Выше земли тень заливала
+      // просвет у скругления шины, и колесо снизу казалось плоским.
       for (const ax of [AXR, AXF]) {
-        const kc = Math.hypot((x + 0.5 - ax) / (TIRE_R * 0.95), yy / 5);
-        if (kc < 1) al = Math.max(al, kc < 0.55 ? 225 : 185);
+        if (yy < 0) continue;
+        const kc = Math.hypot((x + 0.5 - ax) / (TIRE_R * 0.75), yy / 4);
+        if (kc < 1) al = Math.max(al, kc < 0.5 ? 170 : 130);
       }
       if (al) p.set(x, y, '#060505', al);
     }

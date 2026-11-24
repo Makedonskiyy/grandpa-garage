@@ -262,7 +262,10 @@ function tick(run, gas, brake, h) {
       (surf.resistance ?? 0) +
       (surf.resistancePerSpeed ?? 0) * v +
       run.sink * (surf.sinkResistance ?? 0));
+  const brakeDemand = brake * ph.brakeMu * run.mass * ph.g;
   const brakeForce = brake * Math.min(limit, ph.brakeMu * run.mass * ph.g);
+  // Тормоз у предела сцепления: шины начинают скользить, визжать и дымить (только для показа).
+  run.lock = v > 1 && limit > 0 ? clamp((brakeDemand / limit - 0.9) / 0.25, 0, 1) : 0;
   const resist = air + ground + brakeForce;
 
   // Колёса и диски раскручиваются вместе с машиной: тяжёлые диски — больше инерции.
