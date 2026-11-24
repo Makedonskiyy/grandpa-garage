@@ -88,7 +88,10 @@ export class TrialScene extends BaseScene {
     this.#buildHud();
     // Светофор у обочины на старте: трогается игрок сам, на зелёный.
     this.startBox = this.add.container(CAR_X, SHIFT);
-    this.light = new StartLight(this, 4 * PPM, 146, { scale: 1.1, pole: 40 });
+    // На объездной светофор стоит на дальней бровке, как столбики: мельче и до асфальта.
+    this.light = this.world
+      ? new StartLight(this, 4 * PPM, 146, { scale: 0.8, pole: 87 })
+      : new StartLight(this, 4 * PPM, 146, { scale: 1.1, pole: 40 });
     this.startBox.add(this.light);
     if (this.test.practice) {
       this.ui.append(
