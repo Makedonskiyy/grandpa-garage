@@ -4,7 +4,9 @@ import { SCENES, MUSIC, SFX, AMB, WORLD } from '../config/constants.js';
 import { buildCar } from '../systems/buildCar.js';
 import { getTest } from '../systems/simulate.js';
 import { createRun, stepRun, greenLight, runBot, summarize, segmentAt } from '../systems/drive.js';
-import { StartLight } from '../systems/StartLight.js';
+import { ScreenLight } from '../ui/ScreenLight.js';
+import { showRunOverlay, runOverText } from '../ui/RunOverlay.js';
+import { icon } from '../ui/icons.js';
 import { TireFx } from '../systems/TireFx.js';
 import { audio } from '../systems/AudioManager.js';
 import { gameState, recordResult } from '../gameState.js';
@@ -12,7 +14,6 @@ import { el } from '../ui/dom.js';
 import { t } from '../systems/strings.js';
 import { getSettings } from '../systems/settings.js';
 import { getRenderZoom } from '../systems/scale.js';
-import { webButton } from '../ui/components.js';
 import { backdrop, prop, roadsideProps, rng } from './scenery.js';
 import { BypassWorld } from './bypassWorld.js';
 import { DriveHud, DriveSounds } from '../ui/DriveHud.js';
@@ -86,23 +87,23 @@ export class TrialScene extends BaseScene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.engine?.destroy());
 
     this.#buildHud();
-    // Светофор у обочины на старте: трогается игрок сам, на зелёный.
+    // Светофор — на экране сверху: трогается игрок сам, на зелёный.
     this.startBox = this.add.container(CAR_X, SHIFT);
-    // На объездной светофор стоит на дальней бровке, как столбики: мельче и до асфальта.
-    this.light = this.world
-      ? new StartLight(this, 4 * PPM, 146, { scale: 0.8, pole: 87 })
-      : new StartLight(this, 4 * PPM, 146, { scale: 1.1, pole: 40 });
-    this.startBox.add(this.light);
+    this.light = new ScreenLight(this);
     if (this.test.practice) {
       this.ui.append(
-        el('div', { class: 'ui-abs trial-exit' }, [
-          webButton(t('trial.toGarage'), () => this.#finish(true), {
-            variant: 'dark',
-            icon: 'back',
-          }),
-        ]),
+        el(
+          'button',
+          {
+            class: 'ui-abs garage-exit',
+            type: 'button',
+            onclick: () => this.#finish(true),
+          },
+          [icon('garage'), t('trial.toGarage')],
+        ),
       );
     }
+    this.hud.setHintSlot('light');
     this.hud.say(auto ? 'launchAuto' : 'launch');
     this.light.run(this.test.christmasTree, {
       onAmber: () => audio.playSfx(SFX.TREE_BEEP),
@@ -111,6 +112,8 @@ export class TrialScene extends BaseScene {
         greenLight(this.run);
         this.hud.say(auto ? 'goAuto' : 'goManual', 'good');
       },
+      // Светофор ушёл — подсказки встают на его место сверху.
+      onHide: () => this.hud.setHintSlot('top'),
     });
   }
 
@@ -147,17 +150,27 @@ export class TrialScene extends BaseScene {
         }),
       );
     }
-    const block = (label, value, body) =>
-      el('div', { class: 'drive-hud__block' }, [
-        el('div', { class: 'hud-meter__head' }, [el('span', { text: label }), value]),
+    // Строка карточки: значок, крупное число, мелкая подпись справа, под ней — тонкая полоса.
+    const stat = (name, value, sub, body) =>
+      el('div', { class: 'hud-stat' }, [
+        el('div', { class: 'hud-stat__row' }, [icon(name), value, sub]),
         body,
       ]);
+    this.$pathSub = el('span', { class: 'hud-stat__sub' });
+    this.$pathValue.className = 'hud-stat__value';
+    this.$durValue.className = 'hud-stat__value';
+    this.$durStat = null;
     this.hud = new DriveHud(this, this.run, {
       className: 'dash--trial',
       middle: [
         el('div', { class: 'dash-info__map', text: this.test.map.name }),
-        block(t('trial.distance'), this.$pathValue, map),
-        block(t('trial.durability'), this.$durValue, el('div', { class: 'meter' }, this.$dur)),
+        stat('finish', this.$pathValue, this.$pathSub, this.loop ? null : map),
+        (this.$durStat = stat(
+          'durability',
+          this.$durValue,
+          el('span', { class: 'hud-stat__sub', text: t('trial.durability') }),
+          el('div', { class: 'meter' }, this.$dur),
+        )),
       ],
     });
   }
@@ -386,17 +399,21 @@ export class TrialScene extends BaseScene {
     const len = this.test.track.length;
     const pos = this.loop ? run.x % len : Math.min(run.x, len);
     this.$marker.style.left = `${(pos / len) * 100}%`;
-    this.$pathValue.textContent = this.loop
-      ? t('trial.freeDistance', {
-          m: Math.round(run.x),
-          v: Math.round(run.log.topSpeed * 3.6),
-          best: Math.round(Math.max(gameState.flags.freeTopSpeed ?? 0, run.log.topSpeed * 3.6)),
-        })
-      : `${Math.round(pos)} м`;
+    if (this.loop) {
+      // Объездная: путь крупно, справа — максимум заезда и рекорд.
+      this.$pathValue.textContent = `${Math.round(run.x)} м`;
+      const v = Math.round(run.log.topSpeed * 3.6);
+      const best = Math.round(Math.max(gameState.flags.freeTopSpeed ?? 0, v));
+      this.$pathSub.textContent = t('trial.freeSub', { v, best });
+    } else {
+      this.$pathValue.textContent = `${Math.round(pos)} м`;
+      this.$pathSub.textContent = t('trial.ofTotal', { total: len });
+    }
     const left = Math.max(0, 1 - run.damage / run.capacity);
     this.$dur.style.transform = `scaleX(${left})`;
     this.$dur.classList.toggle('is-bad', left < 0.35);
     this.$durValue.textContent = `${Math.round(left * 100)}%`;
+    this.$durStat.classList.toggle('is-bad', left < 0.35);
   }
 
   /** Подсказка: что впереди и что делать прямо сейчас. */
@@ -483,7 +500,19 @@ export class TrialScene extends BaseScene {
     }
     this.time.delayedCall(1400, () => {
       recordResult('trial', { ...this.result, map: this.test.id });
-      this.goTo(SCENES.RESULT);
+      this.hud.setVisible(false);
+      this.light.setVisible(false);
+      const ok = this.result.ok;
+      const close = showRunOverlay(this.ui, {
+        ok,
+        title: ok ? t('runOver.trialWin') : t('runOver.lose'),
+        text: runOverText(gameState.lastResult),
+        primary: ok
+          ? { label: t('runOver.next'), onClick: () => this.goTo(SCENES.PALYCH) }
+          : { label: t('runOver.retry'), onClick: () => this.goTo(SCENES.TRIAL) },
+        details: { label: t('runOver.details'), onClick: () => this.goTo(SCENES.RESULT) },
+      });
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, close);
     });
   }
 
