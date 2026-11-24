@@ -46,7 +46,6 @@ export function showRunOverlay(ui, o) {
     }
   };
   window.addEventListener('keydown', onKey);
-  requestAnimationFrame(() => primary.focus({ preventScroll: true }));
   return () => {
     window.removeEventListener('keydown', onKey);
     node.remove();

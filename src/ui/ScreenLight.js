@@ -50,6 +50,11 @@ function svg() {
     `<filter id="${id}-shadow" x="-0.2" y="-0.5" width="1.4" height="2">
       <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity="0.5"/></filter>`,
   ];
+  // Ореолы — отдельным слоем поверх всех ламп и корпуса: свет ложится на металл сверху.
+  const glows = COLORS.map(
+    ([, glow], i) =>
+      `<circle class="tl-glow" cx="${X0 + i * STEP}" cy="${CY}" r="${R + 6}" fill="${glow}" filter="url(#${id}-glow)"/>`,
+  );
   const lamps = COLORS.map(([, glow, hot, edge, off, offEdge], i) => {
     const cx = X0 + i * STEP;
     const g = `${id}-l${i}`;
@@ -68,7 +73,6 @@ function svg() {
     const p = (r, a) => `${(cx + Math.cos(a) * r).toFixed(1)} ${(CY + Math.sin(a) * r).toFixed(1)}`;
     const visor = `M${p(ro, a0)} A${ro} ${ro} 0 0 1 ${p(ro, a1)} L${p(ri, a1)} A${ri} ${ri} 0 0 0 ${p(ri, a0)} Z`;
     return `<g class="tl-lamp" data-i="${i}">
-      <circle class="tl-glow" cx="${cx}" cy="${CY}" r="${R + 10}" fill="${glow}" filter="url(#${id}-glow)"/>
       <circle cx="${cx}" cy="${CY}" r="${R + 6}" fill="url(#${id}-rim)"/>
       <circle cx="${cx}" cy="${CY}" r="${R + 4.4}" fill="url(#${id}-socket)"/>
       <circle cx="${cx}" cy="${CY}" r="${R}" fill="url(#${g}-off)"/>
@@ -97,6 +101,7 @@ function svg() {
     </g>
     ${bolt(14, CY)}${bolt(W - 14, CY)}
     ${lamps.join('')}
+    <g class="tl-glows">${glows.join('')}</g>
   </svg>`;
 }
 
@@ -110,12 +115,14 @@ export class ScreenLight {
     this.node = el('div', { class: 'ui-abs screen-light', role: 'img', 'aria-label': 'Светофор' });
     this.node.innerHTML = svg();
     this.lamps = [...this.node.querySelectorAll('.tl-lamp')];
+    this.glows = [...this.node.querySelectorAll('.tl-glow')];
     scene.ui.append(this.node);
   }
 
   /** Какие лампы горят: индексы 0 — красная, 1–3 — жёлтые, 4 — зелёная. */
   show(on = []) {
     this.lamps.forEach((l, i) => l.classList.toggle('is-on', on.includes(i)));
+    this.glows.forEach((g, i) => g.classList.toggle('is-on', on.includes(i)));
   }
 
   /**

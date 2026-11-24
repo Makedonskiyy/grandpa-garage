@@ -39,8 +39,13 @@
   opacity: 1;
 }
 
-.tl-lamp.is-on .tl-glow {
-  opacity: 0.85;
+/* Ореол поверх линзы и корпуса: свет ложится на металл, а не прячется под ним. */
+.tl-glow {
+  mix-blend-mode: screen;
+}
+
+.tl-glow.is-on {
+  opacity: 0.55;
 }
 
 /* ---------- Секундомер заезда: крупные белые цифры на мягкой тени ---------- */
@@ -360,9 +365,8 @@
   margin-top: 40px;
 }
 
+/* Обычные кнопки: заливка, наведение — чуть светлее, нажатие — чуть темнее. */
 .run-over__btn {
-  --ring: rgb(255 255 255 / 0.95);
-  --halo: rgb(211 30 30 / 0.45);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -371,15 +375,12 @@
   height: 84px;
   padding: 0 36px 0 30px;
   border: 0;
-  border-radius: 22px;
+  border-radius: 20px;
   font: 600 36px/1 var(--font-ui);
   letter-spacing: -0.03em;
   cursor: pointer;
   outline: none;
-  transition:
-    transform 140ms ease,
-    box-shadow 160ms ease,
-    background 160ms ease;
+  transition: background-color 140ms ease;
 }
 
 .run-over__btn .icon {
@@ -388,55 +389,42 @@
   height: 34px;
 }
 
-/* Наведение и фокус — акцентная обводка: белое кольцо с цветным ореолом. */
-.run-over__btn:hover,
-.run-over__btn:focus-visible {
-  transform: translateY(-2px);
-  box-shadow:
-    0 0 0 3px var(--ring),
-    0 0 0 10px var(--halo),
-    0 14px 32px rgb(0 0 0 / 0.35);
-}
-
-.run-over__btn:active {
-  transform: translateY(1px);
-}
-
 .run-over__btn--primary {
-  color: #160303;
-  background: linear-gradient(180deg, #ea3a33, #c81a17);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.28),
-    0 10px 28px rgb(211 30 30 / 0.35);
+  color: #fff;
+  background: #d31e1e;
 }
 
-.run-over.is-ok .run-over__btn {
-  --halo: rgb(46 168 70 / 0.45);
+.run-over__btn--primary:hover {
+  background: #e0302a;
+}
+
+.run-over__btn--primary:active {
+  background: #b81717;
 }
 
 .run-over.is-ok .run-over__btn--primary {
-  color: #041a08;
-  background: linear-gradient(180deg, #4fd165, #2ea846);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.3),
-    0 10px 28px rgb(46 168 70 / 0.35);
+  background: #2ea846;
+}
+
+.run-over.is-ok .run-over__btn--primary:hover {
+  background: #36b94f;
+}
+
+.run-over.is-ok .run-over__btn--primary:active {
+  background: #26913b;
 }
 
 .run-over__btn--ghost {
-  --halo: rgb(255 255 255 / 0.16);
   color: #fff;
+  background: rgb(255 255 255 / 0.16);
+}
+
+.run-over__btn--ghost:hover {
+  background: rgb(255 255 255 / 0.24);
+}
+
+.run-over__btn--ghost:active {
   background: rgb(255 255 255 / 0.12);
-  backdrop-filter: blur(8px);
-  box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / 0.34);
-}
-
-.run-over__btn--ghost .icon {
-  color: rgb(255 255 255 / 0.8);
-}
-
-.run-over__btn--ghost:hover,
-.run-over__btn--ghost:focus-visible {
-  background: rgb(255 255 255 / 0.2);
 }
 
 @keyframes run-over-in {
