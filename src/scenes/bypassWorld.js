@@ -490,10 +490,12 @@ function truck(ctx, o) {
   ctx.fillStyle = '#2b2d31';
   ctx.fillRect(cx0, base - 22, 62, 8);
   ctx.fillStyle = cabCol;
+  // Кабина: задняя стенка — у полуприцепа, передок — на краю тягача (в любую сторону).
   const fx = right ? cx0 + 62 : cx0;
+  const bx = right ? cx0 + 8 : cx0 + 54;
   ctx.beginPath();
-  ctx.moveTo(cx0 + (right ? 8 : 0), base - 18);
-  ctx.lineTo(cx0 + (right ? 8 : 0), base - 84);
+  ctx.moveTo(bx, base - 18);
+  ctx.lineTo(bx, base - 84);
   ctx.lineTo(fx + (right ? -4 : 4), base - 84);
   ctx.lineTo(fx, base - 70);
   ctx.lineTo(fx, base - 18);
@@ -657,11 +659,8 @@ function chunkObjects(seed, layer, ci, ppm) {
         const v = gr() * (b.birch + b.pine + b.spruce);
         const kind = v < b.birch ? 'birch' : v < b.birch + b.pine ? 'pine' : 'spruce';
         const h =
-          (kind === 'pine'
-            ? 150 + gr() * 60
-            : kind === 'birch'
-              ? 110 + gr() * 60
-              : 90 + gr() * 80) * tall;
+          (kind === 'pine' ? 115 + gr() * 40 : kind === 'birch' ? 90 + gr() * 40 : 70 + gr() * 50) *
+          tall;
         list.push({
           kind,
           x,
@@ -733,7 +732,8 @@ function chunkObjects(seed, layer, ci, ppm) {
         const x = cx + i * (6 + gr() * 6);
         if (!inChunk(x)) continue;
         const h =
-          kind === 'pine' ? 250 + gr() * 70 : kind === 'birch' ? 210 + gr() * 70 : 150 + gr() * 70;
+          // Не выше экрана: макушки ближних деревьев видны, как на фото.
+          kind === 'pine' ? 155 + gr() * 40 : kind === 'birch' ? 135 + gr() * 40 : 95 + gr() * 40;
         list.push({
           kind,
           x,
@@ -1184,4 +1184,14 @@ export class BypassWorld {
     this.scene.textures.remove(`${this.id}_sky`);
     this.layers = [];
   }
+}
+
+/**
+ * Нарисовать один объект мира на холсте (витрина объектов для проверки арта).
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {string} kind имя объекта: busStop, truck, billboard, honeyStand, post, km, sign…
+ * @param {object} o x, base и параметры объекта (seed, name, sign, km)
+ */
+export function drawProp(ctx, kind, o) {
+  DRAW[kind]?.(ctx, { h: 0, haze: 0, ...o, r: rand(o.seed ?? 1) });
 }
