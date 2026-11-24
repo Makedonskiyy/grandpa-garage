@@ -8,6 +8,7 @@ import {
   rollAngle,
   SUSPENSION,
 } from '../src/systems/carPhysics.js';
+import car from '../data/car.json';
 
 const run = (s, seconds, accel = 0) => {
   for (let t = 0; t < seconds; t += 1 / 60) stepSuspension(s, 1 / 60, accel);
@@ -47,11 +48,19 @@ describe('подвеска', () => {
 });
 
 describe('колёса', () => {
-  it('кадр по углу: 16 кадров на оборот, отрицательные углы тоже', () => {
-    expect(wheelFrame(0)).toBe(0);
-    expect(wheelFrame(Math.PI)).toBe(8);
-    expect(wheelFrame(Math.PI * 2)).toBe(0);
-    expect(wheelFrame(-0.01)).toBe(15);
+  it('кадр по углу: по кругу, отрицательные углы тоже', () => {
+    expect(wheelFrame(0, 16)).toBe(0);
+    expect(wheelFrame(Math.PI, 16)).toBe(8);
+    expect(wheelFrame(Math.PI * 2, 16)).toBe(0);
+    expect(wheelFrame(-0.01, 16)).toBe(15);
+    expect(wheelFrame(Math.PI)).toBe(16); // лист в 32 кадра
+  });
+
+  it('кузов не наезжает на шину: ход вниз не больше зазора арки', () => {
+    const s = createSuspension();
+    for (let i = 0; i < 240; i++) stepSuspension(s, 1 / 60, -12); // резкое торможение
+    expect(s.front.y).toBeLessThanOrEqual(SUSPENSION.maxDrop);
+    expect(SUSPENSION.maxDrop).toBeLessThan(car.archGap);
   });
 
   it('проезд длины окружности — ровно оборот', () => {

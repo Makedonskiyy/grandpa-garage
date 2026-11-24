@@ -71,6 +71,12 @@ const wing = line(
   '<path d="M32 96h192l-24 24H56z"/><path d="M96 120l-16 80M160 120l16 80M56 200h48M152 200h48"/>',
 );
 
+/** Суппорт: тормозной диск и скоба поверх его края. */
+const caliper = line(
+  '<circle cx="128" cy="128" r="88"/><circle cx="128" cy="128" r="20"/>' +
+    '<path d="M58 74a96 96 0 0 1 70-42v52a44 44 0 0 0-32 20z" fill="currentColor"/>',
+);
+
 const ICONS = {
   play,
   help: bookOpen,
@@ -103,6 +109,7 @@ const ICONS = {
   looks: paintBucket,
   paint: paintBucket,
   rim,
+  caliper,
   headlight: headlights,
   neon: lightbulb,
   custom: eyedropper,

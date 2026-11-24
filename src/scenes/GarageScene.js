@@ -45,7 +45,7 @@ import { t } from '../systems/strings.js';
 
 const cfg = config.garage;
 const TILES = [...partsData.groups.map((g) => g.id), 'looks', 'service'];
-const LOOK_GROUPS = ['paint', 'rim', 'headlight', 'neon'];
+const LOOK_GROUPS = ['paint', 'rim', 'caliper', 'headlight', 'neon'];
 const SERVICE = ['oil', 'repair', 'wash'];
 const SERVICE_MS = 900;
 /** Где на машине подсвечивать раздел (доли длины машины от заднего бампера). */
@@ -553,7 +553,8 @@ export class GarageScene extends BaseScene {
       const build = { ...gameState.build, tires: gameState.build.tires ?? 'tires_stock' };
       if (part) build[slot.id] = part.id;
       const rimHex = cosmeticHex('rim', gameState.cosmetics.rim);
-      return wheelThumb(this, wheelKeys(build), rimHex, 72);
+      const caliperHex = cosmeticHex('caliper', gameState.cosmetics.caliper);
+      return wheelThumb(this, wheelKeys(build), rimHex, 72, caliperHex);
     }
     return icon(slot.id);
   }

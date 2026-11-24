@@ -1,16 +1,17 @@
 /**
- * Картинка колеса для карточки детали: тормоз, шина и диск — те же пиксельные листы,
+ * Картинка колеса для карточки детали: тормозной диск, суппорт, шина и диск — те же пиксельные листы,
  * что на машине (первый кадр), диск перекрашен в цвет дисков игрока.
  */
 import Phaser from 'phaser';
 
 /**
  * @param {Phaser.Scene} scene
- * @param {{brake: string, tire: string, rim: string}} keys
+ * @param {{disc: string, caliper: string, tire: string, rim: string}} keys
  * @param {string|null} rimHex
+ * @param {string|null} caliperHex
  * @param {number} size сторона в пикселях вёрстки
  */
-export function wheelThumb(scene, keys, rimHex, size = 96) {
+export function wheelThumb(scene, keys, rimHex, size = 96, caliperHex = null) {
   const canvas = document.createElement('canvas');
   canvas.className = 'wheel-thumb';
   canvas.width = size * 2;
@@ -48,7 +49,8 @@ export function wheelThumb(scene, keys, rimHex, size = 96) {
     c.drawImage(img, f.cutX, f.cutY, f.cutWidth, f.cutHeight, 0, 0, tmp.width, tmp.height);
     ctx.drawImage(tmp, 0, 0);
   };
-  draw(keys.brake);
+  draw(keys.disc);
+  draw(keys.caliper, caliperHex ?? '#c4282e');
   draw(keys.tire);
   draw(keys.rim, rimHex ?? Phaser.Display.Color.IntegerToColor(0xc0c4c8).rgba);
   return canvas;
