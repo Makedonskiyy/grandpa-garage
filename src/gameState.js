@@ -33,7 +33,13 @@ export function createInitialState() {
     lastResult: null,
     /** Последний результат успешного заезда — для итогов в финале. */
     winningResult: null,
-    flags: { introSeen: false, garageIntroSeen: false, palychMet: false },
+    flags: {
+      introSeen: false,
+      garageIntroSeen: false,
+      palychMet: false,
+      // Свой мир объездной у каждого игрока (scenes/bypassWorld.js).
+      worldSeed: Math.floor(Math.random() * 2 ** 31),
+    },
   };
 }
 
