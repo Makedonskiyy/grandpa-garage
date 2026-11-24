@@ -611,31 +611,84 @@ function chunkObjects(seed, layer, ci, ppm) {
   const meterOf = (x) => x / (layer.k * ppm);
   const add = (kind, x, base, h, haze, w) =>
     list.push({ kind, x, base, h, haze, w, seed: Math.floor(r() * 2 ** 31) });
-  const tree = (b) => {
-    const v = r() * (b.birch + b.pine + b.spruce);
-    return v < b.birch ? 'birch' : v < b.birch + b.pine ? 'pine' : 'spruce';
+  // Плавная «волна» по x: лес то выше и гуще, то ниже и реже — как на опушке у дороги.
+  const wave = (x, len, salt) => {
+    const i = Math.floor(x / len);
+    const t = x / len - i;
+    const u = t * t * (3 - 2 * t);
+    return hash(seed, i, salt) * (1 - u) + hash(seed, i + 1, salt) * u;
   };
+  /**
+   * Рощи: деревья растут группами вокруг центров, между группами — просветы.
+   * Центры раскиданы по своей сетке (по сиду), поэтому соседние куски видят одни и те же рощи.
+   */
+  const groves = (cell, salt, fn) => {
+    for (let n = Math.floor(x0 / cell) - 1; n * cell < x0 + CW + cell; n++) {
+      const gr = rand(hash(seed, n, salt) * 2 ** 32);
+      const cx = n * cell + gr() * cell;
+      fn(cx, gr, n);
+    }
+  };
+  const inChunk = (x) => x >= x0 && x < x0 + CW;
 
   if (layer.id === 'far') {
-    for (let x = x0; x < x0 + CW; x += 2 + r() * 4) {
+    // Дальний лес — сплошная, но неровная полоса в дымке: верхушки волнами.
+    for (let x = x0; x < x0 + CW; x += 4 + r() * 7) {
       const b = biomeAt(seed, meterOf(x));
-      const kind = r() < b.spruce + b.pine * 0.5 ? 'spruce' : 'bush';
-      const h = kind === 'spruce' ? 40 + r() * 55 : 22 + r() * 22;
-      add(kind, x, 214 + r() * 6, h, 0.62 + r() * 0.1, h * 0.85);
-      if (b.clearing > 0.5 && r() < 0.004) add('farHouses', x, 222, 0, 0.5, 90);
+      const tall = 0.45 + 0.55 * wave(x, 140, 11);
+      const kind = r() < b.spruce + b.pine * 0.6 ? 'spruce' : 'bush';
+      const h = (kind === 'spruce' ? 30 + r() * 40 : 16 + r() * 16) * (0.5 + tall);
+      add(kind, x, 215 + r() * 5, h, 0.62 + r() * 0.1, h * 0.85);
+      if (b.clearing > 0.5 && r() < 0.006) add('farHouses', x, 222, 0, 0.5, 90);
     }
   } else if (layer.id === 'mid') {
-    for (let x = x0; x < x0 + CW; x += 9 + r() * 16) {
-      const b = biomeAt(seed, meterOf(x));
-      if (r() > b.density) {
-        if (b.clearing > 0.5 && r() < 0.05) add('hayBale', x, 228, 0, 0.25, 10);
-        continue;
+    // Лес за лугом: рощи по 2–7 деревьев с просветами неба между ними.
+    groves(70, 21, (cx, gr) => {
+      const b = biomeAt(seed, meterOf(cx));
+      if (gr() > b.density * 0.9 + 0.05) {
+        if (b.clearing > 0.5 && gr() < 0.4 && inChunk(cx)) add('hayBale', cx, 228, 0, 0.25, 10);
+        return;
       }
-      const kind = tree(b);
-      const h =
-        kind === 'pine' ? 160 + r() * 70 : kind === 'birch' ? 120 + r() * 70 : 110 + r() * 80;
-      add(kind, x, 218 + r() * 8, h, 0.18 + r() * 0.12, h * 0.35);
-    }
+      const tall = 0.6 + 0.4 * wave(cx, 220, 12);
+      const n = 2 + Math.floor(gr() * 6 * Math.min(1, b.density));
+      for (let i = 0; i < n; i++) {
+        const x = cx + (gr() + gr() - 1) * 28;
+        if (!inChunk(x)) continue;
+        const v = gr() * (b.birch + b.pine + b.spruce);
+        const kind = v < b.birch ? 'birch' : v < b.birch + b.pine ? 'pine' : 'spruce';
+        const h =
+          (kind === 'pine'
+            ? 150 + gr() * 60
+            : kind === 'birch'
+              ? 110 + gr() * 60
+              : 90 + gr() * 80) * tall;
+        list.push({
+          kind,
+          x,
+          base: 218 + gr() * 7,
+          h,
+          haze: 0.2 + gr() * 0.12,
+          w: h * 0.35,
+          seed: Math.floor(gr() * 2 ** 31),
+        });
+      }
+      // Подрост на опушке рощи: молодые ёлочки и кусты пониже.
+      for (let i = 0; i < 1 + gr() * 3; i++) {
+        const x = cx + (gr() - 0.5) * 70;
+        if (!inChunk(x)) continue;
+        const kind = gr() < 0.6 ? 'spruce' : 'bush';
+        const h = kind === 'spruce' ? 28 + gr() * 34 : 12 + gr() * 14;
+        list.push({
+          kind,
+          x,
+          base: 226 + gr() * 3,
+          h,
+          haze: 0.16,
+          w: 25,
+          seed: Math.floor(gr() * 2 ** 31),
+        });
+      }
+    });
   } else if (layer.id === 'back') {
     // Сооружения — редкие, в своих «окнах» по 6 кусков.
     const slot = Math.floor(ci / 6);
@@ -654,22 +707,46 @@ function chunkObjects(seed, layer, ci, ppm) {
         name: pick(rs, STOPS),
       });
     }
-    for (let x = x0; x < x0 + CW; x += 14 + r() * 30) {
-      const b = biomeAt(seed, meterOf(x));
-      if (r() < 0.3 + b.density * 0.3) add('bush', x, 229, 8 + r() * 12, 0.08, 15);
-    }
-  } else if (layer.id === 'near') {
-    for (let x = x0; x < x0 + CW; x += 30 + r() * 70) {
-      const b = biomeAt(seed, meterOf(x));
-      const v = r();
-      if (v < 0.18 * b.density) {
-        const kind = tree(b);
-        const h = kind === 'pine' ? 260 + r() * 80 : 200 + r() * 90;
-        add(kind, x, 233 + r() * 2, h, 0.04, h * 0.35);
-      } else if (v < 0.55) {
-        add(r() < 0.5 ? 'spruce' : 'bush', x, 233, 18 + r() * 30, 0.06, 25);
+    // Луг между дорогой и лесом: сухая трава и редкий подрост — ёлочки, сосенки, кусты.
+    for (let x = x0; x < x0 + CW; x += 2 + r() * 4)
+      add('grass', x, 229 + r() * 2, 6 + r() * 10, 0.1, 8);
+    groves(110, 31, (cx, gr) => {
+      const b = biomeAt(seed, meterOf(cx));
+      if (gr() > 0.35 + b.density * 0.3) return;
+      for (let i = 0; i < 1 + Math.floor(gr() * 3); i++) {
+        const x = cx + (gr() - 0.5) * 40;
+        if (!inChunk(x)) continue;
+        const kind = gr() < 0.45 ? 'spruce' : gr() < 0.6 ? 'pine' : 'bush';
+        const h =
+          kind === 'bush' ? 10 + gr() * 14 : kind === 'pine' ? 40 + gr() * 30 : 22 + gr() * 36;
+        list.push({ kind, x, base: 230, h, haze: 0.08, w: 30, seed: Math.floor(gr() * 2 ** 31) });
       }
-    }
+    });
+  } else if (layer.id === 'near') {
+    // Ближний план: редкие отдельные деревья у обочины — пара берёз, высокая сосна.
+    groves(260, 41, (cx, gr) => {
+      const b = biomeAt(seed, meterOf(cx));
+      if (gr() > 0.55 * Math.min(1, b.density + 0.2)) return;
+      const kind = gr() < b.birch + 0.25 ? 'birch' : gr() < 0.6 ? 'pine' : 'spruce';
+      const twin = kind === 'birch' && gr() < 0.5; // берёзы часто растут парой от одного корня
+      for (let i = 0; i < (twin ? 2 : 1); i++) {
+        const x = cx + i * (6 + gr() * 6);
+        if (!inChunk(x)) continue;
+        const h =
+          kind === 'pine' ? 250 + gr() * 70 : kind === 'birch' ? 210 + gr() * 70 : 150 + gr() * 70;
+        list.push({
+          kind,
+          x,
+          base: 233 + gr() * 2,
+          h,
+          haze: 0.03,
+          w: h * 0.35,
+          seed: Math.floor(gr() * 2 ** 31),
+        });
+      }
+    });
+    for (let x = x0; x < x0 + CW; x += 40 + r() * 90)
+      if (r() < 0.5) add(r() < 0.55 ? 'spruce' : 'bush', x, 234, 14 + r() * 22, 0.05, 25);
     for (let x = x0; x < x0 + CW; x += 3 + r() * 5) add('grass', x, 234, 8 + r() * 12, 0.05, 8);
   }
   return list;
@@ -967,19 +1044,32 @@ export class BypassWorld {
       ctx.fillRect(x0, 212, CW, 22);
     }
     if (spec.id === 'mid') {
-      // Глубина леса: чем гуще участок, тем темнее и выше тёмная стена за стволами.
-      for (let x = x0; x < x0 + CW; x += 2) {
-        const b = biomeAt(this.seed, x / (spec.k * this.ppm));
-        const top =
-          224 - (60 + 70 * Math.min(1, b.density)) * (0.85 + 0.15 * hash(this.seed, x >> 3, 71));
-        const g = ctx.createLinearGradient(0, top, 0, 224);
-        g.addColorStop(0, 'rgba(38,58,44,0)');
-        const d = Math.min(1, b.density);
-        g.addColorStop(0.35, 'rgba(34,52,40,' + 0.55 * d + ')');
-        g.addColorStop(1, 'rgba(24,38,30,' + 0.9 * d + ')');
-        ctx.fillStyle = g;
-        ctx.fillRect(x, top, 2, 224 - top);
+      // Глубина леса: сплошная тёмная стена за рощами с плавным неровным верхом —
+      // выше и темнее там, где лес гуще. Одна фигура, без полос.
+      const smooth = (x) => {
+        const len = 90;
+        const i = Math.floor(x / len);
+        const t = x / len - i;
+        const u = t * t * (3 - 2 * t);
+        return hash(this.seed, i, 71) * (1 - u) + hash(this.seed, i + 1, 71) * u;
+      };
+      let dens = 0;
+      ctx.beginPath();
+      ctx.moveTo(x0 - 4, 224);
+      for (let x = x0 - 4; x <= x0 + CW + 4; x += 6) {
+        const d = Math.min(1, biomeAt(this.seed, x / (spec.k * this.ppm)).density);
+        dens += d;
+        ctx.lineTo(x, 224 - (30 + 60 * d) * (0.7 + 0.3 * smooth(x)));
       }
+      ctx.lineTo(x0 + CW + 4, 224);
+      ctx.closePath();
+      const avg = dens / ((CW + 8) / 6 + 1);
+      const g = ctx.createLinearGradient(0, 130, 0, 224);
+      g.addColorStop(0, 'rgba(40,60,46,0)');
+      g.addColorStop(0.45, 'rgba(36,54,42,' + (0.35 * avg).toFixed(3) + ')');
+      g.addColorStop(1, 'rgba(26,40,32,' + (0.75 * avg).toFixed(3) + ')');
+      ctx.fillStyle = g;
+      ctx.fill();
       ctx.fillStyle = mix('#7a7a52', 0.15);
       ctx.fillRect(x0, 222, CW, 12);
     }

@@ -1004,12 +1004,6 @@ function tirePix(t, rim, angle) {
         return L > 0.6 ? C.rubberSide : C.rubber; // плечо протектора
       }
       if (r < rim + 3) return C.rubber; // борт у обода
-      // Надписи на боковине: три светлые дуги крутятся вместе с диском — видно, что шина
-      // и диск одно колесо и вращаются заодно.
-      if (!t.flat) {
-        const mid = (rim + 3 + (R - 4)) / 2;
-        if (Math.abs(r - mid) < 1.1 && toRay(a, angle + 15, 3) < 11) return '#80838b';
-      }
       if (t.stripe && Math.abs(r - (rim + 4.5)) < 0.7) return '#6b6e75'; // кант на боковине
       if (Math.abs(r - (R - 6)) < 0.8 && L > 0.3 && !t.slick) return C.rubberHi;
       return L > 0.7 ? C.rubberLit : L > 0.25 ? C.rubberSide : C.rubber;
