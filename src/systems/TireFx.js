@@ -111,7 +111,7 @@ export class TireFx {
       this.#emit(id, a.power, run, off, groundY, dt, k, spin >= lock);
       this.#mark(id, a.power, run.x, off);
     }
-    this.#stepPuffs(dt, toScreenX, k);
+    this.#stepPuffs(dt, toScreenX, run.v);
     this.#drawMarks(dt, toScreenX, groundY, k);
   }
 
@@ -145,7 +145,7 @@ export class TireFx {
     }
   }
 
-  #stepPuffs(dt, toScreenX) {
+  #stepPuffs(dt, toScreenX, v) {
     const drag = Math.exp(-1.6 * dt);
     for (let i = this.puffs.length - 1; i >= 0; i--) {
       const p = this.puffs[i];
@@ -158,6 +158,9 @@ export class TireFx {
         this.puffs.splice(i, 1);
         continue;
       }
+      // Поток воздуха за машиной сначала тащит клуб следом, потом он отстаёт и висит:
+      // на скорости за машиной тянется шлейф, а не исчезает в первом же кадре.
+      p.m += v * 0.85 * Math.exp(-p.age * 1.3) * dt;
       p.off += p.vx * dt;
       p.y += p.vy * dt;
       p.vx *= drag;

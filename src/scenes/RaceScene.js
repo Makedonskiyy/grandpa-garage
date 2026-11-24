@@ -299,10 +299,7 @@ export class RaceScene extends BaseScene {
     const meX = this.#xFor(this.player, run.x);
     const toWheel = (car.wheels.radius / run.ph.wheelRadius) * this.player.scaleX;
     this.player.step(dt, {
-      // На юзе колёса почти встают: шина скользит по асфальту, а не катится.
-      distance:
-        ((run.x - prevX) * toWheel * (1 + run.slip * 2) + run.slip * 3) *
-        (1 - (run.lock ?? 0) * 0.85),
+      distance: (run.x - prevX) * toWheel * (1 + run.slip * 2) + run.slip * 3,
       accel: run.accel ?? 0,
     });
     this.player.x = meX;

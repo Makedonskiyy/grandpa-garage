@@ -14,6 +14,7 @@ import { getSettings } from '../systems/settings.js';
 import { getRenderZoom } from '../systems/scale.js';
 import { webButton } from '../ui/components.js';
 import { backdrop, prop, roadsideProps, rng } from './scenery.js';
+import { BypassWorld } from './bypassWorld.js';
 import { DriveHud, DriveSounds } from '../ui/DriveHud.js';
 
 /**
@@ -65,12 +66,16 @@ export class TrialScene extends BaseScene {
     this.done = false;
     this.spin = 0;
 
-    this.#createParallax();
+    if (this.theme === 'free') {
+      // Объездная — свой бесконечный лес у каждого игрока.
+      this.world = new BypassWorld(this, { seed: gameState.flags.worldSeed ?? 1, ppm: PPM });
+    } else this.#createParallax();
     this.track = this.#drawTrack();
     this.car = buildCar(this, gameState.build, gameState.cosmetics, {
       x: CAR_X,
       y: GROUND_Y,
-      dirty: true,
+      // На асфальте машина не пачкается: грязная, только если такой приехала из гаража.
+      dirty: gameState.car.dirty || this.test.surface !== 'asphalt',
     });
     this.cover = this.#drawMudCover(); // грязь поверх колёс в глубоких участках
     this.mud = this.#makeMud();
@@ -83,7 +88,10 @@ export class TrialScene extends BaseScene {
     this.#buildHud();
     // Светофор у обочины на старте: трогается игрок сам, на зелёный.
     this.startBox = this.add.container(CAR_X, SHIFT);
-    this.light = new StartLight(this, 4 * PPM, 146, { scale: 1.1, pole: 40 });
+    // На объездной светофор стоит на дальней бровке, как столбики: мельче и до асфальта.
+    this.light = this.world
+      ? new StartLight(this, 4 * PPM, 146, { scale: 0.8, pole: 87 })
+      : new StartLight(this, 4 * PPM, 146, { scale: 1.1, pole: 40 });
     this.startBox.add(this.light);
     if (this.test.practice) {
       this.ui.append(
@@ -202,7 +210,7 @@ export class TrialScene extends BaseScene {
         for (let x = x0 + 6; x < x0 + w - 20; x += 26 + Math.floor(r() * 30)) {
           g.fillStyle(0x6d6a66, 0.5).fillRect(x, 272 + Math.floor(r() * 30), 10 + r() * 14, 1);
         }
-      } else if (s.type === 'asphalt' && this.theme === 'free') {
+      } else if (s.type === 'asphalt' && this.theme === 'free' && !this.world) {
         // Кусок трассы: асфальт с осевой и обочиной из щебня.
         g.fillStyle(0x45474c).fillRect(x0, 264, w, 96);
         g.fillStyle(0x7a7468).fillRect(x0, 264, w, 3);
@@ -218,7 +226,8 @@ export class TrialScene extends BaseScene {
         this.#sign(box, x0 - 2 * PPM, t(`trial.signs.${s.type}`), s.type);
       }
     }
-    for (const [m, name, y] of roadsideProps(this.theme, this.test.track.length)) {
+    const props = this.world ? [] : roadsideProps(this.theme, this.test.track.length);
+    for (const [m, name, y] of props) {
       box.add(this.add.image(ox + m * PPM, y, prop(this, name)).setOrigin(0, 1));
     }
     if (this.test.trap) this.#drawBrakeTest(box, g);
@@ -333,7 +342,8 @@ export class TrialScene extends BaseScene {
     stepRun(run, input, dt);
     const moved = (run.x - prevX) * PPM;
 
-    for (const l of this.layers) l.sprite.tilePositionX += moved * l.k;
+    for (const l of this.layers ?? []) l.sprite.tilePositionX += moved * l.k;
+    this.world?.update(run.x * PPM);
     const L = this.test.track.length;
     this.track.x = this.loop ? CAR_X - (L + (run.x % L)) * PPM : CAR_X - run.x * PPM;
     this.cover.x = this.track.x;
@@ -350,8 +360,7 @@ export class TrialScene extends BaseScene {
     }
     this.car.y = GROUND_Y + run.sink * 7;
     this.car.step(dt, {
-      // На юзе колёса почти встают: шина скользит, а не катится.
-      distance: (moved * (1 + run.slip * 2) + run.slip * 4) * (1 - (run.lock ?? 0) * 0.85),
+      distance: moved * (1 + run.slip * 2) + run.slip * 4,
       accel: run.accel ?? 0,
     });
 
