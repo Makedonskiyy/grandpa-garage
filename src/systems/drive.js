@@ -270,7 +270,8 @@ function tick(run, gas, brake, h) {
   const a = (traction - resist) / effMass;
   run.v = Math.max(0, v + a * h);
   run.x += run.v * h;
-  run.accel = a;
+  // Настоящее ускорение: на месте тормоз уже не тянет кузов вперёд.
+  run.accel = (run.v - v) / h;
   run.log.topSpeed = Math.max(run.log.topSpeed, run.v);
 
   rpm = Math.max(wheelRpm(run, run.v) * (1 + run.slip * ph.slip.rpmFlare), clutchFloor, idleRpm);

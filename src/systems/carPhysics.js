@@ -10,7 +10,7 @@ import car from '../../data/car.json';
 export const SUSPENSION = Object.freeze({
   stiffness: 140, // 1/с² — жёсткость пружины
   damping: 11, // 1/с — демпфер
-  squat: 0.9, // px на 1 м/с² продольного ускорения
+  squat: 0.25, // px на 1 м/с² продольного ускорения: полное торможение ≈ ход подвески, без удара в отбойник
   maxTravel: 4, // px — ход подвески
   maxPitch: 0.025, // рад — больше пиксель-арт «ломается» при повороте
 });
@@ -51,7 +51,8 @@ export function bodyPose(s, p = SUSPENSION) {
   const pitch = Math.atan2(s.front.y - s.rear.y, wheelbase);
   return {
     y: (s.rear.y + s.front.y) / 2,
-    pitch: Math.max(-p.maxPitch, Math.min(p.maxPitch, pitch)),
+    // Мягкий предел: кузов плавно упирается в ход подвески, а не встаёт колом.
+    pitch: p.maxPitch * Math.tanh(pitch / p.maxPitch),
   };
 }
 
