@@ -362,7 +362,8 @@ export class CarRig extends Phaser.GameObjects.Container {
       w.rim.setTint(rimColor);
     }
     const hasWheels = Boolean(build.tires);
-    for (const p of ['brake', 'tire', 'tireBlur', 'rim', 'rimBlur']) this.wheels.front[p].setVisible(hasWheels);
+    for (const p of ['brake', 'tire', 'tireBlur', 'rim', 'rimBlur'])
+      this.wheels.front[p].setVisible(hasWheels);
     this.bricks.setVisible(!hasWheels);
     this.build = build;
     return this;
@@ -429,7 +430,8 @@ export class CarRig extends Phaser.GameObjects.Container {
     // Скорость колеса — по настоящему углу: на ней растёт размытие.
     const step = (Math.PI * 2) / car.wheelFrame.frames;
     const framesPerTick = Math.abs(distance / this.scaleX / car.wheels.radius) / step;
-    const blur = BLUR_MAX * Math.max(0, Math.min(1, (framesPerTick - BLUR_FROM) / (BLUR_FULL - BLUR_FROM)));
+    const blur =
+      BLUR_MAX * Math.max(0, Math.min(1, (framesPerTick - BLUR_FROM) / (BLUR_FULL - BLUR_FROM)));
     // Кадр листа — ближайший целый поворот, остаток доворачиваем спрайтом:
     // пиксель-арт остаётся чётким, а шина и диск крутятся плавно и вместе.
     const f = wheelFrame(this.visualAngle);
