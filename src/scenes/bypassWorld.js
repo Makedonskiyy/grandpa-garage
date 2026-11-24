@@ -10,7 +10,7 @@
  *
  * Слои параллакса (k — доля скорости дороги), снизу вверх:
  *   небо (бесшовная полоса) → дальний лес в дымке → лес → карманы у дороги →
- *   ближние деревья и ЛЭП → обочина и асфальт.
+ *   ближние деревья → обочина и асфальт.
  * Каждый слой режется на куски шириной CW; кусок рисует и соседние объекты, которые в него
  * заходят, — швов нет. Ушедшие за экран куски удаляются вместе с текстурами.
  */
@@ -22,11 +22,11 @@ const CW = 640; // ширина куска слоя, точек мира
 const HAZE = '#b7bfc1';
 
 const LAYERS = [
-  { id: 'far', k: 0.12, y0: 40, y1: 232, detail: 1.5 },
-  { id: 'mid', k: 0.3, y0: 0, y1: 234, detail: 4 },
-  { id: 'back', k: 0.45, y0: 40, y1: 234, detail: 5 },
-  { id: 'near', k: 0.65, y0: 0, y1: 236, detail: 5 },
-  { id: 'road', k: 1, y0: 140, y1: 360, detail: 5 },
+  { id: 'far', k: 0.12, y0: 40, y1: 232 },
+  { id: 'mid', k: 0.3, y0: 0, y1: 234 },
+  { id: 'back', k: 0.45, y0: 40, y1: 234 },
+  { id: 'near', k: 0.65, y0: 0, y1: 236 },
+  { id: 'road', k: 1, y0: 140, y1: 360 },
 ];
 
 // ---------- Случайность от сида ----------
@@ -144,15 +144,6 @@ function spruce(ctx, o) {
     };
     ctx.fillStyle = dark;
     shape(1);
-    // Хвоя: свисающие веточки по нижней кромке яруса и светлые кончики.
-    const n = Math.round(hw * 2.2 * DETAIL * 0.5);
-    for (let j = 0; j < n; j++) {
-      const u = r();
-      const px = x - hw + hw * 2 * u;
-      const py = top + th * (0.7 + 0.35 * Math.sin(u * Math.PI)) * (0.55 + r() * 0.5);
-      ctx.fillStyle = r() < 0.6 ? dark : mix('#172a1f', haze);
-      ctx.fillRect(px, py, 0.4, 0.6 + r() * 0.9);
-    }
     // Свет сверху слева: светлее левая верхняя часть яруса.
     ctx.fillStyle = lit;
     ctx.globalAlpha = 0.55;
@@ -166,13 +157,6 @@ function spruce(ctx, o) {
   }
 }
 
-/** Во сколько раз гуще и мельче листва, чем «по-крупному»: деталь в полном разрешении. */
-let DETAIL = 5; // меняется по слою: в дымке дальнего леса мелочь не видна
-
-/**
- * Пучок листвы: много мелких листиков-точек. Цвета — от тёмного к светлому; сверху слева
- * (к свету) листья светлее, снизу справа — темнее, поэтому пучок объёмный.
- */
 /**
  * Пучок листвы. Силуэт — объединение нескольких округлых долей (как у живой кроны);
  * свет, тень и листья рисуются только внутри силуэта (clip), поэтому ничего не висит
@@ -183,26 +167,23 @@ function clump(ctx, r, cx, cy, rx, ry, colors, n, size) {
   const lobes = [];
   // Много мелких долей, каждая растёт от уже поставленной — крона цельная, без
   // оторванных кружков, а край бугристый, как у живой листвы.
-  const base = (rx + ry) / 2;
-  lobes.push([cx, cy, Math.min(rx, ry) * 0.55]);
+  lobes.push([0, 0, 0.62]);
   const k = 14 + Math.floor(r() * 10);
   for (let tries = 0; lobes.length < k && tries < k * 6; tries++) {
     const [px, py, pr] = lobes[Math.floor(r() * lobes.length)];
-    const rr = base * (0.18 + r() * 0.2);
+    const rr = 0.24 + r() * 0.22;
     const a = r() * Math.PI * 2;
     const d = (pr + rr) * (0.45 + r() * 0.25);
     const x = px + Math.cos(a) * d;
     const y = py + Math.sin(a) * d;
-    const ex = (x - cx) / rx;
-    const ey = (y - cy) / ry;
-    if (ex * ex + ey * ey > 0.85) continue; // держимся в очертании пучка
+    if (x * x + y * y > 0.85) continue; // держимся в очертании пучка
     lobes.push([x, y, rr]);
   }
   const path = () => {
     ctx.beginPath();
     for (const [x, y, rr] of lobes) {
-      ctx.moveTo(x + rr, y);
-      ctx.arc(x, y, rr, 0, Math.PI * 2);
+      ctx.moveTo(cx + (x + rr) * rx, cy + y * ry);
+      ctx.ellipse(cx + x * rx, cy + y * ry, rr * rx, rr * ry, 0, 0, Math.PI * 2);
     }
   };
   ctx.save();
@@ -239,8 +220,8 @@ function clump(ctx, r, cx, cy, rx, ry, colors, n, size) {
   }
   // Листва: мелкие пятнышки внутри силуэта, светлее к свету.
   ctx.globalAlpha = 0.75;
-  const count = Math.round(n * DETAIL * 1.4);
-  const sz = (size / Math.sqrt(DETAIL)) * 1.3;
+  const count = Math.round(n);
+  const sz = size;
   for (let i = 0; i < count; i++) {
     const dx = (r() * 2 - 1) * 1.05;
     const dy = (r() * 2 - 1) * 1.05;
@@ -269,17 +250,6 @@ function pine(ctx, o) {
   ctx.lineTo(x + lean - w * 0.25, top);
   ctx.closePath();
   ctx.fill();
-  // Сухие сучья по стволу.
-  ctx.strokeStyle = mix('#5d4a3c', haze);
-  ctx.lineWidth = 0.5;
-  for (let i = 0; i < 2; i++) {
-    const y = base - h * (0.4 + r() * 0.3);
-    const s = r() < 0.5 ? -1 : 1;
-    ctx.beginPath();
-    ctx.moveTo(x + lean * ((base - y) / h), y);
-    ctx.lineTo(x + s * h * 0.015, y - h * 0.008);
-    ctx.stroke();
-  }
   // Крона — несколько плоских шапок наверху.
   const dark = [
     mix('#18291e', haze),
@@ -287,25 +257,13 @@ function pine(ctx, o) {
     mix('#294230', haze),
     mix('#35523b', haze),
   ];
-  const lit = [mix('#3d5c3f', haze), mix('#4f6f48', haze), mix('#64825a', haze)];
   const n = 3 + Math.floor(r() * 3);
   for (let i = 0; i < n; i++) {
     const cy = base - h * (0.72 + r() * 0.26);
     const cx = x + lean + (r() - 0.5) * h * 0.22;
     const rx = h * (0.07 + r() * 0.07);
     const ry = h * (0.03 + r() * 0.025);
-    clump(ctx, r, cx, cy, rx, ry, dark, 22 + Math.floor(rx * 2), Math.max(0.8, h * 0.012));
-    clump(
-      ctx,
-      r,
-      cx - rx * 0.2,
-      cy - ry * 0.5,
-      rx * 0.7,
-      ry * 0.5,
-      lit,
-      10,
-      Math.max(0.6, h * 0.009),
-    );
+    clump(ctx, r, cx, cy, rx, ry, dark, 12, Math.max(1, h * 0.02));
   }
 }
 
@@ -313,9 +271,9 @@ function birch(ctx, o) {
   const { x, base, h, haze, r } = o;
   const lean = (r() - 0.5) * h * 0.08;
   const w = Math.max(1, h * 0.022);
-  const top = base - h * 0.9; // ствол кончается внутри кроны
+  const top = base - h * 0.87;
   const tx = (y) => x + lean * ((base - y) / h) ** 1.4;
-  const wAt = (y) => w * (1 - 0.7 * ((base - y) / (h * 0.9)));
+  const wAt = (y) => w * (1 - 0.8 * ((base - y) / (base - top)));
   const leaves = [
     mix('#3d5732', haze),
     mix('#55743f', haze),
@@ -328,14 +286,18 @@ function birch(ctx, o) {
   g.addColorStop(0, mix('#f1efe8', haze * 0.6));
   g.addColorStop(0.6, mix('#e2dfd6', haze * 0.6));
   g.addColorStop(1, mix('#b8b4aa', haze * 0.6));
+  ctx.save();
   ctx.fillStyle = g;
   ctx.beginPath();
-  ctx.moveTo(x - w / 2, base);
-  ctx.lineTo(x + w / 2, base);
-  ctx.lineTo(tx(top) + wAt(top) / 2, top);
-  ctx.lineTo(tx(top) - wAt(top) / 2, top);
+  for (const side of [-1, 1]) {
+    for (let i = 0; i <= 8; i++) {
+      const y = side < 0 ? base + ((top - base) * i) / 8 : top + ((base - top) * i) / 8;
+      ctx.lineTo(tx(y) + (side * wAt(y)) / 2, y);
+    }
+  }
   ctx.closePath();
   ctx.fill();
+  ctx.clip();
   // Кора: редкие неровные тёмные пятна и тонкие поперечные чечевички, внизу — тёмный комель.
   const marks = 6 + Math.floor(h / 14);
   for (let i = 0; i < marks; i++) {
@@ -356,37 +318,15 @@ function birch(ctx, o) {
   bg.addColorStop(1, 'rgba(58,52,48,0)');
   ctx.fillStyle = bg;
   ctx.fillRect(x - w / 2, base - h * 0.12, w, h * 0.12);
-  // Крона: узкая плакучая, верхние 45% высоты, несколько пучков друг над другом.
-  const crownTop = base - h;
-  const crownH = h * 0.45;
-  const n = 5 + Math.floor(h / 40);
-  for (let i = 0; i < n; i++) {
-    const t = (i + 0.5) / n;
-    const cy = crownTop + crownH * t;
-    const spread = h * (0.025 + 0.045 * Math.sin(t * Math.PI));
-    const cx = tx(cy) + (r() - 0.5) * spread * 1.6;
-    // Пучки вытянуты вниз — ветки берёзы свисают.
-    const ry = (crownH / n) * 0.95;
-    clump(ctx, r, cx, cy + ry * 0.3, spread + h * 0.02, ry, leaves, 14, Math.max(0.5, h * 0.007));
-  }
-}
-
-function snag(ctx, o) {
-  const { x, base, h, haze, r } = o;
-  ctx.strokeStyle = mix('#6d6a64', haze);
-  ctx.lineWidth = Math.max(0.8, h * 0.02);
-  ctx.beginPath();
-  ctx.moveTo(x, base);
-  ctx.lineTo(x + (r() - 0.5) * 4, base - h);
-  ctx.stroke();
-  ctx.lineWidth = 0.5;
-  for (let i = 0; i < 4; i++) {
-    const y = base - h * (0.4 + r() * 0.5);
-    const s = r() < 0.5 ? -1 : 1;
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(x + s * h * 0.12, y - h * 0.08);
-    ctx.stroke();
+  ctx.restore();
+  // Центральная крона и нисходящие боковые ветви сходятся вокруг ствола.
+  clump(ctx, r, tx(base - h * 0.75), base - h * 0.75, h * 0.1, h * 0.24, leaves, 18, h * 0.019);
+  for (const side of [-1, 1]) {
+    for (let i = 0; i < 3; i++) {
+      const y = base - h * (0.79 - i * 0.1 + r() * 0.04);
+      const spread = h * (0.045 + i * 0.018);
+      clump(ctx, r, tx(y) + side * spread, y, spread * 1.1, h * 0.11, leaves, 8, h * 0.016);
+    }
   }
 }
 
@@ -422,12 +362,6 @@ function grassTuft(ctx, o) {
     ctx.quadraticCurveTo(bx + (r() - 0.5) * 3, base - len * 0.6, bx + (r() - 0.5) * 6, base - len);
     ctx.stroke();
   }
-  if (r() < 0.25) {
-    ctx.fillStyle = mix(r() < 0.5 ? '#d8d2bf' : '#8a6a8e', haze); // метёлка / иван-чай
-    ctx.beginPath();
-    ctx.arc(x, base - h * 1.05, 0.9, 0, Math.PI * 2);
-    ctx.fill();
-  }
 }
 
 /** Тёмная толща леса позади стволов: без неё лес «просвечивает» небом. */
@@ -440,17 +374,10 @@ function forestMass(ctx, o) {
     mix('#2e4733', haze),
     mix('#39553d', haze),
   ];
-  // Толща леса — много мелких крон друг за другом, от верхних к нижним.
-  const n = 3 + Math.floor(r() * 3);
-  for (let i = 0; i < n; i++) {
-    const t = i / n;
-    const cy = base - h * (0.95 - t * 0.75);
-    const rx = 8 + r() * 8;
-    clump(ctx, r, x + (r() - 0.5) * 24, cy, rx, rx * (0.8 + r() * 0.5), cols, 18, 1.8);
-  }
+  clump(ctx, r, x, base - h * 0.5, 20, h * 0.5, cols, 8, 4);
 }
 
-const DRAW = { spruce, pine, birch, snag, bush, grass: grassTuft, mass: forestMass };
+const DRAW = { spruce, pine, birch, bush, grass: grassTuft, mass: forestMass };
 
 // ---------- Сооружения у дороги ----------
 
@@ -685,36 +612,16 @@ function hayBale(ctx, o) {
   ctx.stroke();
 }
 
-function pole(ctx, o) {
-  const { x, base, h } = o;
-  ctx.fillStyle = '#8d8f8c';
-  ctx.beginPath();
-  ctx.moveTo(x - 2.2, base);
-  ctx.lineTo(x + 2.2, base);
-  ctx.lineTo(x + 1.4, base - h);
-  ctx.lineTo(x - 1.4, base - h);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = '#a7a9a5';
-  ctx.fillRect(x - 1.4, base - h, 1, h);
-  ctx.fillStyle = '#5d6064';
-  ctx.fillRect(x - 6, base - h + 6, 12, 1.6);
-  for (const dx of [-5, 0, 5]) {
-    ctx.fillStyle = '#d8d8d2';
-    ctx.fillRect(x + dx - 0.6, base - h + 3.5, 1.2, 2.5);
-  }
-}
-
-Object.assign(DRAW, { busStop, truck, billboard, honeyStand, farHouses, hayBale, pole });
+Object.assign(DRAW, { busStop, truck, billboard, honeyStand, farHouses, hayBale });
 
 // ---------- Генерация объектов по кускам ----------
 
 /** Объекты куска ci слоя: { kind, x, base, h, haze, seed, w (размах для отбора) }. */
-function chunkObjects(seed, layer, ci) {
+function chunkObjects(seed, layer, ci, ppm) {
   const r = rand(hash(seed, ci, layer.id.length * 991 + layer.id.charCodeAt(0)) * 2 ** 32);
   const x0 = ci * CW;
   const list = [];
-  const meterOf = (x) => x / (layer.k * 62);
+  const meterOf = (x) => x / (layer.k * ppm);
   const add = (kind, x, base, h, haze, w) =>
     list.push({ kind, x, base, h, haze, w, seed: Math.floor(r() * 2 ** 31) });
   const tree = (b) => {
@@ -727,7 +634,7 @@ function chunkObjects(seed, layer, ci) {
       const b = biomeAt(seed, meterOf(x));
       const kind = r() < b.spruce + b.pine * 0.5 ? 'spruce' : 'bush';
       const h = kind === 'spruce' ? 40 + r() * 55 : 22 + r() * 22;
-      add(kind, x, 214 + r() * 6, h, 0.62 + r() * 0.1, 20);
+      add(kind, x, 214 + r() * 6, h, 0.62 + r() * 0.1, h * 0.85);
       if (b.clearing > 0.5 && r() < 0.004) add('farHouses', x, 222, 0, 0.5, 90);
     }
   } else if (layer.id === 'mid') {
@@ -739,10 +646,6 @@ function chunkObjects(seed, layer, ci) {
       const b = biomeAt(seed, meterOf(x));
       if (r() > b.density) {
         if (b.clearing > 0.5 && r() < 0.05) add('hayBale', x, 228, 0, 0.25, 10);
-        continue;
-      }
-      if (b.swamp > 0.5 && r() < 0.3) {
-        add('snag', x, 222 + r() * 4, 60 + r() * 60, 0.25, 15);
         continue;
       }
       const kind = tree(b);
@@ -773,11 +676,6 @@ function chunkObjects(seed, layer, ci) {
       if (r() < 0.3 + b.density * 0.3) add('bush', x, 229, 8 + r() * 12, 0.08, 15);
     }
   } else if (layer.id === 'near') {
-    const step = 200; // опоры ЛЭП
-    for (let n = Math.floor(x0 / step); n * step < x0 + CW; n++) {
-      const px = n * step + hash(seed, n, 31) * 30;
-      if (px >= x0 && px < x0 + CW) add('pole', px, 232, 132, 0, 40);
-    }
     for (let x = x0; x < x0 + CW; x += 30 + r() * 70) {
       const b = biomeAt(seed, meterOf(x));
       const v = r();
@@ -1033,9 +931,11 @@ export class BypassWorld {
     this.ppm = ppm;
     // Полное разрешение экрана: мир 640×360 растянут на холст, и рисуем столько же точек,
     // сколько их на экране, — листва, трава и кора остаются мелкими и чёткими.
-    this.res = Phaser.Math.Clamp(getRenderZoom(), 1, 4);
+    // Размеры холстов чётные. Полушаг сохраняет целое число пикселей на всех
+    // слоях: округление размеров браузером иначе оставляет щель на стыке.
+    this.res = Phaser.Math.Clamp(Math.round(getRenderZoom() * 2) / 2, 1, 4);
     this.id = `bw${Math.floor(Math.random() * 1e9)}`;
-    this.cache = new Map(); // объекты кусков
+
     this.queue = [];
 
     const skyKey = `${this.id}_sky`;
@@ -1055,6 +955,7 @@ export class BypassWorld {
       spec,
       box: scene.add.container(0, 0),
       chunks: new Map(), // индекс → картинка
+      objects: new Map(),
       jobs: new Map(), // начатые, ещё не дорисованные куски
     }));
     // Под дорогой до края экрана — тот же асфальт.
@@ -1064,15 +965,14 @@ export class BypassWorld {
 
   /** Объекты куска с кешем. */
   #objects(layer, ci) {
-    const key = `${layer.spec.id}:${ci}`;
-    if (!this.cache.has(key)) {
+    if (!layer.objects.has(ci)) {
       const list =
         layer.spec.id === 'road'
           ? roadObjects(this.seed, ci, this.ppm)
-          : chunkObjects(this.seed, layer.spec, ci);
-      this.cache.set(key, list);
+          : chunkObjects(this.seed, layer.spec, ci, this.ppm);
+      layer.objects.set(ci, list);
     }
-    return this.cache.get(key);
+    return layer.objects.get(ci);
   }
 
   /** Начать кусок: холст, подложка и список объектов; рисуется потом по частям. */
@@ -1087,7 +987,6 @@ export class BypassWorld {
     const ctx = c.getContext('2d', { willReadFrequently: true });
     const x0 = ci * CW;
     ctx.setTransform(res, 0, 0, res, -x0 * res, -spec.y0 * res);
-    DETAIL = spec.detail;
     if (spec.id === 'road') drawRoad(ctx, this.seed, x0, this.ppm);
     if (spec.id === 'far') {
       // Подложка дальнего леса.
@@ -1123,8 +1022,7 @@ export class BypassWorld {
   /** Дорисовать кусок до срока (performance.now()); true — готов. */
   #step(job, deadline) {
     const t0 = performance.now();
-    const { ctx, objs, layer } = job;
-    DETAIL = layer.spec.detail;
+    const { ctx, objs } = job;
     while (job.i < objs.length) {
       const o = objs[job.i++];
       if (o.scale) {
@@ -1147,7 +1045,6 @@ export class BypassWorld {
   #finish(job) {
     const { layer, ci, c, ctx, x0 } = job;
     const { spec } = layer;
-    if (spec.id === 'near') this.#wires(ctx, x0);
     if (spec.id === 'far') {
       // Дымка у земли: дальний лес тонет в воздухе.
       const g = ctx.createLinearGradient(0, 160, 0, 232);
@@ -1167,29 +1064,6 @@ export class BypassWorld {
     layer.jobs.delete(ci);
     this.stats ??= {};
     this.stats[spec.id] = Math.max(this.stats[spec.id] ?? 0, Math.round(job.ms));
-  }
-
-  /** Провода между опорами: провисают, идут через стыки кусков. */
-  #wires(ctx, x0) {
-    const step = 200;
-    const top = 232 - 132;
-    ctx.strokeStyle = 'rgba(52,56,60,0.85)';
-    ctx.lineWidth = 0.45;
-    for (let n = Math.floor(x0 / step) - 1; n * step < x0 + CW + step; n++) {
-      const a = n * step + hash(this.seed, n, 31) * 30;
-      const b = (n + 1) * step + hash(this.seed, n + 1, 31) * 30;
-      for (const [dx, dy] of [
-        [-5, 3.5],
-        [0, 3.5],
-        [5, 3.5],
-        [0, 14],
-      ]) {
-        ctx.beginPath();
-        ctx.moveTo(a + dx, top + dy);
-        ctx.quadraticCurveTo((a + b) / 2 + dx, top + dy + 9, b + dx, top + dy);
-        ctx.stroke();
-      }
-    }
   }
 
   /**
@@ -1213,13 +1087,18 @@ export class BypassWorld {
         if (ci <= last || now) this.#step(job, Infinity);
         else pending.push(job);
       }
+      for (const ci of layer.objects.keys()) {
+        if (ci < first - 2 || ci > last + 2) layer.objects.delete(ci);
+      }
+      for (const ci of layer.jobs.keys()) {
+        if (ci < first - 1 || ci > last + 1) layer.jobs.delete(ci);
+      }
       for (const [ci, img] of layer.chunks) {
-        if (ci >= first - 1) continue;
+        if (ci >= first - 1 && ci <= last + 1) continue;
         const key = img.texture.key;
         img.destroy();
         this.scene.textures.remove(key);
         layer.chunks.delete(ci);
-        this.cache.delete(`${layer.spec.id}:${ci - 2}`);
       }
     }
     // Не больше ~5 мс фоновой отрисовки за кадр — без рывков на ходу.
