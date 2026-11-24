@@ -8,7 +8,7 @@
     "front": { "x": 224.76, "y": 72.64 },
     "radius": 19.36
   },
-  "wheelFrame": { "width": 48, "height": 48, "frames": 16 },
+  "wheelFrame": { "width": 48, "height": 48, "frames": 32, "cols": 8 },
   "headlight": { "x": 273.33, "y": 55 },
   "shadow": { "height": 20, "above": 14 },
   "tires": ["stock", "studded", "mud", "sport", "slicks", "old"],
@@ -20,6 +20,15 @@
     "five": "l",
     "multi": "l"
   },
+  "spokes": {
+    "six": 6,
+    "steel": 8,
+    "steelOld": 8,
+    "mesh": 10,
+    "five": 5,
+    "multi": 10
+  },
+  "archGap": 1.28,
   "noTires": { "tire": "old", "rim": "steelOld" },
   "overlays": {
     "body_rusty": "rust",

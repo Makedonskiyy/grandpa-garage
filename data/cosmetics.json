@@ -1,5 +1,11 @@
 {
-  "defaults": { "paint": "silver", "rim": "silver", "headlight": "warm", "neon": "off" },
+  "defaults": {
+    "paint": "silver",
+    "rim": "silver",
+    "caliper": "red",
+    "headlight": "warm",
+    "neon": "off"
+  },
   "paint": [
     { "id": "cherry", "name": "Вишнёвый", "hex": "#8b1a2b" },
     { "id": "darkgreen", "name": "Тёмно-зелёный", "hex": "#1f4d2b" },
@@ -17,6 +23,14 @@
     { "id": "red", "name": "Красный", "hex": "#b0222a" },
     { "id": "blue", "name": "Синий", "hex": "#2a52b0" },
     { "id": "white", "name": "Белый", "hex": "#f0f0ea" }
+  ],
+  "caliper": [
+    { "id": "red", "name": "Красные", "hex": "#c4282e" },
+    { "id": "grey", "name": "Серые", "hex": "#8a8e96" },
+    { "id": "black", "name": "Чёрные", "hex": "#2c2d31" },
+    { "id": "yellow", "name": "Жёлтые", "hex": "#e8b81e" },
+    { "id": "blue", "name": "Синие", "hex": "#2a5ad0" },
+    { "id": "orange", "name": "Оранжевые", "hex": "#e2661c" }
   ],
   "headlight": [
     { "id": "warm", "name": "Тёплый белый", "hex": "#ffe8b0" },

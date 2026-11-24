@@ -46,7 +46,8 @@ const TIRE_R = GEO.tireRadius; // 58,1 — Ø 655 мм
 const RIM_R = GEO.rimRadius; // 46,3 — Ø 522 мм
 const ARCH_R = GEO.archRadius;
 const FRAME = 144; // кадр колеса, точек
-const FRAMES = 16;
+const FRAMES = 32; // 11,25° на кадр: спицы поворачиваются мелкими шагами
+const COLS = 8; // лист колеса — сетка 8×4 (полоса в 32 кадра шире 4096 px — предел части видеокарт)
 
 // Мир игры: машина 288×96 единиц, кузов x 8…280; 3 точки на единицу.
 const WORLD = { width: 288, height: 96 };
@@ -100,10 +101,7 @@ const C = {
   disc: '#3b3e43',
   discHi: '#555960',
   discDark: '#222428',
-  caliperRed: '#b3262c',
-  caliperRedHi: '#e04a4a',
   caliperGrey: '#5c6067',
-  caliperGreyHi: '#8a8e96',
   brick: '#8e4a33',
   brickHi: '#a85a3e',
   brickDark: '#5e2f21',
@@ -762,9 +760,12 @@ function layerShadow(m) {
       const under = bottom[x] >= 0 ? GROUND - bottom[x] : 0;
       if (yy < 0 && -yy <= under + 1 && x > AXR + TIRE_R * 0.5 && x < AXF - TIRE_R * 0.5)
         al = Math.max(al, -yy > under - 3 ? 120 : 165);
+      // Пятно контакта — только на полу под шиной (ниже земли). Выше земли тень заливала
+      // просвет у скругления шины, и колесо снизу казалось плоским.
       for (const ax of [AXR, AXF]) {
-        const kc = Math.hypot((x + 0.5 - ax) / (TIRE_R * 0.95), yy / 5);
-        if (kc < 1) al = Math.max(al, kc < 0.55 ? 225 : 185);
+        if (yy < 0) continue;
+        const kc = Math.hypot((x + 0.5 - ax) / (TIRE_R * 0.75), yy / 4);
+        if (kc < 1) al = Math.max(al, kc < 0.5 ? 170 : 130);
       }
       if (al) p.set(x, y, '#060505', al);
     }
@@ -938,12 +939,12 @@ function layerBricks() {
 
 const RIM_SIZE = { s: RIM_R - 3, m: RIM_R, l: RIM_R + 2.5 };
 const RIMS = {
-  six: { size: 'm', caliper: C.caliperGrey },
-  steel: { size: 's', caliper: C.caliperGrey },
-  steelOld: { size: 's', caliper: C.caliperGrey },
-  mesh: { size: 'm', caliper: C.caliperGrey },
-  five: { size: 'l', caliper: C.caliperRed },
-  multi: { size: 'l', caliper: C.caliperRed },
+  six: { size: 'm', spokes: 6 },
+  steel: { size: 's', spokes: 8 },
+  steelOld: { size: 's', spokes: 8 },
+  mesh: { size: 'm', spokes: 10 },
+  five: { size: 'l', spokes: 5 },
+  multi: { size: 'l', spokes: 10 },
 };
 const TIRE_KINDS = {
   stock: {},
@@ -1011,22 +1012,42 @@ function tirePix(t, rim, angle) {
   });
 }
 
-/** Тормоз за диском: суппорт сверху сзади (не крутится) и диск с перфорацией (крутится). */
-function brakePix(rimDef, angle) {
-  const R = RIM_SIZE[rimDef.size];
-  const red = rimDef.caliper === C.caliperRed;
+/**
+ * Тормозной диск за колёсным — крутится. Меньше обода: вокруг него тёмная внутренность
+ * барабана, иначе сквозь размытые спицы диск читается как сплошной колпак.
+ */
+function discPix(R, angle) {
+  const D = R - 7; // край тормозного диска
   return polar((r, a) => {
-    if (r > R) return null;
+    if (r > R - 1) return null;
+    if (r > D) return r > R - 3 ? C.discDark : C.well; // барабан обода
+    const L = lit(a);
+    if (r > D - 1.2) return C.discDark;
+    // Рабочая поверхность с редкой перфорацией и ступица.
+    if (Math.abs(r - (D - 5)) < 0.9 && toRay(a, angle, 12) < 1.6) return C.discDark;
+    if (r < 11) return r < 6 ? C.discDark : C.disc;
+    if (r < 13) return C.discDark;
+    return L > 0.55 ? C.discHi : C.disc;
+  });
+}
+
+/**
+ * Суппорт сверху сзади — не крутится. Светло-серый с бликом и тёмной кромкой:
+ * цвет задаёт setTint (умножение), поэтому рисуем в оттенках серого.
+ */
+function caliperPix(R) {
+  const half = R > RIM_R ? 26 : 22;
+  const inner = R - (R > RIM_R ? 17 : 15);
+  const outer = R - 2.5;
+  return polar((r, a) => {
     const ca = angDist(a, 205);
-    if (ca < (red ? 26 : 22) && r > R - (red ? 17 : 15) && r < R - 3) {
-      if (r > R - 6) return red ? C.caliperRedHi : C.caliperGreyHi;
-      return rimDef.caliper;
-    }
-    if (r > R - 3) return C.discDark;
-    // Перфорация: редкие мелкие отверстия, чтобы диск не читался пунктирным кольцом.
-    if (Math.abs(r - (R - 9)) < 0.9 && toRay(a, angle, 12) < 1.6) return C.discDark;
-    if (r < 10) return C.discDark;
-    return r > R - 12 ? C.discHi : C.disc;
+    if (ca > half || r < inner || r > outer) return null;
+    const edge = half - ca < 1.6 || r - inner < 1.2 || outer - r < 1;
+    if (edge) return gray(0.32);
+    // Надпись-прорезь посередине корпуса.
+    if (Math.abs(r - (inner + outer) / 2) < 0.8 && ca < half * 0.55) return gray(0.55);
+    if (r > outer - 4) return gray(1);
+    return gray(0.82);
   });
 }
 
@@ -1111,13 +1132,19 @@ async function strip(makePix) {
   for (let i = 0; i < FRAMES; i++) frames.push(await makePix((i * 360) / FRAMES).png());
   return sharp({
     create: {
-      width: FRAME * FRAMES,
-      height: FRAME,
+      width: FRAME * COLS,
+      height: FRAME * Math.ceil(FRAMES / COLS),
       channels: 4,
       background: { r: 0, g: 0, b: 0, alpha: 0 },
     },
   })
-    .composite(frames.map((input, i) => ({ input, left: i * FRAME, top: 0 })))
+    .composite(
+      frames.map((input, i) => ({
+        input,
+        left: (i % COLS) * FRAME,
+        top: Math.floor(i / COLS) * FRAME,
+      })),
+    )
     .png()
     .toBuffer();
 }
@@ -1151,10 +1178,12 @@ async function main() {
   for (const [id, t] of Object.entries(TIRE_KINDS))
     for (const [size, r] of Object.entries(RIM_SIZE))
       await save(`wheel_tire_${id}_${size}`, await strip((a) => tirePix(t, r, a)));
-  for (const [id, def] of Object.entries(RIMS)) {
-    await save(`wheel_brake_${id}`, await strip((a) => brakePix(def, a)));
-    await save(`wheel_rim_${id}`, await strip((a) => rimPix(def, id, a)));
+  for (const [size, r] of Object.entries(RIM_SIZE)) {
+    await save(`wheel_disc_${size}`, await strip((a) => discPix(r, a)));
+    await save(`wheel_caliper_${size}`, await caliperPix(r).png());
   }
+  for (const [id, def] of Object.entries(RIMS))
+    await save(`wheel_rim_${id}`, await strip((a) => rimPix(def, id, a)));
 
   const meta = {
     $comment:
@@ -1167,12 +1196,15 @@ async function main() {
       front: { x: toWorldX(AXF), y: toWorldY(AXY) },
       radius: +(TIRE_R / 3).toFixed(2),
     },
-    wheelFrame: { width: FRAME / 3, height: FRAME / 3, frames: FRAMES },
+    wheelFrame: { width: FRAME / 3, height: FRAME / 3, frames: FRAMES, cols: COLS },
     headlight: { x: toWorldX(820), y: toWorldY(165) },
     shadow: { height: SHADOW_H / 3, above: SHADOW_GROUND / 3 },
     // Шины: вид × размер диска; диски: размер. Детали ссылаются на них полем sprite.
     tires: Object.keys(TIRE_KINDS),
     rims: Object.fromEntries(Object.entries(RIMS).map(([id, d]) => [id, d.size])),
+    spokes: Object.fromEntries(Object.entries(RIMS).map(([id, d]) => [id, d.spokes])),
+    // Зазор между шиной и аркой: кузов на подвеске не должен наезжать на колесо.
+    archGap: +((ARCH_R - TIRE_R) / 3).toFixed(2),
     noTires: { tire: 'old', rim: 'steelOld' },
     overlays: { body_rusty: 'rust', body_cage: 'cage', body_light: 'light' },
     spoilers: {
@@ -1204,11 +1236,17 @@ async function preview(files) {
   };
   const frame = (buf, i = 0) =>
     sharp(buf)
-      .extract({ left: i * FRAME, top: 0, width: FRAME, height: FRAME })
+      .extract({
+        left: (i % COLS) * FRAME,
+        top: Math.floor(i / COLS) * FRAME,
+        width: FRAME,
+        height: FRAME,
+      })
       .png()
       .toBuffer();
   const wheel = async (type, rim, rimHex, i) => [
-    await frame(files[`wheel_brake_${rim}`], i),
+    await frame(files[`wheel_disc_${RIMS[rim].size}`], i),
+    await tint(files[`wheel_caliper_${RIMS[rim].size}`], '#b3262c'),
     await frame(files[`wheel_tire_${type}_${RIMS[rim].size}`], i),
     await tint(await frame(files[`wheel_rim_${rim}`], i), rimHex),
   ];

@@ -11,7 +11,9 @@ export const SUSPENSION = Object.freeze({
   stiffness: 140, // 1/с² — жёсткость пружины
   damping: 11, // 1/с — демпфер
   squat: 0.25, // px на 1 м/с² продольного ускорения: полное торможение ≈ ход подвески, без удара в отбойник
-  maxTravel: 4, // px — ход подвески
+  maxTravel: 4, // px — ход подвески вверх
+  // px — вниз не дальше зазора арки: крыло не наезжает на шину, диск не «съезжает» в ней
+  maxDrop: Math.max(0.3, (car.archGap ?? 1.3) - 0.2),
   maxPitch: 0.025, // рад — больше пиксель-арт «ломается» при повороте
 });
 
@@ -32,7 +34,13 @@ export function stepSuspension(s, dt, accel = 0, p = SUSPENSION) {
     const force = -p.stiffness * (a.y - rest) - p.damping * a.v;
     a.v += force * h;
     a.y += a.v * h;
-    a.y = Math.max(-p.maxTravel, Math.min(p.maxTravel, a.y));
+    if (a.y > p.maxDrop) {
+      a.y = p.maxDrop; // отбойник
+      a.v = Math.min(a.v, 0);
+    } else if (a.y < -p.maxTravel) {
+      a.y = -p.maxTravel;
+      a.v = Math.max(a.v, 0);
+    }
   };
   axle(s.rear, load);
   axle(s.front, -load);

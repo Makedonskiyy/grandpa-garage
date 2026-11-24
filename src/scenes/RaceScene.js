@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { TireFx } from '../systems/TireFx.js';
 import config from '../../data/config.json';
 import car from '../../data/car.json';
 import { BaseScene } from './BaseScene.js';
@@ -79,7 +80,7 @@ export class RaceScene extends BaseScene {
     this.#nameplate(this.player, t('race.you'));
     this.#nameplate(this.rival, t('race.rival'));
     this.light = new StartLight(this, WORLD.width - 26, 34, { scale: 1.25, pole: 76 });
-    this.smoke = this.#makeSmoke();
+    this.fx = new TireFx(this, this.player); // дым из-под шин и след на асфальте
 
     this.#buildHud();
     audio.playSfx(SFX.CAR_START);
@@ -267,26 +268,6 @@ export class RaceScene extends BaseScene {
     return front - car.front;
   }
 
-  /** Дым из-под задних колёс при пробуксовке. */
-  #makeSmoke() {
-    if (!this.textures.exists('smoke_px')) {
-      const g = this.make.graphics({ x: 0, y: 0 }, false);
-      g.fillStyle(0xffffff).fillRect(0, 0, 4, 4);
-      g.generateTexture('smoke_px', 4, 4);
-      g.destroy();
-    }
-    return this.add.particles(0, 0, 'smoke_px', {
-      speedX: { min: -60, max: -20 },
-      speedY: { min: -18, max: -4 },
-      scale: { start: 1.2, end: 4 },
-      alpha: { start: 0.35, end: 0 },
-      tint: 0xb8bcc4,
-      lifespan: 900,
-      frequency: 40,
-      emitting: false,
-    });
-  }
-
   update(_time, delta) {
     if (!this.hud) return;
     const dt = delta / 1000;
@@ -300,6 +281,7 @@ export class RaceScene extends BaseScene {
       // Подвеска успокаивается до старта и после финиша; перегазовка чуть приседает.
       const rev = this.state === 'tree' ? input.gas * 0.8 : 0;
       this.player.step(dt, { accel: rev - input.brake * 2 });
+      this.#tireFx(dt, false);
       this.hud.render();
       this.#sound();
       return;
@@ -317,7 +299,10 @@ export class RaceScene extends BaseScene {
     const meX = this.#xFor(this.player, run.x);
     const toWheel = (car.wheels.radius / run.ph.wheelRadius) * this.player.scaleX;
     this.player.step(dt, {
-      distance: (run.x - prevX) * toWheel * (1 + run.slip * 2) + run.slip * 3,
+      // На юзе колёса почти встают: шина скользит по асфальту, а не катится.
+      distance:
+        ((run.x - prevX) * toWheel * (1 + run.slip * 2) + run.slip * 3) *
+        (1 - (run.lock ?? 0) * 0.85),
       accel: run.accel ?? 0,
     });
     this.player.x = meX;
@@ -328,10 +313,7 @@ export class RaceScene extends BaseScene {
     this.rival.x = rx;
     this.rival.nameplate.x = rx;
 
-    const spinning = run.slip > run.ph.slip.smokeAt;
-    this.smoke.setPosition(this.player.x - 70 * cfg.carScale, cfg.playerLaneY - 4);
-    if (spinning && !this.smoke.emitting) this.smoke.start();
-    else if (!spinning && this.smoke.emitting) this.smoke.stop();
+    this.#tireFx(dt, true);
 
     this.hud.render();
     this.sounds.update(run);
@@ -340,6 +322,16 @@ export class RaceScene extends BaseScene {
 
     const rivalDone = s >= this.test.rivalTime;
     if ((run.done && (rivalDone || run.reasonKey === 'jump')) || s > MAX_SEC) this.#finish();
+  }
+
+  /** Дым и след шин; вне заезда новых клубов нет, старые дотаивают. */
+  #tireFx(dt, live) {
+    this.fx.update(dt, {
+      run: this.run,
+      toScreenX: (m) => this.#xFor(this.player, m),
+      groundY: cfg.playerLaneY,
+      asphalt: live,
+    });
   }
 
   /** Подсказка по ситуации: пробуксовка, отсечка, пора переключаться. */
@@ -368,7 +360,7 @@ export class RaceScene extends BaseScene {
       this.hud.say('jump', 'warn');
     }
     this.hud.setEnabled(false);
-    this.smoke.stop();
+    this.fx.stop();
     this.engine?.stop();
     this.sounds.stop();
     // Не доехал за отведённое время — итог по тому, что успел.
