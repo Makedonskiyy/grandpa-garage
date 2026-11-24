@@ -154,41 +154,68 @@ const ROOF_ADS = [
   ['РАДИО 105,7', 'ночной эфир', '#2a2a2a', '#ffd84a'],
 ];
 
-/** Витрины и вывески первого этажа. */
+/**
+ * Первый этаж с магазинами: витрины с товаром и короб-вывеска над каждой. Вывеска —
+ * световой короб в тёмной рамке, надпись подогнана по ширине и светится ровно,
+ * без размазанного ореола.
+ */
 function shopFloor(ctx, r, x, w, base, h, wall) {
-  vgrad(ctx, x, base - h, w, h, wall, '#2b2a28');
+  const px = (X, Y, W, H, c) => {
+    ctx.fillStyle = c;
+    ctx.fillRect(
+      Math.round(X),
+      Math.round(Y),
+      Math.max(1, Math.round(W)),
+      Math.max(1, Math.round(H)),
+    );
+  };
+  x = Math.round(x);
+  w = Math.round(w);
+  px(x, base - h, w, h, wall);
   const n = Math.max(1, Math.floor(w / 46));
-  const sw = w / n;
+  const sw = Math.floor(w / n);
   for (let i = 0; i < n; i++) {
     const sx = x + i * sw;
-    const lit = r() < 0.65;
-    // Витрина и дверь.
-    ctx.fillStyle = '#121418';
-    ctx.fillRect(sx + 4, base - h + 9, sw - 8, h - 10);
+    const lit = r() < 0.7;
+    // Витрина: рама, стекло, полки с товаром, дверь сбоку.
+    px(sx + 3, base - h + 9, sw - 6, h - 9, '#2a2c30');
+    px(sx + 4, base - h + 10, sw - 14, h - 11, lit ? '#e9c48a' : '#1a1f27');
     if (lit) {
-      vgrad(
-        ctx,
-        sx + 5,
-        base - h + 10,
-        sw - 10,
-        h - 12,
-        'rgba(255,220,160,0.75)',
-        'rgba(255,190,120,0.35)',
-      );
-      ctx.fillStyle = 'rgba(40,30,20,0.5)';
-      for (let k = 0; k < 3; k++)
-        ctx.fillRect(sx + 7 + k * ((sw - 14) / 3), base - h + 14 + (k % 2) * 3, 3, h - 18);
+      for (let k = 0; k < 2; k++) px(sx + 4, base - h + 13 + k * 3, sw - 14, 1, '#b98a52');
+      for (let k = 0; k < (sw - 16) / 2; k++)
+        px(
+          sx + 5 + k * 2,
+          base - h + 11 + (k % 2) * 3,
+          1,
+          2,
+          pick(r, ['#c94a3a', '#2f6fb0', '#e0a13a', '#3d8a5a', '#f2efe6']),
+        );
+      glow(ctx, sx + sw / 2, base - 2, sw * 0.6, 4, '255,210,150', 0.35);
     }
-    ctx.fillStyle = '#3a3c40';
-    ctx.fillRect(sx + sw / 2 - 0.4, base - h + 10, 0.8, h - 12);
-    // Вывеска над витриной.
-    if (r() < 0.75) {
+    px(sx + sw - 9, base - h + 10, 5, h - 10, '#3a2e26'); // дверь
+    px(sx + sw - 8, base - h + 11, 3, 4, lit ? '#e9c48a' : '#263040');
+    // Короб-вывеска.
+    if (r() < 0.8) {
       const [text, color] = pick(r, SIGNS);
-      ctx.fillStyle = '#16171a';
-      ctx.fillRect(sx + 3, base - h + 1.5, sw - 6, 7);
-      const size = Math.min(5.4, ((sw - 10) / text.length) * 1.55);
-      neon(ctx, text, sx + sw / 2, base - h + 5, size, color);
-      glow(ctx, sx + sw / 2, base - h + 6, sw * 0.8, 10, hexToRgb(color), 0.12);
+      const bx = sx + 3;
+      const bw = sw - 6;
+      px(bx, base - h + 1, bw, 7, '#0f1012');
+      px(bx + 1, base - h + 2, bw - 2, 5, '#191b1f');
+      const size = fitFont(ctx, text, bw - 6, 5.6, 800);
+      ctx.save();
+      ctx.font = `800 ${size}px ${FONT}`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 3;
+      ctx.fillStyle = color;
+      ctx.fillText(text, bx + bw / 2, base - h + 4.6);
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 0.55;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(text, bx + bw / 2, base - h + 4.6);
+      ctx.restore();
+      glow(ctx, bx + bw / 2, base - h + 5, bw * 0.6, 6, hexToRgb(color), 0.14);
     }
   }
 }
@@ -276,105 +303,202 @@ function stalinka(ctx, o) {
   shopFloor(ctx, r, x, w, base, 16, wall);
 }
 
-/** Хрущёвка: 5 этажей, панели или белый кирпич, балконы (застеклённые и открытые), антенны. */
+/**
+ * Хрущёвка (1-464 / 1-447): 5 этажей, силикатный кирпич или панели со швами, плоская крыша
+ * с парапетом, вентшахтами и антеннами, окна в белых рамах (часть горит), балконы —
+ * открытые с бельём, застеклённые белым пластиком и деревом, подъезды с козырьками
+ * и лампочками, водостоки, тарелки. Рисуется по целым точкам мира — чёткие пиксели.
+ */
 function khrushchevka(ctx, o) {
-  const { x, w, r } = o;
+  const r = o.r;
+  const x = Math.round(o.x);
+  const w = Math.round(o.w);
   const base = SIDEWALK;
+  const px = (X, Y, W, H, c) => {
+    ctx.fillStyle = c;
+    ctx.fillRect(
+      Math.round(X),
+      Math.round(Y),
+      Math.max(1, Math.round(W)),
+      Math.max(1, Math.round(H)),
+    );
+  };
+  const brick = r() < 0.55;
+  const FH = 12; // этаж
   const floors = 5;
-  const fh = 12;
-  const H = floors * fh + 16;
-  const top = base - H;
-  const brick = r() < 0.45;
-  const wall = brick ? '#b8b2a4' : pick(r, ['#8b8f93', '#9a9c9a', '#7f8488']);
-  vgrad(ctx, x, top, w, H, wall, brick ? '#7a766c' : '#5a5d61');
+  const plinth = 4;
+  const top = base - plinth - floors * FH - 2;
+  // Тона стены: силикатный кирпич (светлый серо-жёлтый) или серая панель.
+  const T = brick
+    ? { wall: '#a8a397', light: '#b8b3a6', dark: '#928d81', seam: '#857f73' }
+    : { wall: '#8d9195', light: '#9ca0a4', dark: '#7c8084', seam: '#5f6367' };
+  px(x, top, w, base - top, T.wall);
   if (brick) {
-    for (let y = top; y < base - 16; y += 1.6) {
-      ctx.fillStyle = 'rgba(0,0,0,0.06)';
-      ctx.fillRect(x, y, w, 0.3);
+    // Кладка: ряды в перевязку, кое-где кирпичи светлее и темнее.
+    for (let y = top + 2; y < base - plinth; y += 2) {
+      px(x, y, w, 1, T.dark);
+      const off = (y / 2) % 2 ? 0 : 3;
+      for (let bx = x + off; bx < x + w; bx += 6) {
+        px(bx, y - 1, 1, 1, T.seam);
+        if (r() < 0.06) px(bx + 1, y - 1, 4, 1, r() < 0.5 ? T.light : T.dark);
+      }
     }
   } else {
-    // Швы панелей.
-    for (let f = 0; f <= floors; f++) {
-      ctx.fillStyle = 'rgba(20,20,20,0.35)';
-      ctx.fillRect(x, top + 4 + f * fh, w, 0.5);
-    }
-    for (let px = x; px < x + w; px += 18) {
-      ctx.fillStyle = 'rgba(20,20,20,0.3)';
-      ctx.fillRect(px, top + 4, 0.5, H - 20);
-    }
+    // Панели: горизонтальные швы по этажам и вертикальные через 3 окна, швы промазаны темнее.
+    for (let f = 0; f <= floors; f++) px(x, top + 2 + f * FH, w, 1, T.seam);
+    for (let sx = x + 18; sx < x + w - 2; sx += 18) px(sx, top + 2, 1, floors * FH, T.seam);
+    for (let i = 0; i < w / 8; i++)
+      px(x + r() * w, top + 3 + r() * floors * FH, 1 + r() * 3, 1, T.dark);
   }
-  // Плоская крыша, антенны, тарелки.
-  ctx.fillStyle = '#4b4d50';
-  ctx.fillRect(x - 1, top - 1, w + 2, 3);
-  for (let i = 0; i < 3 + w / 50; i++) {
-    const ax = x + 6 + r() * (w - 12);
-    ctx.strokeStyle = '#2a2c30';
-    ctx.lineWidth = 0.4;
-    ctx.beginPath();
-    ctx.moveTo(ax, top - 1);
-    ctx.lineTo(ax, top - 10 - r() * 6);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(ax - 3, top - 7);
-    ctx.lineTo(ax + 3, top - 7);
-    ctx.moveTo(ax - 2, top - 9);
-    ctx.lineTo(ax + 2, top - 9);
-    ctx.stroke();
+  // Потёки под парапетом и ржавые полосы от водостоков.
+  for (let i = 0; i < w / 14; i++) {
+    ctx.globalAlpha = 0.18;
+    px(x + r() * w, top + 2, 1, 6 + r() * 20, '#5a5248');
+    ctx.globalAlpha = 1;
   }
-  // Окна и балконы.
-  const cols = Math.max(4, Math.floor(w / 11));
-  const cw = w / cols;
-  for (let f = 0; f < floors - 1; f++) {
-    const fy = top + 5 + f * fh;
-    for (let cI = 0; cI < cols; cI++) {
-      const wx = x + cI * cw + cw * 0.2;
-      const ww = cw * 0.6;
-      windowPane(ctx, r, wx, fy + 2, ww, fh - 5, brick ? '#6a655c' : '#4c4f53');
-      if (cI % 3 === 1) {
-        // Балкон: открытый с бельём или застеклённый «как у всех».
-        const glazed = r() < 0.55;
-        ctx.fillStyle = glazed ? '#c8c6bd' : '#5d6064';
-        ctx.fillRect(wx - 2, fy + fh - 5.5, ww + 4, 5);
-        if (glazed) {
-          ctx.fillStyle = r() < 0.3 ? '#e8c27a' : '#263040';
-          ctx.fillRect(wx - 1.4, fy + fh - 9, ww + 2.8, 3.4);
-        } else if (r() < 0.4) {
-          ctx.fillStyle = pick(r, ['#c94a3a', '#3f6fa0', '#e8e2d2']);
-          ctx.fillRect(wx, fy + fh - 9, 1.6, 3);
-          ctx.fillRect(wx + 3, fy + fh - 9, 1.6, 2.4);
+  // Цоколь и отмостка.
+  px(x, base - plinth, w, plinth, '#6d6a64');
+  px(x, base - plinth, w, 1, '#86837c');
+  // Крыша: парапет, вентшахты, антенны.
+  px(x - 1, top - 1, w + 2, 2, '#55575a');
+  px(x - 1, top - 1, w + 2, 1, '#6d6f72');
+  for (let vx = x + 10 + r() * 10; vx < x + w - 10; vx += 36 + r() * 20) {
+    px(vx, top - 6, 6, 5, '#6a6c6f');
+    px(vx, top - 6, 6, 1, '#808285');
+    px(vx - 1, top - 7, 8, 1, '#4c4e51');
+  }
+  ctx.fillStyle = '#2a2c30';
+  for (let i = 0; i < 2 + w / 45; i++) {
+    const ax = Math.round(x + 4 + r() * (w - 8));
+    const ah = 8 + Math.round(r() * 6);
+    px(ax, top - 1 - ah, 1, ah, '#2e3034');
+    px(ax - 3, top - ah + 1, 7, 1, '#2e3034');
+    px(ax - 2, top - ah + 3, 5, 1, '#2e3034');
+  }
+  // Окна и балконы. Шаг окон 11 точек, подъезд — каждые 4 окна.
+  const step = 11;
+  const cols = Math.floor((w - 6) / step);
+  const x0 = x + Math.round((w - cols * step) / 2) + 2;
+  const entrances = new Set();
+  for (let c = 2; c < cols - 1; c += 5) entrances.add(c);
+  const balconyCol = (c) => c % 5 === 4 || c % 5 === 1;
+  for (let f = 0; f < floors; f++) {
+    const wy = top + 4 + f * FH;
+    for (let c = 0; c < cols; c++) {
+      const wx = x0 + c * step;
+      // Лестничная клетка над подъездом: узкое окно посередине пролёта.
+      if (entrances.has(c)) {
+        px(wx + 1, wy + 2, 4, 6, '#e8e6df');
+        px(wx + 2, wy + 3, 2, 4, r() < 0.4 ? '#d9c27a' : '#232a34');
+        continue;
+      }
+      const lit = r() < 0.24;
+      const glass = lit
+        ? pick(r, ['#f0c46a', '#e8b45a', '#f6d48a', '#a9c6ea'])
+        : pick(r, ['#1c232d', '#202833', '#18202a']);
+      // Рама: белый пластик или старое дерево.
+      const frame = r() < 0.7 ? '#e9e7e0' : '#b9a88a';
+      px(wx, wy, 7, 8, frame);
+      px(wx + 1, wy + 1, 5, 6, glass);
+      px(wx + 3, wy + 1, 1, 6, frame); // импост
+      if (lit) {
+        px(wx + 1, wy + 1, 1, 6, 'rgba(120,60,30,0.45)'); // занавеска
+        px(wx + 5, wy + 1, 1, 6, 'rgba(120,60,30,0.45)');
+      } else px(wx + 1, wy + 1, 2, 1, 'rgba(140,160,190,0.35)'); // отблеск
+      px(wx - 1, wy + 8, 9, 1, '#c9c6bd'); // отлив
+      // Балкон на этажах выше первого.
+      if (f < floors - 1 && balconyCol(c)) {
+        const by = wy + 9;
+        const kind = r();
+        px(wx - 2, by, 11, 1, '#6d6f72'); // плита
+        if (kind < 0.4) {
+          // Открытый: решётка, иногда бельё и цветы.
+          px(wx - 2, by - 4, 11, 1, '#3e4044');
+          for (let k = 0; k < 11; k += 2) px(wx - 2 + k, by - 4, 1, 4, '#3e4044');
+          if (r() < 0.5) {
+            px(wx, by - 7, 2, 3, pick(r, ['#c94a3a', '#3f6fa0', '#e8e2d2', '#e0a13a']));
+            px(wx + 3, by - 7, 2, 2, pick(r, ['#e8e2d2', '#7a9a5a']));
+          }
+        } else if (kind < 0.8) {
+          // Застеклённый белым пластиком.
+          px(wx - 2, by - 8, 11, 8, '#e4e2db');
+          px(wx - 1, by - 7, 4, 3, lit ? '#f0c46a' : '#26303c');
+          px(wx + 4, by - 7, 4, 3, '#26303c');
+          px(wx - 2, by - 3, 11, 3, '#cfccc3');
+        } else {
+          // Обшит вагонкой: коричневое дерево.
+          px(wx - 2, by - 8, 11, 8, '#7a5a3a');
+          for (let k = 0; k < 11; k += 2) px(wx - 2 + k, by - 8, 1, 8, '#6a4c30');
+          px(wx, by - 7, 6, 2, '#2a3038');
         }
       }
     }
   }
-  // Спутниковые тарелки на фасаде.
-  for (let i = 0; i < 2 + w / 60; i++) {
-    ctx.fillStyle = '#dcdad4';
-    ctx.beginPath();
-    ctx.ellipse(x + 4 + r() * (w - 8), top + 10 + r() * (H - 36), 1.8, 2.2, -0.4, 0, Math.PI * 2);
-    ctx.fill();
+  // Подъезды: дверь, козырёк, лампочка, табличка, скамейка.
+  for (const c of entrances) {
+    const ex = x0 + c * step;
+    px(ex, base - plinth - 10, 7, 10 + plinth, '#3a2e26');
+    px(ex + 1, base - plinth - 9, 5, 9 + plinth, '#4e3a2c');
+    px(ex + 3, base - plinth - 5, 1, 1, '#c9c6bd');
+    px(ex - 3, base - plinth - 12, 13, 2, '#6d6f72'); // козырёк
+    px(ex - 3, base - plinth - 12, 13, 1, '#86888b');
+    px(ex + 3, base - plinth - 10, 1, 1, '#ffe2a0'); // лампочка
+    glow(ctx, ex + 3.5, base - plinth - 9, 9, 7, '255,210,140', 0.55);
+    px(ex + 8, base - plinth - 9, 2, 2, '#2f6fb0'); // номер подъезда
+    px(ex - 8, base - 3, 6, 1, '#6b4e36'); // скамейка
+    px(ex - 8, base - 2, 1, 2, '#3a3c40');
+    px(ex - 3, base - 2, 1, 2, '#3a3c40');
   }
-  shopFloor(ctx, r, x, w, base, 15, brick ? '#8a857a' : '#6d7073');
+  // Водостоки по краям.
+  for (const dx of [2, w - 3]) {
+    px(x + dx, top, 1, base - top - 1, '#6a6c6f');
+    px(x + dx - 1, base - 3, 3, 1, '#6a6c6f');
+  }
+  // Спутниковые тарелки и кондиционеры.
+  for (let i = 0; i < 2 + w / 70; i++) {
+    const sx = Math.round(x + 6 + r() * (w - 12));
+    const sy = Math.round(top + 6 + r() * (floors - 1) * FH);
+    if (r() < 0.6) {
+      px(sx, sy, 3, 3, '#d9d6cf');
+      px(sx + 1, sy + 1, 1, 1, '#a9a69f');
+    } else {
+      px(sx, sy, 4, 3, '#cfcdc6');
+      px(sx + 1, sy + 1, 2, 1, '#8a8882');
+    }
+  }
+  // Магазин в торце — у некоторых домов первый этаж под вывеску.
+  if (o.shop) shopFloor(ctx, r, x, Math.min(w, 70), base, 14, T.dark);
   // Рекламный щит на крыше.
-  if (o.ad) {
-    const [title, sub, bg, fg] = o.ad;
-    const bw = Math.min(w - 10, 90);
-    const bx = x + (w - bw) / 2;
-    ctx.fillStyle = '#2a2c30';
-    ctx.fillRect(bx + 8, top - 10, 1.2, 10);
-    ctx.fillRect(bx + bw - 9, top - 10, 1.2, 10);
-    ctx.fillRect(bx - 1, top - 33, bw + 2, 24);
-    vgrad(ctx, bx, top - 32, bw, 22, bg, bg);
-    glow(ctx, bx + bw / 2, top - 21, bw * 0.7, 16, '255,240,210', 0.2);
-    ctx.font = `800 9px ${FONT}`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = fg;
-    ctx.fillText(title, bx + bw / 2, top - 24);
-    ctx.font = `500 5px ${FONT}`;
-    ctx.fillText(sub, bx + bw / 2, top - 15);
-    // Прожекторы снизу.
-    for (const lx of [bx + 10, bx + bw - 12]) glow(ctx, lx, top - 12, 8, 4, '255,240,200', 0.4);
-  }
+  if (o.ad) roofAd(ctx, o.ad, x, w, top);
+}
+
+/** Рекламный щит на крыше: фермы, подсветка снизу. */
+function roofAd(ctx, ad, x, w, top) {
+  const [title, sub, bg, fg] = ad;
+  const bw = Math.min(w - 10, 90);
+  const bx = Math.round(x + (w - bw) / 2);
+  ctx.fillStyle = '#2a2c30';
+  ctx.fillRect(bx + 8, top - 10, 1, 10);
+  ctx.fillRect(bx + bw - 9, top - 10, 1, 10);
+  ctx.fillRect(bx - 1, top - 33, bw + 2, 24);
+  ctx.fillStyle = bg;
+  ctx.fillRect(bx, top - 32, bw, 22);
+  glow(ctx, bx + bw / 2, top - 21, bw * 0.7, 16, '255,240,210', 0.18);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = fg;
+  ctx.font = `800 ${fitFont(ctx, title, bw - 8, 9, 800)}px ${FONT}`;
+  ctx.fillText(title, bx + bw / 2, top - 24);
+  ctx.font = `500 5px ${FONT}`;
+  ctx.fillText(sub, bx + bw / 2, top - 15);
+  for (const lx of [bx + 10, bx + bw - 12]) glow(ctx, lx, top - 12, 8, 4, '255,240,200', 0.4);
+}
+
+/** Самый крупный кегль (не больше max), при котором надпись влезает в ширину. */
+function fitFont(ctx, text, width, max, weight = 700) {
+  ctx.font = `${weight} 10px ${FONT}`;
+  const w10 = ctx.measureText(text).width;
+  return Math.max(3, Math.min(max, (10 * width) / w10));
 }
 
 /** Дальние дома: силуэты в дымке с редкими огнями. */
@@ -591,7 +715,14 @@ function chunkObjects(seed, spec, ci) {
       if (stal)
         add({ kind: 'stalinka', x, w, tower: r() < 0.4, towerLeft: r() < 0.5, span: w + 10 });
       else
-        add({ kind: 'khrushchevka', x, w, ad: r() < 0.3 ? pick(r, ROOF_ADS) : null, span: w + 10 });
+        add({
+          kind: 'khrushchevka',
+          x,
+          w,
+          ad: r() < 0.3 ? pick(r, ROOF_ADS) : null,
+          shop: r() < 0.4,
+          span: w + 10,
+        });
       x += w + (r() < 0.25 ? 14 + r() * 20 : 0);
     }
   } else if (spec.id === 'street') {
@@ -636,34 +767,6 @@ function drawRoad(ctx, seed, x0, ppm) {
         ctx.fillRect(x, y, 2, 1);
       }
     }
-  // Отражения в мокром асфальте: мягкие вытянутые блики под фонарями и вывесками.
-  const streak = (x, y, len, col, a) => {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.scale(5, len);
-    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
-    g.addColorStop(0, 'rgba(' + col + ',' + a + ')');
-    g.addColorStop(1, 'rgba(' + col + ',0)');
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(0, 0, 1, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  };
-  const step = 150 / 0.62;
-  for (let s = Math.floor((x0 - 60) / step) * step; s < x1 + 60; s += step) {
-    streak(s + 19, 196, 46, '255,165,75', 0.16);
-    ctx.fillStyle = 'rgba(255,170,80,0.06)';
-    ctx.beginPath();
-    ctx.ellipse(s + 19, 200, 60, 16, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  for (let m = Math.floor(x0 / 37); m * 37 < x1; m++) {
-    const h = hash(seed, m, 4040);
-    if (h > 0.3) continue;
-    const col = ['76,255,138', '255,59,59', '255,216,74', '90,200,255'][Math.floor(h * 13) % 4];
-    streak(m * 37 + 6, 176, 18, col, 0.1);
-  }
   // Разметка: сплошная у бордюра, прерывистая между полосами, сплошная у ближнего края.
   ctx.fillStyle = 'rgba(220,218,210,0.55)';
   ctx.fillRect(x0, 166, CW, 1.2);

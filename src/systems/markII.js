@@ -15,6 +15,7 @@ const H = 92;
 const GROUND = 90;
 const AXLES = [64, 240];
 const WHEEL_R = 20;
+const STRETCH = 1.24; // высота кузова над порогом относительно исходного контура
 export const MARK2 = Object.freeze({ length: L, front: L / 2, wheelR: WHEEL_R });
 
 const BODY = '#86685a';
@@ -71,6 +72,11 @@ function bodyTexture(scene) {
   c.height = H * RES;
   const ctx = c.getContext('2d');
   ctx.scale(RES, RES);
+  // Пропорции X100: длина к высоте ≈ 3,4. Кузов тянем вверх от порогов, колёса и арки — нет.
+  ctx.save();
+  ctx.translate(0, 80);
+  ctx.scale(1, STRETCH);
+  ctx.translate(0, -80);
 
   // Кузов: металлик сверху светлее, к порогу темнее; блик по линии плеча.
   path(ctx, PROFILE);
@@ -211,6 +217,7 @@ function bodyTexture(scene) {
   ctx.font = `700 4px "Onest Variable", Onest, sans-serif`;
   ctx.fillText('ДРИФТ · ПАЛЫЧ', 100, 64);
 
+  ctx.restore();
   // Арки: тёмная глубина ниш колёс.
   for (const ax of AXLES) {
     ctx.fillStyle = '#0b0a09';
@@ -293,10 +300,10 @@ export function buildMarkII(scene, opts = {}) {
   const left = -L / 2;
   if (opts.night) {
     // Свет фар — мягкий конус вперёд, габариты сзади.
-    const cone = scene.add.triangle(L / 2 - 6, -36, 0, 0, 200, -30, 200, 30, 0xffe8b0, 0.08);
+    const cone = scene.add.triangle(L / 2 - 6, -42, 0, 0, 200, -30, 200, 30, 0xffe8b0, 0.08);
     cone.setOrigin(0, 0.5).setBlendMode(Phaser.BlendModes.ADD);
     const tail = scene.add
-      .ellipse(left + 8, -38, 22, 12, 0xff2a1f, 0.35)
+      .ellipse(left + 8, -50, 22, 12, 0xff2a1f, 0.35)
       .setBlendMode(Phaser.BlendModes.ADD);
     car.add([cone, tail]);
   }

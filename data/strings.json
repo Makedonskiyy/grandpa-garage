@@ -337,7 +337,7 @@
     "modeAuto": "Автомат",
     "tachoUnit": "×1000 об/мин",
     "startLine": "СТАРТ",
-    "finishLine": "ФИНИШ · 400 м",
+    "finishLine": "ФИНИШ",
     "gapEven": "Вровень с Палычем",
     "gapRival": "Палыч впереди на {m} м",
     "gapYou": "Ты впереди на {m} м",

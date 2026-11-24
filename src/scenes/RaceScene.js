@@ -64,7 +64,7 @@ export class RaceScene extends BaseScene {
     this.state = 'intro';
 
     this.world = new CityWorld(this, { seed: gameState.flags.worldSeed ?? 1, ppm: PPM });
-    this.marks = this.#drawMarks(); // старт и финиш на асфальте
+    this.marks = this.#drawMarks(); // старт и финиш: полоса и арка над дорогой
     // Палыч — на дальней полосе, чуть меньше (дальше от зрителя).
     this.rival = buildRivalCar(this, {
       x: 0,
@@ -73,7 +73,7 @@ export class RaceScene extends BaseScene {
       night: true,
     });
     this.rival.front = MARK2.front * cfg.rivalScale;
-    this.rival.plateOffset = 82 * cfg.rivalScale;
+    this.rival.plateOffset = 100 * cfg.rivalScale;
     this.player = buildCar(this, gameState.build, gameState.cosmetics, {
       x: cfg.playerX,
       y: cfg.playerLaneY,
@@ -84,7 +84,10 @@ export class RaceScene extends BaseScene {
     this.player.front = cfg.playerFront * cfg.carScale;
     this.player.plateOffset = 92 * cfg.carScale;
     this.frontX = cfg.playerX + this.player.front; // передний бампер игрока на экране
-    this.marks.x = this.frontX;
+    this.marks.back.x = this.frontX;
+    this.marks.front.x = this.frontX;
+    // Ближняя стойка и перекладина арки — поверх машин.
+    this.children.bringToTop(this.marks.front);
     this.#nameplate(this.rival, t('race.rival'));
     this.#placeRival();
     this.fx = new TireFx(this, this.player); // дым из-под шин и след на асфальте
@@ -154,42 +157,61 @@ export class RaceScene extends BaseScene {
     return this.frontX + (m - this.run.x) * PPM;
   }
 
-  /** Старт и финиш: линии на асфальте и таблички на дальней обочине (x — метры × PPM). */
+  /**
+   * Старт и финиш на трассе (x — метры × PPM от старта): полоса поперёк обеих полос
+   * и арка над дорогой. Полоса и дальняя стойка — под машинами, ближняя стойка
+   * и перекладина с надписью — над ними: машины проезжают под аркой.
+   */
   #drawMarks() {
-    const box = this.add.container(0, 0);
+    const back = this.add.container(0, 0);
+    const front = this.add.container(0, 0);
     const g = this.add.graphics();
-    box.add(g);
-    // Старт — белая линия поперёк полос.
-    g.fillStyle(0xf2f0ea, 0.85).fillRect(-1.5, 162, 3, 140);
-    // Финиш — шахматная полоса и флажки над табличкой.
+    back.add(g);
+    const fg = this.add.graphics();
+    front.add(fg);
     const fx = this.total * PPM;
-    for (let y = 162, i = 0; y < 302; y += 4, i++) {
-      g.fillStyle(i % 2 ? 0x111111 : 0xf4f4f0, 0.95).fillRect(fx - 4, y, 4, 4);
-      g.fillStyle(i % 2 ? 0xf4f4f0 : 0x111111, 0.95).fillRect(fx, y, 4, 4);
-    }
-    for (let i = 0; i < 6; i++)
-      for (let j = 0; j < 2; j++)
-        g.fillStyle((i + j) % 2 ? 0x111111 : 0xffffff).fillRect(fx - 12 + i * 4, 84 + j * 4, 4, 4);
+    // Стартовая линия: широкая белая полоса с потёртостями; финиш — шахматка в три ряда.
+    g.fillStyle(0xf2f0ea, 0.9).fillRect(-3, 162, 6, 140);
+    for (let y = 164; y < 300; y += 9) g.fillStyle(0x2a2c30, 0.35).fillRect(-3, y, 6, 1);
+    for (let y = 162, i = 0; y < 302; y += 4, i++)
+      for (let k = 0; k < 3; k++)
+        g.fillStyle((i + k) % 2 ? 0x111111 : 0xf4f4f0, 0.95).fillRect(fx - 6 + k * 4, y, 4, 4);
     const zoom = getRenderZoom();
-    const board = (x, text, light) => {
-      g.fillStyle(0x2a2c30).fillRect(x - 0.8, 104, 1.6, 56);
-      box.add(
+    const arch = (x, text, finish) => {
+      const L = x - 34;
+      const R = x + 34;
+      const top = 70;
+      // Дальняя стойка у бордюра — за машинами, ближняя у края дороги — перед ними.
+      g.fillStyle(0x2a2c30).fillRect(L - 2, top, 4, 160 - top);
+      g.fillStyle(0x4a4d52).fillRect(L - 2, top, 1, 160 - top);
+      fg.fillStyle(0x2a2c30).fillRect(R - 3, top, 6, 304 - top);
+      fg.fillStyle(0x4a4d52).fillRect(R - 3, top, 2, 304 - top);
+      fg.fillStyle(0x1a1b1e).fillRect(R - 6, 300, 12, 4);
+      // Перекладина с баннером.
+      fg.fillStyle(0x2a2c30).fillRect(L - 4, top - 4, R - L + 8, 4);
+      if (finish) {
+        for (let i = 0; i < (R - L) / 4; i++)
+          for (let j = 0; j < 2; j++)
+            fg.fillStyle((i + j) % 2 ? 0x111111 : 0xffffff).fillRect(L + i * 4, top, 4, 4);
+      } else fg.fillStyle(0xc8202a).fillRect(L, top, R - L, 8);
+      fg.fillStyle(finish ? 0x111111 : 0xf2f0ea).fillRect(L, top + 8, R - L, 13);
+      front.add(
         this.add
-          .text(x, 104, text, {
+          .text(x, top + 14.5, text, {
             fontFamily: FONT,
-            fontSize: '9px',
+            fontSize: '10px',
             fontStyle: '800',
-            color: light ? '#111111' : '#ffffff',
-            backgroundColor: light ? '#f2f0ea' : '#111111',
-            padding: { x: 5, y: 3 },
+            color: finish ? '#ffffff' : '#c8202a',
           })
-          .setOrigin(0.5, 1)
+          .setOrigin(0.5)
           .setResolution(zoom),
       );
+      // Лампы под перекладиной.
+      for (const lx of [L + 8, x, R - 8]) fg.fillStyle(0xfff1c2).fillRect(lx - 1, top + 21, 2, 2);
     };
-    board(-14, t('race.startLine'), true);
-    board(fx, t('race.finishLine'), false);
-    return box;
+    arch(-6, t('race.startLine'), false);
+    arch(fx, t('race.finishLine'), true);
+    return { back, front };
   }
 
   #nameplate(carObj, name) {
@@ -273,7 +295,8 @@ export class RaceScene extends BaseScene {
     // Город, разметка и финиш едут навстречу; машина игрока стоит на месте.
     const scroll = run.x * PPM;
     this.world.update(scroll);
-    this.marks.x = this.frontX - scroll;
+    this.marks.back.x = this.frontX - scroll;
+    this.marks.front.x = this.frontX - scroll;
     const toWheel = (car.wheels.radius / run.ph.wheelRadius) * this.player.scaleX;
     this.player.step(dt, {
       distance: (run.x - prevX) * toWheel * (1 + run.slip * 2) + run.slip * 3,
