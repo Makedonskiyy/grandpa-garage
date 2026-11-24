@@ -8,18 +8,18 @@
 import { el } from './dom.js';
 
 const COLORS = [
-  // [имя, цвет свечения, светлый центр, тёмный край, погашенная линза]
-  ['red', '#ff2a1f', '#ffd2c4', '#8a0a06', '#3a0c0a'],
-  ['amber', '#ffb81c', '#fff1c2', '#8a5200', '#3a2a08'],
-  ['amber', '#ffb81c', '#fff1c2', '#8a5200', '#3a2a08'],
-  ['amber', '#ffb81c', '#fff1c2', '#8a5200', '#3a2a08'],
-  ['green', '#2bff6a', '#d4ffe0', '#06702a', '#0b2e16'],
+  // [имя, цвет свечения, светлый центр, тёмный край, погашенная линза: центр, край]
+  ['red', '#ff2a1f', '#ffd2c4', '#8a0a06', '#7a2420', '#2c0a08'],
+  ['amber', '#ffb81c', '#fff1c2', '#8a5200', '#7a5a1c', '#2c1e06'],
+  ['amber', '#ffb81c', '#fff1c2', '#8a5200', '#7a5a1c', '#2c1e06'],
+  ['amber', '#ffb81c', '#fff1c2', '#8a5200', '#7a5a1c', '#2c1e06'],
+  ['green', '#2bff6a', '#d4ffe0', '#06702a', '#23663a', '#081f10'],
 ];
 const W = 440;
 const H = 104;
 const STEP = 84;
 const X0 = 52;
-const CY = 52;
+const CY = 50; // чуть выше середины: снизу — толщина корпуса
 const R = 31; // линза
 
 let uid = 0;
@@ -29,8 +29,11 @@ function svg() {
   const id = `tl${(uid += 1)}`;
   const defs = [
     `<linearGradient id="${id}-body" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#7a7d82"/><stop offset="0.18" stop-color="#5c5f64"/>
-      <stop offset="0.6" stop-color="#3e4145"/><stop offset="1" stop-color="#2a2c30"/></linearGradient>`,
+      <stop offset="0" stop-color="#4a4d52"/><stop offset="0.12" stop-color="#33363b"/>
+      <stop offset="0.7" stop-color="#25272b"/><stop offset="1" stop-color="#1a1b1e"/></linearGradient>`,
+    // Мелкое зерно порошковой краски.
+    `<pattern id="${id}-grain" width="3" height="3" patternUnits="userSpaceOnUse">
+      <rect width="1" height="1" fill="#fff" fill-opacity="0.035"/><rect x="2" y="1" width="1" height="1" fill="#000" fill-opacity="0.08"/></pattern>`,
     `<linearGradient id="${id}-rim" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#9a9da2"/><stop offset="1" stop-color="#1d1e21"/></linearGradient>`,
     `<radialGradient id="${id}-socket" cx="0.5" cy="0.42" r="0.6">
@@ -47,7 +50,7 @@ function svg() {
     `<filter id="${id}-shadow" x="-0.2" y="-0.5" width="1.4" height="2">
       <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity="0.5"/></filter>`,
   ];
-  const lamps = COLORS.map(([, glow, hot, edge, off], i) => {
+  const lamps = COLORS.map(([, glow, hot, edge, off, offEdge], i) => {
     const cx = X0 + i * STEP;
     const g = `${id}-l${i}`;
     defs.push(
@@ -55,7 +58,7 @@ function svg() {
         <stop offset="0" stop-color="${hot}"/><stop offset="0.35" stop-color="${glow}"/>
         <stop offset="1" stop-color="${edge}"/></radialGradient>`,
       `<radialGradient id="${g}-off" cx="0.42" cy="0.38" r="0.65">
-        <stop offset="0" stop-color="${off}" stop-opacity="0.75"/><stop offset="1" stop-color="#050505"/></radialGradient>`,
+        <stop offset="0" stop-color="${off}"/><stop offset="0.7" stop-color="${offEdge}"/><stop offset="1" stop-color="#050505"/></radialGradient>`,
     );
     // Козырёк: дуга над гнездом, отбрасывает тень на верх линзы.
     const a0 = (200 * Math.PI) / 180;
@@ -86,9 +89,11 @@ function svg() {
   return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
     <defs>${defs.join('')}</defs>
     <g filter="url(#${id}-shadow)">
-      <rect x="1.5" y="1.5" width="${W - 3}" height="${H - 3}" rx="${(H - 3) / 2}" fill="#18191b"/>
-      <rect x="4" y="4" width="${W - 8}" height="${H - 8}" rx="${(H - 8) / 2}" fill="url(#${id}-body)"/>
-      <rect x="5" y="5" width="${W - 10}" height="${H - 10}" rx="${(H - 10) / 2}" fill="none" stroke="#fff" stroke-opacity="0.16" stroke-width="1.2"/>
+      <rect x="1.5" y="4" width="${W - 3}" height="${H - 4}" rx="${(H - 4) / 2}" fill="#0b0c0d"/>
+      <rect x="1.5" y="1.5" width="${W - 3}" height="${H - 6}" rx="${(H - 6) / 2}" fill="#111214"/>
+      <rect x="4" y="3.5" width="${W - 8}" height="${H - 10}" rx="${(H - 10) / 2}" fill="url(#${id}-body)"/>
+      <rect x="4" y="3.5" width="${W - 8}" height="${H - 10}" rx="${(H - 10) / 2}" fill="url(#${id}-grain)"/>
+      <path d="M${H / 2} 5.2 H${W - H / 2}" stroke="#fff" stroke-opacity="0.22" stroke-width="1.2" stroke-linecap="round"/>
     </g>
     ${bolt(14, CY)}${bolt(W - 14, CY)}
     ${lamps.join('')}

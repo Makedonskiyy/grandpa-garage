@@ -15,12 +15,12 @@ export function showRunOverlay(ui, o) {
   const primary = el(
     'button',
     { class: 'run-over__btn run-over__btn--primary', type: 'button', onclick: o.primary.onClick },
-    [o.primary.label],
+    [icon(o.ok ? 'play' : 'restart'), el('span', { text: o.primary.label })],
   );
   const details = el(
     'button',
     { class: 'run-over__btn run-over__btn--ghost', type: 'button', onclick: o.details.onClick },
-    [o.details.label],
+    [icon('info'), el('span', { text: o.details.label })],
   );
   const node = el(
     'section',
