@@ -110,8 +110,14 @@ export class DriveHud {
   }
 
   setVisible(on) {
-    for (const n of [this.node, this.info]) if (n) n.style.visibility = on ? '' : 'hidden';
+    // display, а не visibility: дуги приборов сами включают видимость и просвечивали бы.
+    for (const n of [this.node, this.info]) if (n) n.style.display = on ? '' : 'none';
     if (!on) this.$hint.hidden = true;
+  }
+
+  /** Где стоит подсказка: top — сверху, light — под светофором, clock — под секундомером. */
+  setHintSlot(slot) {
+    this.$hint.dataset.slot = slot;
   }
 
   /** Показать подсказку: tone — info | warn | good. Срочная (warn) перебивает обычную. */

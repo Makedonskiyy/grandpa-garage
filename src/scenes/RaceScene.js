@@ -95,8 +95,11 @@ export class RaceScene extends BaseScene {
     this.$clock.style.visibility = 'hidden';
     this.hud.setEnabled(false);
     // «Попробовать снова» — сразу к старту, без реплик перед заездом.
-    if (!data.retry) await new StoryStage(this).play('preRace');
-    if (!this.scene.isActive()) return;
+    if (!data.retry) {
+      await new StoryStage(this).play('preRace');
+      // Пока шла сценка, игрок мог уйти из сцены.
+      if (!this.scene.isActive()) return;
+    }
     this.hud.setVisible(true);
     this.light.setVisible(true);
     this.$clock.style.visibility = '';
@@ -104,6 +107,7 @@ export class RaceScene extends BaseScene {
     // Газ до старта уже работает: обороты набирают на красном и жёлтых.
     this.hud.setEnabled(true);
     this.state = 'tree';
+    this.hud.setHintSlot('light');
     this.hud.say(this.run.auto ? 'launchAuto' : 'launch');
     this.light.run(this.test.christmasTree, {
       onAmber: () => audio.playSfx(SFX.TREE_BEEP),
@@ -113,7 +117,11 @@ export class RaceScene extends BaseScene {
         greenLight(this.run);
         this.state = 'running';
         this.hud.say(this.run.auto ? 'goAuto' : 'goManual', 'good');
-        this.time.delayedCall(1500, () => this.$clock.classList.remove('is-hidden'));
+      },
+      // Светофор ушёл — на его месте секундомер, подсказки под ним.
+      onHide: () => {
+        this.$clock.classList.remove('is-hidden');
+        this.hud.setHintSlot('clock');
       },
     });
   }

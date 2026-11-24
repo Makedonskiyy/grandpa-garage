@@ -1,12 +1,99 @@
 /**
- * ScreenLight — стартовый светофор на экране, сверху по центру: горизонтальная плашка
- * с пятью лампами (красная, три жёлтые, зелёная). Тот же порядок и те же вызовы,
- * что у дорожного StartLight (run / foul / stop), но это слой интерфейса: его видно
- * на любой карте и при любом размере окна. После зелёного плавно уходит вверх.
+ * ScreenLight — стартовый светофор на экране, сверху по центру: горизонтальный корпус
+ * с пятью секциями (красная, три жёлтые, зелёная), нарисованный в SVG как настоящий:
+ * крашеный металл с фаской и болтами, утопленные гнёзда с козырьками, линзы со светодиодной
+ * сеткой и бликом; горящая лампа светится ореолом. Тот же порядок и те же вызовы,
+ * что у дорожного StartLight (run / foul / stop). После зелёного уходит вверх.
  */
 import { el } from './dom.js';
 
-const COLORS = ['red', 'amber', 'amber', 'amber', 'green'];
+const COLORS = [
+  // [имя, цвет свечения, светлый центр, тёмный край, погашенная линза]
+  ['red', '#ff2a1f', '#ffd2c4', '#8a0a06', '#3a0c0a'],
+  ['amber', '#ffb81c', '#fff1c2', '#8a5200', '#3a2a08'],
+  ['amber', '#ffb81c', '#fff1c2', '#8a5200', '#3a2a08'],
+  ['amber', '#ffb81c', '#fff1c2', '#8a5200', '#3a2a08'],
+  ['green', '#2bff6a', '#d4ffe0', '#06702a', '#0b2e16'],
+];
+const W = 440;
+const H = 104;
+const STEP = 84;
+const X0 = 52;
+const CY = 52;
+const R = 31; // линза
+
+let uid = 0;
+
+/** SVG светофора; у каждой секции — слой «горит» (.tl-on) и ореол (.tl-glow). */
+function svg() {
+  const id = `tl${(uid += 1)}`;
+  const defs = [
+    `<linearGradient id="${id}-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7a7d82"/><stop offset="0.18" stop-color="#5c5f64"/>
+      <stop offset="0.6" stop-color="#3e4145"/><stop offset="1" stop-color="#2a2c30"/></linearGradient>`,
+    `<linearGradient id="${id}-rim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#9a9da2"/><stop offset="1" stop-color="#1d1e21"/></linearGradient>`,
+    `<radialGradient id="${id}-socket" cx="0.5" cy="0.42" r="0.6">
+      <stop offset="0" stop-color="#0d0d0e"/><stop offset="0.8" stop-color="#050505"/>
+      <stop offset="1" stop-color="#1e1f22"/></radialGradient>`,
+    `<linearGradient id="${id}-visor" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#55585d"/><stop offset="1" stop-color="#18191b"/></linearGradient>`,
+    // Светодиоды линзы: мелкая сетка точек.
+    `<pattern id="${id}-led" width="4.2" height="4.2" patternUnits="userSpaceOnUse">
+      <circle cx="2.1" cy="2.1" r="1.15" fill="#fff" fill-opacity="0.22"/></pattern>`,
+    `<pattern id="${id}-ledoff" width="4.2" height="4.2" patternUnits="userSpaceOnUse">
+      <circle cx="2.1" cy="2.1" r="1.15" fill="#000" fill-opacity="0.35"/></pattern>`,
+    `<filter id="${id}-glow" x="-1" y="-1" width="3" height="3"><feGaussianBlur stdDeviation="9"/></filter>`,
+    `<filter id="${id}-shadow" x="-0.2" y="-0.5" width="1.4" height="2">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity="0.5"/></filter>`,
+  ];
+  const lamps = COLORS.map(([, glow, hot, edge, off], i) => {
+    const cx = X0 + i * STEP;
+    const g = `${id}-l${i}`;
+    defs.push(
+      `<radialGradient id="${g}-on" cx="0.42" cy="0.38" r="0.62">
+        <stop offset="0" stop-color="${hot}"/><stop offset="0.35" stop-color="${glow}"/>
+        <stop offset="1" stop-color="${edge}"/></radialGradient>`,
+      `<radialGradient id="${g}-off" cx="0.42" cy="0.38" r="0.65">
+        <stop offset="0" stop-color="${off}" stop-opacity="0.75"/><stop offset="1" stop-color="#050505"/></radialGradient>`,
+    );
+    // Козырёк: дуга над гнездом, отбрасывает тень на верх линзы.
+    const a0 = (200 * Math.PI) / 180;
+    const a1 = (340 * Math.PI) / 180;
+    const ro = R + 9;
+    const ri = R + 2;
+    const p = (r, a) => `${(cx + Math.cos(a) * r).toFixed(1)} ${(CY + Math.sin(a) * r).toFixed(1)}`;
+    const visor = `M${p(ro, a0)} A${ro} ${ro} 0 0 1 ${p(ro, a1)} L${p(ri, a1)} A${ri} ${ri} 0 0 0 ${p(ri, a0)} Z`;
+    return `<g class="tl-lamp" data-i="${i}">
+      <circle class="tl-glow" cx="${cx}" cy="${CY}" r="${R + 10}" fill="${glow}" filter="url(#${id}-glow)"/>
+      <circle cx="${cx}" cy="${CY}" r="${R + 6}" fill="url(#${id}-rim)"/>
+      <circle cx="${cx}" cy="${CY}" r="${R + 4.4}" fill="url(#${id}-socket)"/>
+      <circle cx="${cx}" cy="${CY}" r="${R}" fill="url(#${g}-off)"/>
+      <circle cx="${cx}" cy="${CY}" r="${R}" fill="url(#${id}-ledoff)"/>
+      <g class="tl-on">
+        <circle cx="${cx}" cy="${CY}" r="${R}" fill="url(#${g}-on)"/>
+        <circle cx="${cx}" cy="${CY}" r="${R}" fill="url(#${id}-led)"/>
+      </g>
+      <circle cx="${cx}" cy="${CY}" r="${R - 9}" fill="none" stroke="#fff" stroke-opacity="0.07" stroke-width="1"/>
+      <circle cx="${cx}" cy="${CY}" r="${R - 18}" fill="none" stroke="#fff" stroke-opacity="0.06" stroke-width="1"/>
+      <ellipse cx="${cx - 10}" cy="${CY - 13}" rx="11" ry="6" fill="#fff" fill-opacity="0.16" transform="rotate(-28 ${cx - 10} ${CY - 13})"/>
+      <path d="${visor}" fill="url(#${id}-visor)"/>
+      <path d="${visor}" fill="none" stroke="#000" stroke-opacity="0.45" stroke-width="0.8"/>
+    </g>`;
+  });
+  const bolt = (x, y) =>
+    `<circle cx="${x}" cy="${y}" r="3.2" fill="#2a2c2f"/><circle cx="${x - 0.6}" cy="${y - 0.6}" r="1.8" fill="#8d9095"/>`;
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>${defs.join('')}</defs>
+    <g filter="url(#${id}-shadow)">
+      <rect x="1.5" y="1.5" width="${W - 3}" height="${H - 3}" rx="${(H - 3) / 2}" fill="#18191b"/>
+      <rect x="4" y="4" width="${W - 8}" height="${H - 8}" rx="${(H - 8) / 2}" fill="url(#${id}-body)"/>
+      <rect x="5" y="5" width="${W - 10}" height="${H - 10}" rx="${(H - 10) / 2}" fill="none" stroke="#fff" stroke-opacity="0.16" stroke-width="1.2"/>
+    </g>
+    ${bolt(14, CY)}${bolt(W - 14, CY)}
+    ${lamps.join('')}
+  </svg>`;
+}
 
 export class ScreenLight {
   /**
@@ -15,12 +102,9 @@ export class ScreenLight {
   constructor(scene) {
     this.scene = scene;
     this.timers = [];
-    this.lamps = COLORS.map((c) => el('span', { class: 'screen-light__lamp', 'data-color': c }));
-    this.node = el(
-      'div',
-      { class: 'ui-abs screen-light', role: 'img', 'aria-label': 'Светофор' },
-      this.lamps,
-    );
+    this.node = el('div', { class: 'ui-abs screen-light', role: 'img', 'aria-label': 'Светофор' });
+    this.node.innerHTML = svg();
+    this.lamps = [...this.node.querySelectorAll('.tl-lamp')];
     scene.ui.append(this.node);
   }
 
@@ -33,9 +117,9 @@ export class ScreenLight {
    * Запуск: красный, через redHold — жёлтые по одной (или все сразу при ambers = 1),
    * затем случайная пауза и зелёный. После зелёного светофор уходит через hideSec.
    * @param {{ redHoldSec: number, intervalSec: number, ambers: number, randomSec?: number }} cfg
-   * @param {{ onAmber?: () => void, onGreen: () => void, hideSec?: number }} cb
+   * @param {{ onAmber?: () => void, onGreen: () => void, onHide?: () => void, hideSec?: number }} cb
    */
-  run(cfg, { onAmber, onGreen, hideSec = 1.4 }) {
+  run(cfg, { onAmber, onGreen, onHide, hideSec = 1.4 }) {
     this.stop();
     this.node.classList.remove('is-gone');
     const s = this.scene;
@@ -56,7 +140,12 @@ export class ScreenLight {
       s.time.delayedCall(t, () => {
         this.show([4]);
         onGreen();
-        this.timers.push(s.time.delayedCall(hideSec * 1000, () => this.hide()));
+        this.timers.push(
+          s.time.delayedCall(hideSec * 1000, () => {
+            this.hide();
+            onHide?.();
+          }),
+        );
       }),
     );
   }
@@ -90,6 +179,6 @@ export class ScreenLight {
   }
 
   setVisible(on) {
-    this.node.style.visibility = on ? '' : 'hidden';
+    this.node.style.display = on ? '' : 'none';
   }
 }

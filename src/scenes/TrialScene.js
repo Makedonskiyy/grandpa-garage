@@ -14,7 +14,6 @@ import { el } from '../ui/dom.js';
 import { t } from '../systems/strings.js';
 import { getSettings } from '../systems/settings.js';
 import { getRenderZoom } from '../systems/scale.js';
-import { webButton } from '../ui/components.js';
 import { backdrop, prop, roadsideProps, rng } from './scenery.js';
 import { BypassWorld } from './bypassWorld.js';
 import { DriveHud, DriveSounds } from '../ui/DriveHud.js';
@@ -93,14 +92,18 @@ export class TrialScene extends BaseScene {
     this.light = new ScreenLight(this);
     if (this.test.practice) {
       this.ui.append(
-        el('div', { class: 'ui-abs trial-exit' }, [
-          webButton(t('trial.toGarage'), () => this.#finish(true), {
-            variant: 'dark',
-            icon: 'back',
-          }),
-        ]),
+        el(
+          'button',
+          {
+            class: 'ui-abs garage-exit',
+            type: 'button',
+            onclick: () => this.#finish(true),
+          },
+          [icon('garage'), t('trial.toGarage')],
+        ),
       );
     }
+    this.hud.setHintSlot('light');
     this.hud.say(auto ? 'launchAuto' : 'launch');
     this.light.run(this.test.christmasTree, {
       onAmber: () => audio.playSfx(SFX.TREE_BEEP),
@@ -109,6 +112,8 @@ export class TrialScene extends BaseScene {
         greenLight(this.run);
         this.hud.say(auto ? 'goAuto' : 'goManual', 'good');
       },
+      // Светофор ушёл — подсказки встают на его место сверху.
+      onHide: () => this.hud.setHintSlot('top'),
     });
   }
 

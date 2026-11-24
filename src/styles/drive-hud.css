@@ -4,27 +4,23 @@
  * поэтому на любом экране всё стоит на своих местах и не вылезает за края.
  */
 
-/* ---------- Светофор: горизонтальная плашка сверху по центру ---------- */
+/* ---------- Светофор: SVG-корпус сверху по центру ---------- */
 .screen-light {
   left: 50%;
-  top: 36px;
+  top: 28px;
+  width: 440px;
+  height: 104px;
   transform: translateX(-50%);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 612px;
-  height: 144px;
-  padding: 0 22px;
-  border-radius: 72px;
-  background: linear-gradient(180deg, #7a7a7a, #5f5f5f);
-  box-shadow:
-    inset 0 2px 0 rgb(255 255 255 / 0.18),
-    inset 0 -3px 0 rgb(0 0 0 / 0.25),
-    0 0 0 3px #2b2b2b,
-    0 18px 40px rgb(0 0 0 / 0.45);
   transition:
     opacity 420ms ease,
     transform 420ms ease;
+}
+
+.screen-light svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
 }
 
 .screen-light.is-gone {
@@ -33,41 +29,18 @@
   pointer-events: none;
 }
 
-.screen-light__lamp {
-  --c: #c81d1d;
-  position: relative;
-  width: 96px;
-  height: 96px;
-  border-radius: 50%;
-  border: 3px solid #262626;
-  background: radial-gradient(
-    circle at 40% 35%,
-    color-mix(in srgb, var(--c) 45%, #3a3a3a),
-    color-mix(in srgb, var(--c) 25%, #1c1c1c)
-  );
-  transition:
-    background 90ms linear,
-    box-shadow 90ms linear;
+.tl-on,
+.tl-glow {
+  opacity: 0;
+  transition: opacity 70ms linear;
 }
 
-.screen-light__lamp[data-color='amber'] {
-  --c: #f2c51f;
+.tl-lamp.is-on .tl-on {
+  opacity: 1;
 }
 
-.screen-light__lamp[data-color='green'] {
-  --c: #2fc22f;
-}
-
-.screen-light__lamp.is-on {
-  background: radial-gradient(
-    circle at 40% 32%,
-    color-mix(in srgb, var(--c) 55%, #fff),
-    var(--c) 55%,
-    color-mix(in srgb, var(--c) 75%, #000)
-  );
-  box-shadow:
-    0 0 26px color-mix(in srgb, var(--c) 80%, transparent),
-    0 0 60px color-mix(in srgb, var(--c) 45%, transparent);
+.tl-lamp.is-on .tl-glow {
+  opacity: 0.85;
 }
 
 /* ---------- Секундомер заезда: крупные белые цифры на мягкой тени ---------- */
@@ -117,7 +90,6 @@
 /* ---------- Подсказка: коротко, крупно, по центру под секундомером ---------- */
 .drive-hint {
   left: 50%;
-  top: 200px;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
@@ -135,6 +107,10 @@
   backdrop-filter: blur(10px);
   box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.1);
   animation: hint-in 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.drive-hint[hidden] {
+  display: none;
 }
 
 .drive-hint.is-leaving {
@@ -165,9 +141,16 @@
   color: #6fdc7e;
 }
 
-/* Пока на экране светофор, подсказка — под ним. */
-.screen-light:not(.is-gone) ~ .drive-hint {
-  top: 206px;
+.drive-hint {
+  top: 32px;
+}
+
+.drive-hint[data-slot='light'] {
+  top: 150px;
+}
+
+.drive-hint[data-slot='clock'] {
+  top: 170px;
 }
 
 @keyframes hint-in {
@@ -188,7 +171,7 @@
 .dash-info {
   top: 32px;
   left: 40px;
-  width: 420px;
+  width: 340px;
   padding: 18px 22px 20px;
   display: grid;
   gap: 16px;
@@ -215,37 +198,46 @@
 }
 
 .hud-stat__row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
   align-items: center;
-  gap: 10px;
-  min-width: 0;
+  column-gap: 10px;
+  row-gap: 4px;
 }
 
 .hud-stat__row .icon {
-  flex: none;
   width: 26px;
   height: 26px;
   color: rgb(255 255 255 / 0.55);
 }
 
 .hud-stat__value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: 34px;
   font-weight: 700;
-  line-height: 1;
+  line-height: 1.05;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
 .hud-stat__sub {
-  margin-left: auto;
+  grid-column: 2;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 18px;
   font-weight: 500;
   line-height: 1.2;
-  text-align: right;
-  white-space: nowrap;
   color: rgb(255 255 255 / 0.6);
   font-variant-numeric: tabular-nums;
+}
+
+.hud-stat__sub:empty {
+  display: none;
 }
 
 .hud-stat.is-bad .hud-stat__value {
@@ -422,4 +414,51 @@
     opacity: 0;
     transform: translateY(24px) scale(0.98);
   }
+}
+
+/* ---------- Выход в гараж на объездной ---------- */
+.garage-exit {
+  top: 32px;
+  right: 40px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 60px;
+  padding: 0 22px 0 16px;
+  border: 0;
+  border-radius: 18px;
+  font: 600 22px/1 var(--font-ui);
+  color: #fff;
+  background: linear-gradient(180deg, rgb(14 14 16 / 0.62), rgb(14 14 16 / 0.42));
+  backdrop-filter: blur(10px);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.1);
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    transform 140ms ease;
+}
+
+.garage-exit:hover {
+  background: rgb(30 30 34 / 0.75);
+  transform: translateY(-1px);
+}
+
+.garage-exit:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+}
+
+.garage-exit .icon {
+  width: 28px;
+  height: 28px;
+  color: rgb(255 255 255 / 0.8);
+}
+
+.garage-exit kbd {
+  margin-left: 4px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font: 600 16px/1 var(--font-ui);
+  color: rgb(255 255 255 / 0.7);
+  background: rgb(255 255 255 / 0.12);
 }

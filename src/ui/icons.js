@@ -41,6 +41,7 @@ import caretDown from '@phosphor-icons/core/assets/regular/caret-down.svg?raw';
 import caretLeft from '@phosphor-icons/core/assets/regular/caret-left.svg?raw';
 import flag from '@phosphor-icons/core/assets/regular/flag-checkered.svg?raw';
 import timer from '@phosphor-icons/core/assets/regular/timer.svg?raw';
+import garage from '@phosphor-icons/core/assets/regular/garage.svg?raw';
 import heartbeat from '@phosphor-icons/core/assets/regular/heartbeat.svg?raw';
 import eyedropper from '@phosphor-icons/core/assets/regular/eyedropper.svg?raw';
 import speedometer from '@phosphor-icons/core/assets/regular/speedometer.svg?raw';
@@ -133,6 +134,7 @@ const ICONS = {
   shiftDown: caretDown,
   finish: flag,
   timer,
+  garage,
 };
 
 export function icon(name) {
