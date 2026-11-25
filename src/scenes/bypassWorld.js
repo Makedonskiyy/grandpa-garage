@@ -71,7 +71,7 @@ function mix(hex, t, to = HAZE) {
 // ---------- Участки леса вдоль дороги ----------
 
 const BIOMES = {
-  mixed: { birch: 0.35, pine: 0.25, spruce: 0.4, density: 1, clearing: 0, swamp: 0, w: 3 },
+  mixed: { birch: 0.35, pine: 0.25, spruce: 0.4, density: 0.75, clearing: 0, swamp: 0, w: 3 },
   pine: { birch: 0.12, pine: 0.7, spruce: 0.18, density: 0.75, clearing: 0, swamp: 0, w: 2 },
   spruce: { birch: 0.1, pine: 0.1, spruce: 0.8, density: 1.15, clearing: 0, swamp: 0, w: 2 },
   birch: { birch: 0.8, pine: 0.08, spruce: 0.12, density: 0.85, clearing: 0, swamp: 0, w: 2 },
@@ -277,8 +277,8 @@ function pine(ctx, o) {
       r,
       cx,
       y - h * 0.012,
-      Math.max(reach * 0.9, h * 0.06),
-      h * (0.055 + 0.02 * r()),
+      Math.min(Math.max(reach * 0.7, h * 0.05), h * 0.065 * 2.2),
+      h * (0.06 + 0.025 * r()),
       dark,
       12,
       Math.max(0.8, h * 0.012),
@@ -330,8 +330,8 @@ function birch(ctx, o) {
     ctx.fillRect(
       tx(y) - ww / 2 + (big ? 0 : r() * ww * 0.5),
       y,
-      ww * (big ? 0.7 + r() * 0.3 : 0.3 + r() * 0.3),
-      big ? 1 + r() : 0.5,
+      Math.max(1, ww * (big ? 0.8 : 0.5)),
+      big ? 2 : 1,
     );
   }
   const bg = ctx.createLinearGradient(0, base, 0, base - h * 0.12);
@@ -342,20 +342,20 @@ function birch(ctx, o) {
   ctx.restore();
   // Крона: 6–9 вытянутых вниз прядей вокруг ствола в верхних 55 % — узкий плакучий овал.
   const crownTop = base - h;
-  const crownLow = base - h * (0.3 + r() * 0.08);
+  const crownLow = base - h * (0.38 + r() * 0.08);
   const n = 14 + Math.floor(r() * 6);
   for (let i = 0; i < n; i++) {
     const t = (i + r() * 0.6) / n;
     const y = crownTop + (crownLow - crownTop) * t;
-    const width = h * 0.28 * Math.sin(Math.PI * (0.12 + 0.82 * t)); // овал: шире в середине
+    const width = h * 0.16 * Math.sin(Math.PI * (0.12 + 0.82 * t)); // овал: шире в середине
     const cx = tx(y) + (r() - 0.5) * 2 * width * 0.6;
     clump(
       ctx,
       r,
       cx,
       y,
-      Math.max(h * 0.05, width * 0.6),
-      h * (0.08 + 0.03 * r()),
+      Math.max(h * 0.03, width * 0.5),
+      h * (0.1 + 0.04 * r()),
       leaves,
       12,
       Math.max(0.7, h * 0.011),
@@ -1027,7 +1027,7 @@ function chunkObjects(seed, layer, ci, ppm) {
       const v = r() * (b.birch + b.pine + b.spruce);
       const kind = v < b.birch ? 'birch' : v < b.birch + b.pine ? 'pine' : 'spruce';
       const h =
-        (kind === 'pine' ? 150 + r() * 50 : kind === 'birch' ? 125 + r() * 45 : 95 + r() * 55) *
+        (kind === 'pine' ? 195 + r() * 55 : kind === 'birch' ? 160 + r() * 50 : 120 + r() * 60) *
         tall;
       add(kind, x, 216 + r() * 8, h, 0.16 + r() * 0.12, h * 0.4);
     }
@@ -1440,7 +1440,8 @@ function pixelate(ctx, w, h) {
       continue;
     }
     d[i + 3] = 255;
-    for (let k = 0; k < 3; k++) d[i + k] = Math.round(d[i + k] / 16) * 16;
+    const l = 0.3 * d[i] + 0.59 * d[i + 1] + 0.11 * d[i + 2];
+    for (let k = 0; k < 3; k++) d[i + k] = Math.round((d[i + k] * 0.75 + l * 0.25) / 16) * 16;
   }
   ctx.putImageData(img, 0, 0);
 }
