@@ -32,28 +32,34 @@ body {
   position: absolute;
   left: 50%;
   top: 50%;
+  width: var(--stage-width, 1920px);
   transform: translate(-50%, -50%) scale(var(--ui-scale, 1));
   transform-origin: center center;
   overflow: hidden;
   background: #000;
 }
 
-#game,
-#game canvas {
+#game {
   position: absolute;
   inset: 0;
 }
 
-/* Канвас в разрешении окна растянут на коробку 1920×1080, которую масштабирует #stage. */
+/* При широком окне лишняя высота холста обрезается поровну сверху и снизу. */
 #game canvas {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
   width: 100% !important;
-  height: 100% !important;
+  height: var(--canvas-height, 1080px) !important;
 }
 
 /* Оверлей пропускает клики в канвас везде, кроме своих элементов. */
 #ui-root {
   position: absolute;
-  inset: 0;
+  inset: 0 auto 0 50%;
+  width: 1920px;
+  transform: translateX(-50%);
   pointer-events: none;
   font-size: 24px;
   line-height: 1.5;
@@ -62,6 +68,11 @@ body {
 #ui-root > * {
   position: absolute;
   inset: 0;
+}
+
+/* Затемнения перекрывают холст до краёв окна. */
+#ui-root > :is(.shutter, .ui-modals) {
+  inset-inline: calc((1920px - var(--stage-width, 1920px)) / 2);
 }
 
 .ui-layer > * {

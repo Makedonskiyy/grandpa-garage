@@ -9,7 +9,8 @@
  * Камера каждой сцены увеличивает мир до размера холста. Пиксельные фоны при этом остаются
  * крупными, а машина, нарисованная в 3 раза детальнее, выглядит чётко (ТЗ: «разрешение
  * машины выше любого другого объекта»). #stage — коробка 1920×1080, которую CSS-трансформ
- * вписывает в окно; канвас внутри растянут на неё же, поэтому клики совпадают.
+ * вписывает в окно. На широком экране канвас заполняет края, а интерфейс остаётся
+ * внутри кадра, чтобы кнопки не обрезались.
  */
 import { GAME_WIDTH, GAME_HEIGHT } from '../config/constants.js';
 import { getSettings, onSettingsChange } from './settings.js';
@@ -23,12 +24,17 @@ const listeners = new Set();
 
 /**
  * Масштаб мира (640×360) в CSS-пикселях окна.
- * «Авто» заполняет окно целиком (дробный множитель) — и в окне, и на весь экран,
+ * «Авто» вписывает интерфейс в окно (дробный множитель),
  * «1×/2×/3×» — фиксированный размер 640×360 / 1280×720 / 1920×1080.
  */
 export function computeZoom(mode, viewportW, viewportH) {
   if (mode === '1' || mode === '2' || mode === '3') return Number(mode);
   return Math.min(viewportW / GAME_WIDTH, viewportH / GAME_HEIGHT);
+}
+
+/** На широком окне расширяем холст, сохраняя пропорции кадра. */
+export function computeCanvasZoom(mode, viewportW, uiZoom) {
+  return mode === 'auto' ? Math.max(uiZoom, viewportW / GAME_WIDTH) : uiZoom;
 }
 
 /** Масштаб камеры: сколько пикселей холста в одной единице мира. */
@@ -69,17 +75,21 @@ export async function setFullscreen(on) {
 }
 
 export function initScale(game, stage = document.getElementById('stage')) {
-  stage.style.width = `${UI_WIDTH}px`;
   stage.style.height = `${UI_HEIGHT}px`;
 
   const apply = () => {
     const { scale } = getSettings();
-    const zoom = computeZoom(scale, window.innerWidth, window.innerHeight);
+    const width = window.innerWidth;
+    const zoom = computeZoom(scale, width, window.innerHeight);
+    const canvasZoom = computeCanvasZoom(scale, width, zoom);
+    const canvasScale = canvasZoom / zoom;
     const dpr = window.devicePixelRatio || 1;
     stage.style.setProperty('--ui-scale', String(zoom / UI_PER_WORLD));
+    stage.style.setProperty('--stage-width', `${UI_WIDTH * canvasScale}px`);
+    stage.style.setProperty('--canvas-height', `${UI_HEIGHT * canvasScale}px`);
 
     // Холст — в физических пикселях окна, камера увеличивает мир под него.
-    renderZoom = zoom * dpr;
+    renderZoom = canvasZoom * dpr;
     game.scale.resize(Math.round(GAME_WIDTH * renderZoom), Math.round(GAME_HEIGHT * renderZoom));
     for (const scene of game.scene.getScenes(false)) {
       if (scene.cameras?.main) fitCamera(scene.cameras.main);

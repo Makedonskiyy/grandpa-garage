@@ -1,7 +1,7 @@
 {
   "name": "dedov-garage",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Дедов гараж — браузерная 2D-игра в пиксельной графике (симулятор конструирования). Команда TRITON.",
   "license": "GPL-3.0-only",
   "type": "module",
