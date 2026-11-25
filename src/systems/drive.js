@@ -338,15 +338,22 @@ function trialHazards(run, seg, surf, gas, drive, limit, h) {
   }
   const mode = modeOf(run);
   if (mode === 'mud' && run.x >= run.length) finish(run, true);
-  if (mode === 'track') trackRules(run);
+  if (mode === 'track') trackRules(run, h);
 }
 
 /**
  * Автодром: к отметке trap.at нужно разогнаться до trap.minSpeed, затем остановиться
  * между конусами зоны. Проехал зону — «не успел оттормозиться», встал раньше — «рано».
  */
-function trackRules(run) {
+function trackRules(run, h) {
   const { trap, zone } = run.test;
+  // Участок с ограничением скорости (знак «40»): превышение дольше секунды — провал.
+  const seg = segmentAt(run.test, run.x);
+  const limit = run.test.surfaces?.[seg.type]?.maxSpeed;
+  if (limit && run.v > limit + 1) {
+    run.overTimer = (run.overTimer ?? 0) + h;
+    if (run.overTimer > 1) return finish(run, false, 'speeding');
+  } else run.overTimer = 0;
   if (run.trapSpeed === undefined && run.x >= trap.at) {
     run.trapSpeed = run.v;
     run.events.push({ type: 'trap', v: run.v });
@@ -479,9 +486,19 @@ export function runBot(testId, build, opts = {}, data = defaultData) {
           s.from - run.x < 25,
       );
       // Держит скорость, с которой ещё успеет встать в середине зоны.
+      // Ограничение скорости впереди или уже на нём — держит чуть ниже знака.
+      const lim = run.test.track.segments.find(
+        (s) => run.test.surfaces[s.type]?.maxSpeed && s.to > run.x && s.from - run.x < 30,
+      );
+      const cap = lim ? run.test.surfaces[lim.type].maxSpeed - 1.2 : Infinity;
       if (run.x + need >= stopAt) {
         gas = 0;
         brake = 1;
+      } else if (run.v > cap) {
+        gas = 0;
+        brake = clamp((run.v - cap) / 3, 0, 1);
+      } else if (run.v > cap - 0.6) {
+        gas = Math.min(gas, 0.3);
       } else if (bump && run.v > run.test.bot.bumpSpeed) {
         gas = 0;
         brake = clamp((run.v - run.test.bot.bumpSpeed) / 3, 0, 1);
