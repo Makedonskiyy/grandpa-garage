@@ -118,7 +118,7 @@ function biomeAt(seed, m) {
 
 function spruce(ctx, o) {
   const { x, base, h, haze, r } = o;
-  const w = h * (0.3 + r() * 0.08);
+  const w = h * (0.22 + r() * 0.18);
   const tiers = 7 + Math.floor(h / 14);
   ctx.fillStyle = mix('#3a2e26', haze);
   ctx.fillRect(x - h * 0.012, base - h * 0.12, Math.max(0.8, h * 0.024), h * 0.12);
@@ -252,12 +252,16 @@ function pine(ctx, o) {
     mix('#40623f', haze),
   ];
   // Лапы кроны снизу вверх.
-  const n = 4 + Math.floor(r() * 3);
+  const type = Math.floor(r() * 4); // 0 ровная, 1 однобокая, 2 узкая, 3 раскидистая
+  const widthK = [1, 1, 0.65, 1.45][type];
+  const lean1 = type === 1 ? (r() < 0.5 ? -1 : 1) : 0;
+  const n = 3 + Math.floor(r() * 4) + (type === 2 ? 1 : 0);
   for (let i = 0; i < n; i++) {
     const t = i / (n - 1); // 0 — нижняя лапа, 1 — макушка
-    const y = crownLow + (top + h * 0.05 - crownLow) * t + (r() - 0.5) * h * 0.03;
-    const side = i === n - 1 ? 0 : i % 2 ? 1 : -1;
-    const reach = h * (0.15 - 0.1 * t) * (0.7 + r() * 0.5);
+    const y = crownLow + (top + h * 0.05 - crownLow) * t + (r() - 0.5) * h * 0.05;
+    let side = i === n - 1 ? 0 : r() < 0.5 ? 1 : -1;
+    if (lean1 && side && r() < 0.75) side = lean1;
+    const reach = h * (0.15 - 0.1 * t) * (0.6 + r() * 0.7) * widthK;
     const cx = tx(y) + side * reach * 0.55;
     // Ветка от ствола к лапе.
     if (side) {
