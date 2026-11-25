@@ -50,6 +50,7 @@ const IMAGES = [
   'car_paint',
   'car_tone',
   'car_headlight',
+  'car_brake',
   'car_dirt',
   'car_bricks',
   ...CALIPERS,
@@ -295,6 +296,8 @@ export class CarRig extends Phaser.GameObjects.Container {
       overlay: img('car_overlay_rust'),
       spoiler: img('car_spoiler_lip_paint'),
       headlight: img('car_headlight'),
+      // Стоп-сигнал: горящее кольцо фонаря, при торможении.
+      brake: img('car_brake').setAlpha(0),
       dirt: img('car_dirt'),
     };
     this.beam = scene.add
@@ -303,7 +306,31 @@ export class CarRig extends Phaser.GameObjects.Container {
       .setScale(1 / GLOW_K)
       .setAlpha(0.6)
       .setBlendMode(Phaser.BlendModes.ADD);
-    this.bodyFront = scene.add.container(0, PIVOT_Y, [...Object.values(this.layers), this.beam]);
+    // Ореол стоп-сигнала: красное свечение вокруг фонаря поверх кузова.
+    this.brakeGlow = scene.add
+      .image(
+        car.taillight.x - AX,
+        car.taillight.y - AY - PIVOT_Y,
+        glowTexture(scene, 'fx_brake2', 44, 56, (ctx) => {
+          // Радиус меньше половины холста — ореол гаснет до края, без обрезанной рамки.
+          const g = ctx.createRadialGradient(22, 28, 1, 22, 28, 20);
+          g.addColorStop(0, 'rgba(255,255,255,0.9)');
+          g.addColorStop(0.35, 'rgba(255,255,255,0.35)');
+          g.addColorStop(1, 'rgba(255,255,255,0)');
+          ctx.fillStyle = g;
+          ctx.fillRect(0, 0, 44, 56);
+        }),
+      )
+      .setScale(1 / GLOW_K)
+      .setTint(0xff2a1f)
+      .setAlpha(0)
+      .setBlendMode(Phaser.BlendModes.ADD);
+    this.brakeLevel = 0;
+    this.bodyFront = scene.add.container(0, PIVOT_Y, [
+      ...Object.values(this.layers),
+      this.beam,
+      this.brakeGlow,
+    ]);
 
     // Колёса и кирпичи — на земле, кузов над ними качается.
     const wheel = (w) => {
@@ -433,6 +460,11 @@ export class CarRig extends Phaser.GameObjects.Container {
     // Нагрузка на подвеску копится плавно: кузов не дёргается от рывка педали и в момент остановки.
     this.load = (this.load ?? 0) + (accel - (this.load ?? 0)) * Math.min(1, dt * 6);
     stepSuspension(this.suspension, dt, this.load);
+    // Стоп-сигнал: машина заметно замедляется (или стоит на тормозе) — фонарь горит.
+    const braking = this.load < -1.2 ? 1 : 0;
+    this.brakeLevel += (braking - this.brakeLevel) * Math.min(1, dt * 18);
+    this.layers.brake.setAlpha(this.brakeLevel);
+    this.brakeGlow.setAlpha(this.brakeLevel * 0.85);
     const pose = bodyPose(this.suspension);
     for (const g of [this.bodyBack, this.bodyFront]) {
       g.y = PIVOT_Y + pose.y;

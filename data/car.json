@@ -10,6 +10,7 @@
   },
   "wheelFrame": { "width": 48, "height": 48, "frames": 32, "cols": 8 },
   "headlight": { "x": 273.33, "y": 55 },
+  "taillight": { "x": 15.67, "y": 42 },
   "shadow": { "height": 20, "above": 14 },
   "tires": ["stock", "studded", "mud", "sport", "slicks", "old"],
   "rims": {

@@ -336,12 +336,13 @@ async function loadMaps() {
 
 // ---------- Детали, которых чертёж не даёт цветом (координаты чертежа, сетка 432) ----------
 
-const TURN = X2([
-  [401, 94],
-  [406.8, 94],
-  [406.8, 101.4],
-  [401, 101.4],
-]);
+// Поворотник R34 — янтарная секция в заднем (внутреннем) конце фары, у крыла кузова.
+const TURN = [
+  [755, 145],
+  [770, 145],
+  [770, 180],
+  [755, 180],
+];
 const LOWER_VENT = X2([
   [399, 105.6],
   [403.2, 105.6],
@@ -358,10 +359,6 @@ const SIDE_DUCT = X2([
 // (верх отклонён назад-вверх к крышке багажника), внутри — две круглые лампы, перекрывающие
 // друг друга в ракурсе. Наклон tilt — градусы от вертикали.
 const TAIL = { cx: 47, cy: 126, rx: 7, ry: 19.5, tilt: 11 };
-const TAIL_LAMPS = [
-  { cx: 49, cy: 119, rx: 4, ry: 9 },
-  { cx: 45, cy: 133, rx: 4, ry: 9.5 },
-];
 // Фара: две секции, перегородка по чертежу у x ≈ 786; в каждой — отражатель и лампа.
 const HEAD_DIVIDER = 788; // перегородка между секциями
 // Фара крупнее чертёжной (≈1,3×): та же форма клина — верх по линии капота, скруглённый
@@ -383,7 +380,7 @@ const HEAD_BIG = [
 ];
 // Секции фары (по x) и блики ламп — как на чертёжной фаре, только крупнее.
 const LAMPS = [
-  { x0: 760, x1: 785, glint: [771, 160] },
+  { x0: 772, x1: 787, glint: [779, 160] },
   { x0: 791, x1: 816, glint: [803, 162] },
 ];
 const MIRROR_BOX = { x0: 490, x1: 526, y0: 92, y1: 114 };
@@ -431,13 +428,15 @@ async function bodyMasks() {
       if (m.body.at(x, y) && ((x > 700 && y >= 240) || (x < 150 && y >= 232))) m.dark.put(x, y);
   m.side = m.door.or(m.quarter);
   m.glass = m.side.or(m.wind, m.rear);
-  m.turn = polyMask(TURN);
   m.vent = polyMask(LOWER_VENT);
   m.duct = polyMask(SIDE_DUCT);
   m.tail = ellipseMask(TAIL.cx, TAIL.cy, TAIL.rx, TAIL.ry, TAIL.tilt);
   // Фара — крупнее чертёжной, но в пределах кузова.
   const head = polyMask(HEAD_BIG);
   m.head = head.minus(head.minus(m.body));
+  // Поворотник — внутри новой фары (после неё: старая, чертёжная, меньше).
+  const turnPoly = polyMask(TURN);
+  m.turn = turnPoly.minus(turnPoly.minus(m.head));
   m.trim = m.dark.or(m.head, m.turn, m.vent, m.duct, m.marker, m.tail);
   m.hood = new Mask();
   const hood = X2([
@@ -667,26 +666,25 @@ function drawLights(base, m) {
       }
       base.set(x, y, c);
     }
-  paintLens(base, m.turn, C.amberEdge, C.amber, C.amberHi, C.amberLo);
+  paintLens(base, m.turn, C.amberEdge, '#8a4c14', '#c98a3c', '#5a300c');
   paintLens(base, m.marker, C.amberEdge, C.amber, C.amberHi, C.amberLo);
-  // Задний фонарь: тёмная рамка, красная линза с бликом по верху, две лампы внутри —
-  // тёмное кольцо, светлое кольцо отражателя и яркая середина.
+  // Задний фонарь R34 в профиле: один крупный круг (овал в ракурсе) — рамка, линза
+  // с лучами отражателя, толстое кольцо и тёмная середина.
   const outer = ellipseK(TAIL.cx, TAIL.cy, TAIL.rx, TAIL.ry, TAIL.tilt);
-  const lamps = TAIL_LAMPS.map((L) => ellipseK(L.cx, L.cy, L.rx, L.ry, TAIL.tilt));
   for (let y = 0; y < H; y++)
     for (let x = 20; x < 76; x++) {
       if (!m.tail.at(x, y)) continue;
       const k = outer(x, y);
-      let c = m.tail.edge(x, y) ? C.tailEdge : k > 0.82 ? C.tailLo : C.tail;
-      // Блик линзы — полоса у верхнего края со стороны света.
-      if (!m.tail.edge(x, y) && k > 0.62 && k < 0.84 && y < TAIL.cy - 6 && x < TAIL.cx + 3)
-        c = C.tailHi;
-      for (const lk of lamps) {
-        const v = lk(x, y);
-        if (v <= 1 && v > 0.78) c = C.tailEdge;
-        else if (v <= 0.78 && v > 0.52) c = C.tailLo;
-        else if (v <= 0.52) c = v < 0.26 ? '#ff9a8a' : C.tailCore;
-      }
+      let c;
+      if (m.tail.edge(x, y) || k > 0.9) c = C.tailEdge;
+      else if (k > 0.62) {
+        // Линза: лучи отражателя — чередование тона по углу.
+        const a = Math.atan2((y - TAIL.cy) / TAIL.ry, (x - TAIL.cx) / TAIL.rx);
+        c = Math.floor((a + Math.PI) / 0.26) % 2 ? C.tail : C.tailLo;
+        if (k < 0.72 && y < TAIL.cy - 4 && x < TAIL.cx + 2) c = C.tailHi; // блик
+      } else if (k > 0.36)
+        c = k > 0.56 ? C.tailLo : C.tailCore; // толстое кольцо
+      else c = k < 0.18 ? '#7a1018' : '#9a1a22'; // середина
       base.set(x, y, c);
     }
 }
@@ -702,6 +700,21 @@ function drawTone(tone, paint, m, top) {
       else if (v <= 0.5) tone.set(x, y, '#2a1840', 60);
       else if (y > 200) tone.set(x, y, '#6b4a2e', 34);
     }
+}
+
+/** Стоп-сигнал: горящее кольцо и линза заднего фонаря (CarRig показывает при торможении). */
+function layerBrake(m) {
+  const p = new Pix();
+  const outer = ellipseK(TAIL.cx, TAIL.cy, TAIL.rx, TAIL.ry, TAIL.tilt);
+  for (let y = 0; y < H; y++)
+    for (let x = 20; x < 76; x++) {
+      if (!m.tail.at(x, y) || m.tail.edge(x, y)) continue;
+      const k = outer(x, y);
+      if (k > 0.9) continue;
+      if (k > 0.36 && k <= 0.62) p.set(x, y, k > 0.56 ? '#ff5a4a' : '#ffd0c0', 255);
+      else p.set(x, y, k > 0.62 ? '#ff2a1f' : '#e0201a', 200);
+    }
+  return p;
 }
 
 /** Свет фары: середина отражателей обеих секций — её цвет задаёт «Внешний вид → Фары». */
@@ -1168,6 +1181,7 @@ async function main() {
   await save('car_paint', await paint.png());
   await save('car_tone', await tone.png());
   await save('car_headlight', await layerHeadlight(m).png());
+  await save('car_brake', await layerBrake(m).png());
   await save('car_dirt', await layerDirt(m).png());
   for (const k of ['rust', 'cage', 'light'])
     await save(`car_overlay_${k}`, await layerOverlay(k, m).png());
@@ -1198,6 +1212,7 @@ async function main() {
     },
     wheelFrame: { width: FRAME / 3, height: FRAME / 3, frames: FRAMES, cols: COLS },
     headlight: { x: toWorldX(820), y: toWorldY(165) },
+    taillight: { x: toWorldX(TAIL.cx), y: toWorldY(TAIL.cy) },
     shadow: { height: SHADOW_H / 3, above: SHADOW_GROUND / 3 },
     // Шины: вид × размер диска; диски: размер. Детали ссылаются на них полем sprite.
     tires: Object.keys(TIRE_KINDS),
