@@ -58,6 +58,7 @@ export class EndingScene extends BaseScene {
             variant: 'primary',
             icon: 'play',
           }),
+          webButton(t('ending.toGarage'), () => this.goTo(SCENES.GARAGE), { icon: 'service' }),
           webButton(t('ending.playAgain'), () => {
             resetGame();
             this.goTo(SCENES.MENU);

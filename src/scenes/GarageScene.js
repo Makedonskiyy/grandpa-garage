@@ -113,7 +113,8 @@ export class GarageScene extends BaseScene {
     this.ambience = AMB.GARAGE;
     audio.playAmbience(this.ambience);
 
-    this.testId = getCurrentTestId();
+    // Всё пройдено — гараж в свободном режиме: обкатка и реванш с Палычем.
+    this.testId = getCurrentTestId() ?? 'race';
     this.test = getTest(this.testId);
     this.view = { tile: null, slot: null, look: 'paint' };
     this.hover = null; // { slot, partId } — карточка под курсором
@@ -193,7 +194,7 @@ export class GarageScene extends BaseScene {
     this.$side = el('aside', { class: 'ui-abs gside' });
     this.$detail = el('section', { class: 'ui-abs gdetail', hidden: true });
     this.$tiles = el('nav', { class: 'ui-abs gtiles', 'aria-label': 'Разделы' });
-    this.$launch = webButton(this.test.startButton, () => this.#launch(), {
+    this.$launch = webButton(t('garage.launchMap'), () => this.#launch(), {
       variant: 'primary',
       icon: 'play',
       className: 'glaunch',
@@ -202,10 +203,10 @@ export class GarageScene extends BaseScene {
     // Название — отдельной строкой (обрезается многоточием), под ним — чего не хватает.
     const label = this.$launch.querySelector('.wbtn__label');
     label.replaceChildren(
-      el('span', { class: 'glaunch__title', text: this.test.startButton }),
+      el('span', { class: 'glaunch__title', text: t('garage.launchMap') }),
       this.$launchSub,
     );
-    this.$launch.title = this.test.startButton;
+    this.$launch.title = t('garage.launchMap');
 
     this.ui.append(
       el('header', { class: 'ui-abs gtop' }, [
@@ -941,8 +942,9 @@ export class GarageScene extends BaseScene {
 
   #launch() {
     if (!this.#stats(gameState.build).complete) return;
-    // Обкатка: сначала выбор карты.
-    if (this.testId === 'trial') return openMapSelect(() => this.goTo(this.test.scene));
-    this.goTo(this.test.scene);
+    // Всегда — выбор трассы на весь экран: обкатка доступна и после неё, заезд — когда открыт.
+    openMapSelect(this.ui, (id) => this.goTo(id === 'race' ? SCENES.RACE : SCENES.TRIAL), {
+      start: this.testId === 'race' ? 'race' : undefined,
+    });
   }
 }
