@@ -16,7 +16,8 @@ import { getSettings } from '../systems/settings.js';
 import { getRenderZoom } from '../systems/scale.js';
 import { backdrop, prop, roadsideProps, rng } from './scenery.js';
 import { BypassWorld } from './bypassWorld.js';
-import { DriveHud, DriveSounds } from '../ui/DriveHud.js';
+import { DriveSounds } from '../systems/DriveSounds.js';
+import { DriveHud } from '../ui/DriveHud.js';
 
 /**
  * Весь пейзаж поднят на SHIFT, чтобы машина ехала над приборами (их верх — y ≈ 259).
@@ -83,7 +84,7 @@ export class TrialScene extends BaseScene {
     this.fx = new TireFx(this, this.car); // дым и след шин на асфальте
     audio.playSfx(SFX.CAR_START);
     this.engine = audio.startEngine(gameState.build);
-    this.sounds = new DriveSounds(this, this.test.surface);
+    this.sounds = new DriveSounds(this, gameState.build.tires);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.engine?.stop());
 
     this.#buildHud();
@@ -387,7 +388,7 @@ export class TrialScene extends BaseScene {
 
     this.engine?.update(run, input);
     this.hud.render();
-    this.sounds.update(run, { mud: seg.type === 'deep' && run.v > 1 ? 0.6 : 0 });
+    this.sounds.update(run, input, seg.type);
     this.#renderMeters();
     this.#hints(run, seg);
 

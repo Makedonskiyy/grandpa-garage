@@ -18,7 +18,8 @@ import { getSettings } from '../systems/settings.js';
 import { gameState, recordResult } from '../gameState.js';
 import { el } from '../ui/dom.js';
 import { t } from '../systems/strings.js';
-import { DriveHud, DriveSounds } from '../ui/DriveHud.js';
+import { DriveSounds } from '../systems/DriveSounds.js';
+import { DriveHud } from '../ui/DriveHud.js';
 import { CityWorld } from './cityWorld.js';
 
 const cfg = config.race;
@@ -98,7 +99,7 @@ export class RaceScene extends BaseScene {
     this.light.setVisible(false);
     audio.playSfx(SFX.CAR_START);
     this.engine = audio.startEngine(gameState.build);
-    this.sounds = new DriveSounds(this, 'asphalt');
+    this.sounds = new DriveSounds(this, gameState.build.tires);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.engine?.stop());
 
     this.hud.setVisible(false);
@@ -316,7 +317,7 @@ export class RaceScene extends BaseScene {
 
     this.#tireFx(dt, true);
     this.hud.render();
-    this.sounds.update(run);
+    this.sounds.update(run, input, 'asphalt');
     this.$time.textContent = formatSeconds(run.t);
     this.engine?.update(run, input);
 
