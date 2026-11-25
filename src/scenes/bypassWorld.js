@@ -225,7 +225,7 @@ function pine(ctx, o) {
   const lean = (r() - 0.5) * h * 0.03;
   const tx = (y) => x + lean * ((base - y) / h);
   const top = base - h;
-  const crownLow = base - h * (0.6 + r() * 0.08); // нижняя граница кроны
+  const crownLow = base - h * (0.55 + r() * 0.1); // нижняя граница кроны
   const w = Math.max(1.2, h * 0.02);
   // Ствол: снизу серо-бурый в трещинах, выше — рыжий, тонкий к макушке.
   const g = ctx.createLinearGradient(0, base, 0, top);
@@ -261,7 +261,7 @@ function pine(ctx, o) {
     const y = crownLow + (top + h * 0.05 - crownLow) * t + (r() - 0.5) * h * 0.05;
     let side = i === n - 1 ? 0 : r() < 0.5 ? 1 : -1;
     if (lean1 && side && r() < 0.75) side = lean1;
-    const reach = h * (0.15 - 0.1 * t) * (0.6 + r() * 0.7) * widthK;
+    const reach = h * (0.2 - 0.11 * t) * (0.7 + r() * 0.6) * widthK;
     const cx = tx(y) + side * reach * 0.55;
     // Ветка от ствола к лапе.
     if (side) {
@@ -277,10 +277,10 @@ function pine(ctx, o) {
       r,
       cx,
       y - h * 0.012,
-      Math.max(reach * 0.8, h * 0.045),
-      h * (0.035 + 0.01 * r()),
+      Math.max(reach * 0.9, h * 0.06),
+      h * (0.055 + 0.02 * r()),
       dark,
-      10,
+      12,
       Math.max(0.8, h * 0.012),
     );
   }
@@ -342,22 +342,22 @@ function birch(ctx, o) {
   ctx.restore();
   // Крона: 6–9 вытянутых вниз прядей вокруг ствола в верхних 55 % — узкий плакучий овал.
   const crownTop = base - h;
-  const crownLow = base - h * (0.42 + r() * 0.06);
-  const n = 6 + Math.floor(r() * 4);
+  const crownLow = base - h * (0.3 + r() * 0.08);
+  const n = 14 + Math.floor(r() * 6);
   for (let i = 0; i < n; i++) {
     const t = (i + r() * 0.6) / n;
     const y = crownTop + (crownLow - crownTop) * t;
-    const width = h * 0.17 * Math.sin(Math.PI * (0.15 + 0.8 * t)); // овал: шире в середине
+    const width = h * 0.28 * Math.sin(Math.PI * (0.12 + 0.82 * t)); // овал: шире в середине
     const cx = tx(y) + (r() - 0.5) * 2 * width * 0.6;
     clump(
       ctx,
       r,
       cx,
       y,
-      Math.max(h * 0.035, width * 0.55),
-      h * (0.06 + 0.02 * r()),
+      Math.max(h * 0.05, width * 0.6),
+      h * (0.08 + 0.03 * r()),
       leaves,
-      9,
+      12,
       Math.max(0.7, h * 0.011),
     );
   }
@@ -1015,50 +1015,31 @@ function chunkObjects(seed, layer, ci, ppm) {
       if (b.clearing > 0.5 && r() < 0.006) add('farHouses', x, 222, 0, 0.5, 90);
     }
   } else if (layer.id === 'mid') {
-    // Лес за лугом: рощи по 2–7 деревьев с просветами неба между ними.
-    groves(70, 21, (cx, gr) => {
-      const b = biomeAt(seed, meterOf(cx));
-      if (gr() > b.density * 0.9 + 0.05) {
-        if (b.clearing > 0.5 && gr() < 0.4 && inChunk(cx)) add('hayBale', cx, 228, 0, 0.25, 10);
-        return;
+    // Лес за лугом — сплошная стена, как на фото: высокие деревья вплотную, с перекрытием,
+    // под ними густой подрост. Поляны — только в участках «поле».
+    for (let x = x0 - 10; x < x0 + CW + 10; x += 7 + r() * 9) {
+      const b = biomeAt(seed, meterOf(x));
+      if (r() > Math.min(1, b.density * 1.05)) {
+        if (b.clearing > 0.5 && r() < 0.06) add('hayBale', x, 228, 0, 0.25, 10);
+        continue;
       }
-      const tall = 0.6 + 0.4 * wave(cx, 220, 12);
-      const n = 2 + Math.floor(gr() * 6 * Math.min(1, b.density));
-      for (let i = 0; i < n; i++) {
-        const x = cx + (gr() + gr() - 1) * 28;
-        if (!inChunk(x)) continue;
-        const v = gr() * (b.birch + b.pine + b.spruce);
-        const kind = v < b.birch ? 'birch' : v < b.birch + b.pine ? 'pine' : 'spruce';
-        const h =
-          (kind === 'pine' ? 115 + gr() * 40 : kind === 'birch' ? 90 + gr() * 40 : 70 + gr() * 50) *
-          tall;
-        list.push({
-          kind,
-          x,
-          base: 218 + gr() * 7,
-          h,
-          haze: 0.2 + gr() * 0.12,
-          w: h * 0.35,
-          seed: Math.floor(gr() * 2 ** 31),
-        });
-      }
-      // Подрост на опушке рощи: молодые ёлочки и кусты пониже.
-      for (let i = 0; i < 1 + gr() * 3; i++) {
-        const x = cx + (gr() - 0.5) * 70;
-        if (!inChunk(x)) continue;
-        const kind = gr() < 0.6 ? 'spruce' : 'bush';
-        const h = kind === 'spruce' ? 28 + gr() * 34 : 12 + gr() * 14;
-        list.push({
-          kind,
-          x,
-          base: 226 + gr() * 3,
-          h,
-          haze: 0.16,
-          w: 25,
-          seed: Math.floor(gr() * 2 ** 31),
-        });
-      }
-    });
+      const tall = 0.75 + 0.25 * wave(x, 180, 12);
+      const v = r() * (b.birch + b.pine + b.spruce);
+      const kind = v < b.birch ? 'birch' : v < b.birch + b.pine ? 'pine' : 'spruce';
+      const h =
+        (kind === 'pine' ? 150 + r() * 50 : kind === 'birch' ? 125 + r() * 45 : 95 + r() * 55) *
+        tall;
+      add(kind, x, 216 + r() * 8, h, 0.16 + r() * 0.12, h * 0.4);
+    }
+    // Подрост: молодые сосны, ёлки и берёзки по пояс лесу — нижняя половина без просветов.
+    for (let x = x0 - 6; x < x0 + CW + 6; x += 6 + r() * 8) {
+      const b = biomeAt(seed, meterOf(x));
+      if (r() > b.density + 0.15) continue;
+      const v = r();
+      const kind = v < 0.45 ? 'spruce' : v < 0.75 ? 'birch' : 'bush';
+      const h = kind === 'bush' ? 16 + r() * 14 : 36 + r() * 30;
+      add(kind, x, 226 + r() * 4, h, 0.1 + r() * 0.08, 30);
+    }
   } else if (layer.id === 'back') {
     // Сооружения — редкие: одно на «окно» в 12 кусков (≈ раз в 300–500 м), и не всегда.
     const slot = Math.floor(ci / 12);
