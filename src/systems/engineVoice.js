@@ -72,6 +72,15 @@ export function createEngineVoice(context, destination, build = {}) {
   hiss.connect(muffler);
   muffler.connect(pop);
   pop.connect(output);
+  const thump = oscillator('sine', 0, output);
+  function exhaustPop(time, level) {
+    pop.gain.setValueAtTime(level, time);
+    pop.gain.setTargetAtTime(0, time, 0.017);
+    thump.osc.frequency.setValueAtTime(155, time);
+    thump.osc.frequency.exponentialRampToValueAtTime(68, time + 0.055);
+    thump.level.gain.setValueAtTime(level * 0.55, time);
+    thump.level.gain.setTargetAtTime(0, time, 0.024);
+  }
   let boost = 0;
   let lastHeavyLoad = -Infinity;
   let lastTime = context.currentTime;
@@ -87,15 +96,16 @@ export function createEngineVoice(context, destination, build = {}) {
       const overrun = run.gear > 0 ? rev * (1 - load) : 0;
       const now = context.currentTime;
       const demand = Math.min(1, Math.max(0, (rpm - 2200) / 3700)) * load;
-      if (load >= 0.78) lastHeavyLoad = now;
-      const lifted = load < 0.38 && now - lastHeavyLoad < 0.24;
+      if (gas >= 0.78) lastHeavyLoad = now;
+      const lifted = gas < 0.38 && now - lastHeavyLoad < 0.24;
       if (lifted) lastHeavyLoad = -Infinity;
       const release = turbo && boost > 0.25 && lifted;
       boost += (demand - boost) * (1 - Math.exp(-(now - lastTime) / 0.22));
       lastTime = now;
-      if (pipe && rev > 0.62 && run.gear > 0 && lifted && now - lastPop > 0.8) {
-        pop.gain.setValueAtTime(0.34 * pipe, now);
-        pop.gain.setTargetAtTime(0, now, 0.024);
+      if (rev > 0.7 && lifted && now - lastPop > 0.8) {
+        const level = 0.42 + pipe * 0.9;
+        exhaustPop(now + 0.025, level);
+        exhaustPop(now + 0.16, level * 0.72);
         lastPop = now;
       }
 
