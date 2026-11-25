@@ -302,6 +302,7 @@ export class RaceScene extends BaseScene {
     this.player.step(dt, {
       distance: (run.x - prevX) * toWheel * (1 + run.slip * 2) + run.slip * 3,
       accel: run.accel ?? 0,
+      rearLocked: run.rearLocked,
     });
     // Рывок камеры при срыве со старта.
     if (!this.shook && run.x > 0.3) {

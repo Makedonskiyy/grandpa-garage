@@ -92,7 +92,7 @@ export class TireFx {
    * Кадр эффектов.
    * @param {number} dt секунды
    * @param {object} o
-   * @param {object} o.run заезд (slip, lock, v, x)
+   * @param {object} o.run заезд (slip, lock, rearLocked, v, x)
    * @param {(m: number) => number} o.toScreenX метр трассы → x на экране (центр машины)
    * @param {number} o.groundY земля на экране
    * @param {boolean} o.asphalt дымят и оставляют след только шины на асфальте
@@ -100,15 +100,18 @@ export class TireFx {
   update(dt, { run, toScreenX, groundY, asphalt }) {
     const k = this.rig.scaleX;
     const spin = asphalt ? clamp01((run.slip - 0.15) / 0.55) : 0;
-    const lock = asphalt ? (run.lock ?? 0) * clamp01((run.v - 1) / 6) : 0;
+    const skid = asphalt ? clamp01((run.v - 1) / 6) : 0;
+    const lock = (run.lock ?? 0) * skid;
+    const rearLock = run.rearLocked ? skid : 0;
     // Полный привод: в пробуксовке дымят обе оси, задняя сильнее; на торможении — передняя.
     const axles = {
-      rear: { x: car.wheels.rear.x - car.anchor.x, power: Math.max(spin, lock * 0.7) },
+      rear: { x: car.wheels.rear.x - car.anchor.x, power: Math.max(spin, lock * 0.7, rearLock) },
       front: { x: car.wheels.front.x - car.anchor.x, power: Math.max(spin * 0.6, lock) },
     };
     for (const [id, a] of Object.entries(axles)) {
       const off = a.x * k;
-      this.#emit(id, a.power, run, off, groundY, dt, k, spin >= lock);
+      const spinning = spin >= lock && !(id === 'rear' && run.rearLocked);
+      this.#emit(id, a.power, run, off, groundY, dt, k, spinning);
       this.#mark(id, a.power, run.x, off);
     }
     this.#stepPuffs(dt, toScreenX, run.v);

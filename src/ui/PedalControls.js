@@ -1,12 +1,13 @@
 /**
  * PedalControls — экранные педали, кнопки передач и клавиатура.
  *
- * Газ: W / ↑, тормоз: S / ↓; передача вверх: E / Shift, вниз: Q / Ctrl.
+ * Газ: W / ↑, тормоз: S / ↓, ручник: пробел; передача вверх: E / Shift, вниз: Q / Ctrl.
  * Педали работают и мышью, и тапом; нажатие не проваливается в канвас и не листает
  * диалог. Компонент только собирает ввод: что с ним делать, решает сцена.
  */
 import config from '../../data/config.json';
 import { el } from './dom.js';
+import { isModalOpen } from './overlay.js';
 import { t } from '../systems/strings.js';
 import { createPedalState, setPedalTarget, stepPedals, isPedalKey } from '../systems/pedals.js';
 import { audio } from '../systems/AudioManager.js';
@@ -120,6 +121,12 @@ export class PedalControls {
 
   #bindKeyboard() {
     this.onKeyDown = (e) => {
+      if (isPedalKey(e.code, 'handbrake')) {
+        if (!this.enabled || isModalOpen()) return;
+        e.preventDefault();
+        if (!e.repeat) this.keys.add(e.code);
+        return;
+      }
       if (isShiftKey(e.code, 'shiftUp') || isShiftKey(e.code, 'shiftDown')) {
         e.preventDefault();
         if (e.repeat || !this.enabled) return;
@@ -192,9 +199,14 @@ export class PedalControls {
     this.$down.classList.toggle('is-auto', !visible);
   }
 
-  /** Текущие сглаженные значения: { gas, brake } от 0 до 1. */
+  /** Сглаженные газ и тормоз вместе с состоянием ручника. */
   update(dt) {
-    return stepPedals(this.state, dt);
+    const { gas, brake } = stepPedals(this.state, dt);
+    const handbrake =
+      this.enabled &&
+      config.pedals.keys.handbrake.some((code) => this.keys.has(code)) &&
+      !isModalOpen();
+    return { gas, brake, handbrake };
   }
 
   destroy() {

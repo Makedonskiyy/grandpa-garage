@@ -66,6 +66,7 @@ export function createRun(testId, build, opts = {}, data = defaultData) {
     gear: 1,
     rpm: ph.engine.idleRpm,
     slip: 0,
+    rearLocked: false,
     shiftTimer: 0,
     /** Зелёный загорелся: время идёт с этого момента. До старта машина стоит. */
     green: false,
@@ -125,6 +126,8 @@ export function shiftUp(run) {
   if (!run.started || run.done || run.shiftTimer > 0 || run.gear >= run.stats.ratios.length) {
     return false;
   }
+  // На месте можно включить первую с нейтрали, но нельзя переключиться выше.
+  if (!run.auto && run.v === 0 && run.gear >= 1) return false;
   run.gear += 1;
   run.shiftTimer = run.stats.shiftSec + (run.auto ? run.ph.gearbox.autoShiftExtraMs / 1000 : 0);
   run.log.shifts += 1;
@@ -133,9 +136,10 @@ export function shiftUp(run) {
 }
 
 export function shiftDown(run) {
-  if (!run.started || run.done || run.shiftTimer > 0 || run.gear <= 1) return false;
+  const lowestGear = run.auto ? 1 : 0;
+  if (!run.started || run.done || run.shiftTimer > 0 || run.gear <= lowestGear) return false;
   // Защита от перекрута: если на низшей мотор уйдёт за отсечку — не включаем.
-  if (wheelRpm(run, run.v, run.gear - 1) > run.stats.redline * 0.98) {
+  if (run.gear > 1 && wheelRpm(run, run.v, run.gear - 1) > run.stats.redline * 0.98) {
     run.events.push({ type: 'overrev' });
     return false;
   }
@@ -166,6 +170,7 @@ export function startRun(run) {
     return false;
   }
   run.started = true;
+  run.gear = 1;
   run.reaction = run.t;
   run.launchRpm = Math.max(run.rpm, run.ph.clutch.launchMinRpm);
   // Автомат трогается мягко, как с гидротрансформатором: не выше лучших оборотов старта.
@@ -181,23 +186,34 @@ function finish(run, ok, reasonKey = null) {
   run.events.push({ type: ok ? 'finish' : 'fail', reasonKey });
 }
 
+/** Обороты двигателя при разомкнутой трансмиссии. */
+function freeRevRpm(run, gas, h) {
+  const { idleRpm, revUpPerSec, revDownPerSec } = run.ph.engine;
+  const target = idleRpm + gas * (run.stats.redline - idleRpm);
+  const rate = target > run.rpm ? revUpPerSec : revDownPerSec;
+  return run.rpm + clamp(target - run.rpm, -rate * h, rate * h);
+}
+
 /**
  * Шаг физики.
  * @param {ReturnType<typeof createRun>} run
- * @param {{gas?: number, brake?: number}} input педали 0–1
+ * @param {{gas?: number, brake?: number, handbrake?: boolean}} input педали 0–1 и ручник
  * @param {number} dt секунды (внутри дробится на шаги STEP)
  */
 export function stepRun(run, input = {}, dt = STEP) {
+  const handbrake = input.handbrake === true;
+  const gas = handbrake && run.started ? 0 : clamp(input.gas ?? 0, 0, 1);
+  const brake = clamp(input.brake ?? 0, 0, 1);
   let left = Math.min(dt, 0.1);
   while (left > 1e-9 && !run.done) {
     const h = Math.min(STEP, left);
-    tick(run, clamp(input.gas ?? 0, 0, 1), clamp(input.brake ?? 0, 0, 1), h);
+    tick(run, gas, brake, handbrake, h);
     left -= h;
   }
   return run;
 }
 
-function tick(run, gas, brake, h) {
+function tick(run, gas, brake, handbrake, h) {
   const { ph, stats } = run;
   const { idleRpm } = ph.engine;
   const redline = stats.redline;
@@ -205,9 +221,7 @@ function tick(run, gas, brake, h) {
   // До старта: мотор на нейтрали, газ раскручивает его до отсечки; после зелёного идёт время.
   if (!run.started) {
     if (run.green) run.t += h;
-    const target = idleRpm + gas * (redline - idleRpm);
-    const rate = target > run.rpm ? ph.engine.revUpPerSec : ph.engine.revDownPerSec;
-    run.rpm += clamp(target - run.rpm, -rate * h, rate * h);
+    run.rpm = freeRevRpm(run, gas, h);
     run.limiter = run.rpm >= redline * 0.995;
     return;
   }
@@ -227,20 +241,23 @@ function tick(run, gas, brake, h) {
   }
 
   // Обороты мотора: от колёс (с пробуксовкой), на старте не ниже оборотов сцепления.
-  const fromWheels = wheelRpm(run, v) * (1 + run.slip * ph.slip.rpmFlare);
+  const neutral = run.gear === 0;
+  const fromWheels = neutral ? 0 : wheelRpm(run, v) * (1 + run.slip * ph.slip.rpmFlare);
   // Сцепление на первой пробуксовывает и держит обороты старта, пока колёса их не догонят:
   // обороты задаёт газ (больше газа — ближе к оборотам, набранным перед стартом).
   const clutchFloor = run.gear === 1 ? idleRpm + (run.launchRpm - idleRpm) * gas : idleRpm;
-  let rpm = Math.max(fromWheels, clutchFloor, idleRpm);
+  let rpm = neutral ? freeRevRpm(run, gas, h) : Math.max(fromWheels, clutchFloor, idleRpm);
 
   // Тяга мотора.
   let drive = 0;
   const shifting = run.shiftTimer > 0;
+  // После остановки на повышенной передаче для трогания нужна первая.
+  const engaged = !neutral && !shifting && (run.auto || run.gear === 1 || v > 0);
   if (shifting) run.shiftTimer = Math.max(0, run.shiftTimer - h);
-  run.limiter = rpm >= redline;
+  run.limiter = rpm >= (neutral ? redline * 0.995 : redline);
   if (run.limiter) run.log.limiter += h;
-  if (!shifting && !run.limiter) drive = gas * wheelForce(run, rpm);
-  else if (!shifting) drive = gas * wheelForce(run, rpm) * (1 - ph.engine.limiterCut);
+  if (engaged && !run.limiter) drive = gas * wheelForce(run, rpm);
+  else if (engaged) drive = gas * wheelForce(run, rpm) * (1 - ph.engine.limiterCut);
   run.drive = drive;
 
   // Пробуксовка: лишняя тяга сверх предела шин срывает колёса.
@@ -263,9 +280,12 @@ function tick(run, gas, brake, h) {
       (surf.resistancePerSpeed ?? 0) * v +
       run.sink * (surf.sinkResistance ?? 0));
   const brakeDemand = brake * ph.brakeMu * run.mass * ph.g;
-  const brakeForce = brake * Math.min(limit, ph.brakeMu * run.mass * ph.g);
+  // Ручник сильнее обычного тормоза при любом сцеплении. Усилия не складываются.
+  const brakeScale = handbrake ? ph.handbrakeMultiplier : brake;
+  const brakeForce = brakeScale * Math.min(limit, ph.brakeMu * run.mass * ph.g);
+  run.rearLocked = handbrake;
   // Тормоз у предела сцепления: шины начинают скользить, визжать и дымить (только для показа).
-  run.lock = v > 1 && limit > 0 ? clamp((brakeDemand / limit - 0.9) / 0.25, 0, 1) : 0;
+  run.lock = !handbrake && v > 1 && limit > 0 ? clamp((brakeDemand / limit - 0.9) / 0.25, 0, 1) : 0;
   const resist = air + ground + brakeForce;
 
   // Колёса и диски раскручиваются вместе с машиной: тяжёлые диски — больше инерции.
@@ -277,8 +297,10 @@ function tick(run, gas, brake, h) {
   run.accel = (run.v - v) / h;
   run.log.topSpeed = Math.max(run.log.topSpeed, run.v);
 
-  rpm = Math.max(wheelRpm(run, run.v) * (1 + run.slip * ph.slip.rpmFlare), clutchFloor, idleRpm);
-  if (shifting) rpm = Math.max(idleRpm, run.rpm + (rpm - run.rpm) * Math.min(1, h * 14));
+  if (!neutral) {
+    rpm = Math.max(wheelRpm(run, run.v) * (1 + run.slip * ph.slip.rpmFlare), clutchFloor, idleRpm);
+    if (shifting) rpm = Math.max(idleRpm, run.rpm + (rpm - run.rpm) * Math.min(1, h * 14));
+  }
   run.rpm = Math.min(rpm, redline * 1.01);
 
   if (modeOf(run) !== 'drag') trialHazards(run, seg, surf, gas, drive, limit, h);
@@ -362,11 +384,11 @@ function trackRules(run) {
 
 /**
  * Обороты, на которых выгодно переключиться вверх: дальше тяга на следующей передаче
- * при той же скорости уже не меньше. На последней передаче — null.
+ * при той же скорости уже не меньше. На нейтрали и последней передаче — null.
  */
 export function shiftPoint(run, gear = run.gear) {
   const { ratios, redline } = run.stats;
-  if (gear >= ratios.length) return null;
+  if (gear === 0 || gear >= ratios.length) return null;
   const idle = run.ph.engine.idleRpm;
   for (let r = idle * 2; r <= redline; r += 50) {
     const next = (r * ratios[gear]) / ratios[gear - 1];

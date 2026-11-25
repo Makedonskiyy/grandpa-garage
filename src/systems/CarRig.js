@@ -260,7 +260,6 @@ export class CarRig extends Phaser.GameObjects.Container {
     scene.add.existing(this);
     this.night = Boolean(opts.night);
     this.suspension = createSuspension();
-    this.wheelAngle = 0; // видимый угол колёс, рад
 
     const img = (key) =>
       scene.add
@@ -340,6 +339,7 @@ export class CarRig extends Phaser.GameObjects.Container {
       // размытая копия. Все крутящиеся слои берут один и тот же кадр листа — никаких поворотов
       // спрайта, поэтому шина и диск всегда совпадают до точки.
       return {
+        angle: 0,
         disc: scene.add.sprite(x, yy, 'wheel_disc_m', 0).setScale(TEX),
         caliper: scene.add.image(x, yy, 'wheel_caliper_m').setScale(TEX),
         tire: scene.add.sprite(x, yy, 'wheel_tire_stock_m', 0).setScale(TEX),
@@ -454,9 +454,9 @@ export class CarRig extends Phaser.GameObjects.Container {
   /**
    * Шаг физики показа.
    * @param {number} dt секунды
-   * @param {{ distance?: number, accel?: number }} motion путь за шаг (px в масштабе машины) и ускорение, м/с²
+   * @param {{ distance?: number, accel?: number, rearLocked?: boolean }} motion
    */
-  step(dt, { distance = 0, accel = 0 } = {}) {
+  step(dt, { distance = 0, accel = 0, rearLocked = false } = {}) {
     // Нагрузка на подвеску копится плавно: кузов не дёргается от рывка педали и в момент остановки.
     this.load = (this.load ?? 0) + (accel - (this.load ?? 0)) * Math.min(1, dt * 6);
     stepSuspension(this.suspension, dt, this.load);
@@ -476,16 +476,19 @@ export class CarRig extends Phaser.GameObjects.Container {
     const period = (Math.PI * 2) / this.spokes;
     // Видимый поворот: целыми кадрами листа и не больше TURN_OF_PERIOD периода спиц.
     const cap = Math.max(1, Math.floor((period * TURN_OF_PERIOD) / FRAME_STEP)) * FRAME_STEP;
-    this.wheelAngle += Math.max(-cap, Math.min(cap, real));
-    const f = wheelFrame(this.wheelAngle);
+    const delta = Math.max(-cap, Math.min(cap, real));
     // Чем ближе поворот за кадр к половине периода, тем сильнее спицы уходят в размытие.
     const spin = Math.abs(real) / period;
     const blur = BLUR_MAX * Math.max(0, Math.min(1, (spin - BLUR_FROM) / (BLUR_FULL - BLUR_FROM)));
     for (const w of [this.wheels.rear, this.wheels.front]) {
+      const locked = rearLocked && w === this.wheels.rear;
+      if (!locked) w.angle += delta;
+      const f = wheelFrame(w.angle);
+      const rimBlur = locked ? 0 : blur;
       w.disc.setFrame(f);
       w.tire.setFrame(f);
-      w.rim.setFrame(f).setAlpha(1 - blur);
-      w.rimBlur.setAlpha(blur);
+      w.rim.setFrame(f).setAlpha(1 - rimBlur);
+      w.rimBlur.setAlpha(rimBlur);
     }
   }
 }

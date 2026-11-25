@@ -376,6 +376,7 @@ export class TrialScene extends BaseScene {
     this.car.step(dt, {
       distance: moved * (1 + run.slip * 2) + run.slip * 4,
       accel: run.accel ?? 0,
+      rearLocked: run.rearLocked,
     });
 
     // Асфальт: шины дымят и чернят дорогу; грунт: из-под колёс летит грязь.
