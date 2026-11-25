@@ -974,7 +974,7 @@ function drawField(ctx, seed, x0) {
     const u = t * t * (3 - 2 * t);
     return hash(seed, i, salt) * (1 - u) + hash(seed, i + 1, salt) * u;
   };
-  const dry = [208, 192, 140];
+  const dry = [214, 190, 122]; // выгоревшая золотистая стерня
   const green = [146, 156, 104];
   for (let x = x0; x < x0 + CW; x += 2) {
     // Доля луга меняется вдоль дороги — участки сухой травы и зелени.
@@ -1175,8 +1175,9 @@ function roadObjects(seed, ci, ppm) {
   const list = [];
   const m0 = (ci * CW) / ppm;
   const m1 = ((ci + 1) * CW) / ppm;
-  for (let m = Math.ceil(m0 / 40) * 40; m < m1; m += 40)
-    list.push({ kind: 'post', x: m * ppm + hash(seed, m, 3) * 20, base: 233, scale: FAR_SIDE });
+  // Сигнальные столбики — частым рядом, как на трассе за городом (каждые ~3 м).
+  for (let m = Math.ceil(m0 / 3) * 3; m < m1; m += 3)
+    list.push({ kind: 'post', x: m * ppm, base: 233, scale: FAR_SIDE });
   for (let m = Math.ceil(m0 / 1000) * 1000; m < m1; m += 1000)
     list.push({
       kind: 'km',
@@ -1543,7 +1544,7 @@ export class BypassWorld {
         for (const dx of [-8, 0, 8]) {
           ctx.beginPath();
           ctx.moveTo(a + dx, 228 - 117);
-          ctx.quadraticCurveTo((a + b) / 2 + dx, 228 - 105, b + dx, 228 - 117);
+          ctx.quadraticCurveTo((a + b) / 2 + dx, 228 - 96, b + dx, 228 - 117);
           ctx.stroke();
         }
       }
