@@ -365,6 +365,7 @@ function grassTuft(ctx, o) {
 }
 
 const DRAW = { spruce, pine, birch, bush, grass: grassTuft };
+DRAW.pole = pole;
 
 // ---------- Сооружения у дороги ----------
 
@@ -941,6 +942,74 @@ function hayBale(ctx, o) {
 
 Object.assign(DRAW, { busStop, truck, billboard, honeyStand, farHouses, hayBale });
 
+// ---------- Поле ----------
+
+const POLE_STEP = 260;
+const polePos = (seed, n) => n * POLE_STEP + hash(seed, n, 31) * 30;
+
+/** Горизонт: светлая дымка над землёй и тонкая неровная полоса далёкого леса. */
+function drawHorizon(ctx, seed, x0) {
+  const g = ctx.createLinearGradient(0, 168, 0, 190);
+  g.addColorStop(0, 'rgba(200,206,210,0)');
+  g.addColorStop(1, 'rgba(176,184,182,0.9)');
+  ctx.fillStyle = g;
+  ctx.fillRect(x0, 168, CW, 22);
+  // Полоса далёкого леса: где есть, где нет, высотой 1–4 точки.
+  for (let x = x0; x < x0 + CW; x += 1) {
+    const band = hash(seed, Math.floor(x / 90), 501);
+    if (band < 0.45) continue;
+    const hgt = 1 + Math.round(hash(seed, x, 502) * 2 + band * 2);
+    ctx.fillStyle = hash(seed, x, 503) < 0.5 ? '#7d8a84' : '#738079';
+    ctx.fillRect(x, 186 - hgt, 1, hgt);
+  }
+  ctx.fillStyle = '#a3a68c';
+  ctx.fillRect(x0, 186, CW, 4);
+}
+
+/** Поле до самой обочины: полосы сухой жёлтой травы и зелёного луга, мелкая штриховка. */
+function drawField(ctx, seed, x0) {
+  const wave = (x, len, salt) => {
+    const i = Math.floor(x / len);
+    const t = x / len - i;
+    const u = t * t * (3 - 2 * t);
+    return hash(seed, i, salt) * (1 - u) + hash(seed, i + 1, salt) * u;
+  };
+  const dry = [208, 192, 140];
+  const green = [146, 156, 104];
+  for (let x = x0; x < x0 + CW; x += 2) {
+    // Доля луга меняется вдоль дороги — участки сухой травы и зелени.
+    const t = wave(x, 260, 610);
+    for (let y = 188; y < 234; y += 2) {
+      const depth = (y - 188) / 46; // ближе к дороге — темнее и насыщеннее
+      const v = hash(seed, x, y, 611);
+      const k = Math.min(1, Math.max(0, t + (v - 0.5) * 0.35 + (depth - 0.5) * 0.2));
+      const c = dry.map((d, i) => Math.round((d + (green[i] - d) * k) * (1 - depth * 0.18)));
+      ctx.fillStyle = 'rgb(' + c.join(',') + ')';
+      ctx.fillRect(x, y, 2, 2);
+    }
+  }
+  // Горизонтальные полосы — колеи и межи поля.
+  for (let i = 0; i < 4; i++) {
+    const y = 192 + Math.round(hash(seed, x0, i, 620) * 34);
+    ctx.fillStyle = 'rgba(120,110,80,0.25)';
+    ctx.fillRect(x0, y, CW, 1);
+  }
+}
+
+/** Деревянная опора ЛЭП с траверсой и изоляторами. */
+function pole(ctx, o) {
+  const { x, base } = o;
+  const top = base - 120;
+  ctx.fillStyle = '#5a4c3e';
+  ctx.fillRect(Math.round(x) - 1, top, 3, base - top);
+  ctx.fillStyle = '#7a6a58';
+  ctx.fillRect(Math.round(x) - 1, top, 1, base - top);
+  ctx.fillStyle = '#4a3f34';
+  ctx.fillRect(Math.round(x) - 9, top + 6, 19, 2);
+  ctx.fillStyle = '#d8d8d2';
+  for (const dx of [-8, 0, 8]) ctx.fillRect(Math.round(x) + dx, top + 3, 1, 3);
+}
+
 // ---------- Генерация объектов по кускам ----------
 
 /** Объекты куска ci слоя: { kind, x, base, h, haze, seed, w (размах для отбора) }. */
@@ -951,13 +1020,6 @@ function chunkObjects(seed, layer, ci, ppm) {
   const meterOf = (x) => x / (layer.k * ppm);
   const add = (kind, x, base, h, haze, w) =>
     list.push({ kind, x, base, h, haze, w, seed: Math.floor(r() * 2 ** 31) });
-  // Плавная «волна» по x: лес то выше и гуще, то ниже и реже — как на опушке у дороги.
-  const wave = (x, len, salt) => {
-    const i = Math.floor(x / len);
-    const t = x / len - i;
-    const u = t * t * (3 - 2 * t);
-    return hash(seed, i, salt) * (1 - u) + hash(seed, i + 1, salt) * u;
-  };
   /**
    * Рощи: деревья растут группами вокруг центров, между группами — просветы.
    * Центры раскиданы по своей сетке (по сиду), поэтому соседние куски видят одни и те же рощи.
@@ -972,66 +1034,35 @@ function chunkObjects(seed, layer, ci, ppm) {
   const inChunk = (x) => x >= x0 && x < x0 + CW;
 
   if (layer.id === 'far') {
-    // Дальний лес — сплошная, но неровная полоса в дымке: верхушки волнами.
-    for (let x = x0; x < x0 + CW; x += 4 + r() * 7) {
-      const b = biomeAt(seed, meterOf(x));
-      const tall = 0.45 + 0.55 * wave(x, 140, 11);
-      const kind = r() < b.spruce + b.pine * 0.6 ? 'spruce' : 'bush';
-      const h = (kind === 'spruce' ? 30 + r() * 40 : 16 + r() * 16) * (0.5 + tall);
-      add(kind, x, 215 + r() * 5, h, 0.62 + r() * 0.1, h * 0.85);
-      if (b.clearing > 0.5 && r() < 0.006) add('farHouses', x, 222, 0, 0.5, 90);
-    }
+    // Вдали — редкие кусты и одинокие деревья у кромки поля, мелкие и в дымке.
+    for (let x = x0; x < x0 + CW; x += 60 + r() * 140)
+      if (r() < 0.35) add(r() < 0.5 ? 'birch' : 'bush', x, 186 + r() * 3, 8 + r() * 10, 0.55, 12);
   } else if (layer.id === 'mid') {
-    // Лес за лугом: рощи по 2–7 деревьев с просветами неба между ними.
-    groves(70, 21, (cx, gr) => {
-      const b = biomeAt(seed, meterOf(cx));
-      if (gr() > b.density * 0.9 + 0.05) {
-        if (b.clearing > 0.5 && gr() < 0.4 && inChunk(cx)) add('hayBale', cx, 228, 0, 0.25, 10);
-        return;
-      }
-      const tall = 0.6 + 0.4 * wave(cx, 220, 12);
-      const n = 2 + Math.floor(gr() * 6 * Math.min(1, b.density));
+    // Поле: одинокие деревья и кусты — редко, по одному-два.
+    groves(320, 21, (cx, gr) => {
+      if (gr() > 0.45 || !inChunk(cx)) return;
+      const tree = gr() < 0.55;
+      const n = tree && gr() < 0.4 ? 2 : 1;
       for (let i = 0; i < n; i++) {
-        const x = cx + (gr() + gr() - 1) * 28;
-        if (!inChunk(x)) continue;
-        const v = gr() * (b.birch + b.pine + b.spruce);
-        const kind = v < b.birch ? 'birch' : v < b.birch + b.pine ? 'pine' : 'spruce';
-        const h =
-          (kind === 'pine' ? 115 + gr() * 40 : kind === 'birch' ? 90 + gr() * 40 : 70 + gr() * 50) *
-          tall;
+        const x = cx + i * (8 + gr() * 10);
+        const h = tree ? 26 + gr() * 18 : 9 + gr() * 8;
         list.push({
-          kind,
+          kind: tree ? 'birch' : 'bush',
           x,
-          base: 218 + gr() * 7,
+          base: 200 + gr() * 10,
           h,
-          haze: 0.2 + gr() * 0.12,
-          w: h * 0.35,
-          seed: Math.floor(gr() * 2 ** 31),
-        });
-      }
-      // Подрост на опушке рощи: молодые ёлочки и кусты пониже.
-      for (let i = 0; i < 1 + gr() * 3; i++) {
-        const x = cx + (gr() - 0.5) * 70;
-        if (!inChunk(x)) continue;
-        const kind = gr() < 0.6 ? 'spruce' : 'bush';
-        const h = kind === 'spruce' ? 28 + gr() * 34 : 12 + gr() * 14;
-        list.push({
-          kind,
-          x,
-          base: 226 + gr() * 3,
-          h,
-          haze: 0.16,
-          w: 25,
+          haze: 0.3,
+          w: 30,
           seed: Math.floor(gr() * 2 ** 31),
         });
       }
     });
   } else if (layer.id === 'back') {
     // Сооружения — редкие, в своих «окнах» по 6 кусков.
-    const slot = Math.floor(ci / 6);
+    const slot = Math.floor(ci / 16);
     const rs = rand(hash(seed, slot, 4242) * 2 ** 32);
-    const at = slot * 6 + Math.floor(rs() * 6);
-    if (at === ci && rs() < 0.75) {
+    const at = slot * 16 + Math.floor(rs() * 16);
+    if (at === ci && rs() < 0.45) {
       const kind = pick(rs, ['busStop', 'truck', 'billboard', 'honeyStand', 'busStop', 'truck']);
       list.push({
         kind,
@@ -1053,39 +1084,21 @@ function chunkObjects(seed, layer, ci, ppm) {
       for (let i = 0; i < 1 + Math.floor(gr() * 3); i++) {
         const x = cx + (gr() - 0.5) * 40;
         if (!inChunk(x)) continue;
-        const kind = gr() < 0.45 ? 'spruce' : gr() < 0.6 ? 'pine' : 'bush';
+        const kind = 'bush'; // в поле у дороги — только кусты
         const h =
           kind === 'bush' ? 10 + gr() * 14 : kind === 'pine' ? 40 + gr() * 30 : 22 + gr() * 36;
         list.push({ kind, x, base: 230, h, haze: 0.08, w: 30, seed: Math.floor(gr() * 2 ** 31) });
       }
     });
   } else if (layer.id === 'near') {
-    // Ближний план: редкие отдельные деревья у обочины — пара берёз, высокая сосна.
-    groves(260, 41, (cx, gr) => {
-      const b = biomeAt(seed, meterOf(cx));
-      if (gr() > 0.55 * Math.min(1, b.density + 0.2)) return;
-      const kind = gr() < b.birch + 0.25 ? 'birch' : gr() < 0.6 ? 'pine' : 'spruce';
-      const twin = kind === 'birch' && gr() < 0.5; // берёзы часто растут парой от одного корня
-      for (let i = 0; i < (twin ? 2 : 1); i++) {
-        const x = cx + i * (6 + gr() * 6);
-        if (!inChunk(x)) continue;
-        const h =
-          // Не выше экрана: макушки ближних деревьев видны, как на фото.
-          kind === 'pine' ? 155 + gr() * 40 : kind === 'birch' ? 135 + gr() * 40 : 95 + gr() * 40;
-        list.push({
-          kind,
-          x,
-          base: 233 + gr() * 2,
-          h,
-          haze: 0.03,
-          w: h * 0.35,
-          seed: Math.floor(gr() * 2 ** 31),
-        });
-      }
-    });
-    for (let x = x0; x < x0 + CW; x += 40 + r() * 90)
-      if (r() < 0.5) add(r() < 0.55 ? 'spruce' : 'bush', x, 234, 14 + r() * 22, 0.05, 25);
-    for (let x = x0; x < x0 + CW; x += 3 + r() * 5) add('grass', x, 234, 8 + r() * 12, 0.05, 8);
+    // Опоры ЛЭП вдоль поля — по одной на ~260 точек; провода рисуются в #finish.
+    for (let n = Math.floor(x0 / POLE_STEP); n * POLE_STEP < x0 + CW; n++) {
+      const px = polePos(seed, n);
+      if (px >= x0 && px < x0 + CW) add('pole', px, 228, 0, 0.04, 20);
+    }
+    // Бурьян у обочины — редкими пучками.
+    for (let x = x0; x < x0 + CW; x += 14 + r() * 30)
+      if (r() < 0.6) add('grass', x, 233, 6 + r() * 10, 0.05, 8);
   }
   return list;
 }
@@ -1382,9 +1395,9 @@ Object.assign(DRAW, { post, km: kmPost, sign: roadSign });
 
 function drawSky(ctx, seed, w, h) {
   const g = ctx.createLinearGradient(0, 0, 0, h);
-  g.addColorStop(0, '#b9c0c6');
-  g.addColorStop(0.6, '#d2d6d9');
-  g.addColorStop(1, '#dfe1e1');
+  g.addColorStop(0, '#c4cacf');
+  g.addColorStop(0.6, '#d9dcde');
+  g.addColorStop(1, '#e4e5e4');
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, w, h);
   const r = rand(hash(seed, 1, 2024) * 2 ** 32);
@@ -1476,41 +1489,8 @@ export class BypassWorld {
     const x0 = ci * CW;
     ctx.setTransform(res, 0, 0, res, -x0 * res, -spec.y0 * res);
     if (spec.id === 'road') drawRoad(ctx, this.seed, x0, this.ppm);
-    if (spec.id === 'far') {
-      // Подложка дальнего леса.
-      ctx.fillStyle = mix('#3b5040', 0.6);
-      ctx.fillRect(x0, 212, CW, 22);
-    }
-    if (spec.id === 'mid') {
-      // Глубина леса: сплошная тёмная стена за рощами с плавным неровным верхом —
-      // выше и темнее там, где лес гуще. Одна фигура, без полос.
-      const smooth = (x) => {
-        const len = 90;
-        const i = Math.floor(x / len);
-        const t = x / len - i;
-        const u = t * t * (3 - 2 * t);
-        return hash(this.seed, i, 71) * (1 - u) + hash(this.seed, i + 1, 71) * u;
-      };
-      let dens = 0;
-      ctx.beginPath();
-      ctx.moveTo(x0 - 4, 224);
-      for (let x = x0 - 4; x <= x0 + CW + 4; x += 6) {
-        const d = Math.min(1, biomeAt(this.seed, x / (spec.k * this.ppm)).density);
-        dens += d;
-        ctx.lineTo(x, 224 - (30 + 60 * d) * (0.7 + 0.3 * smooth(x)));
-      }
-      ctx.lineTo(x0 + CW + 4, 224);
-      ctx.closePath();
-      const avg = dens / ((CW + 8) / 6 + 1);
-      const g = ctx.createLinearGradient(0, 130, 0, 224);
-      g.addColorStop(0, 'rgba(40,60,46,0)');
-      g.addColorStop(0.45, 'rgba(36,54,42,' + (0.35 * avg).toFixed(3) + ')');
-      g.addColorStop(1, 'rgba(26,40,32,' + (0.75 * avg).toFixed(3) + ')');
-      ctx.fillStyle = g;
-      ctx.fill();
-      ctx.fillStyle = mix('#7a7a52', 0.15);
-      ctx.fillRect(x0, 222, CW, 12);
-    }
+    if (spec.id === 'far') drawHorizon(ctx, this.seed, x0);
+    if (spec.id === 'mid') drawField(ctx, this.seed, x0);
     const objs = [ci - 1, ci, ci + 1]
       .flatMap((i) => this.#objects(layer, i))
       .filter((o) => o.x + (o.w ?? 400) > x0 && o.x - (o.w ?? 400) < x0 + CW)
@@ -1553,6 +1533,20 @@ export class BypassWorld {
       g.addColorStop(1, 'rgba(200,206,208,0.55)');
       ctx.fillStyle = g;
       ctx.fillRect(x0, 160, CW, 72);
+    }
+    if (spec.id === 'near') {
+      ctx.strokeStyle = 'rgba(50,52,56,0.8)';
+      ctx.lineWidth = 0.5;
+      for (let n = Math.floor(x0 / POLE_STEP) - 1; n * POLE_STEP < x0 + CW + POLE_STEP; n++) {
+        const a = polePos(this.seed, n);
+        const b = polePos(this.seed, n + 1);
+        for (const dx of [-8, 0, 8]) {
+          ctx.beginPath();
+          ctx.moveTo(a + dx, 228 - 117);
+          ctx.quadraticCurveTo((a + b) / 2 + dx, 228 - 105, b + dx, 228 - 117);
+          ctx.stroke();
+        }
+      }
     }
     const key = `${this.id}_${spec.id}_${ci}`;
     this.scene.textures.addCanvas(key, c).setFilter(Phaser.Textures.FilterMode.LINEAR);
