@@ -32,6 +32,7 @@
     "display": "ask",
     "music": 70,
     "sfx": 80,
+    "shiftVolume": 85,
     "muted": false,
     "textSpeed": "normal",
     "shake": true,

@@ -30,6 +30,11 @@ export function createTireVoice(context, destination, tire) {
   }
   noise.connect(roll);
   noise.connect(scrape);
+  const rubber = context.createBiquadFilter();
+  rubber.type = 'bandpass';
+  rubber.Q.value = 1.8;
+  noise.connect(rubber);
+  const braking = channel(rubber);
   const rolling = channel(roll);
   const scraping = channel(scrape);
   const skidding = channel(squeal);
@@ -43,6 +48,8 @@ export function createTireVoice(context, destination, tire) {
       const speed = Math.min(1, Math.sqrt(Math.max(0, run.v) / 30));
       const strain = loose ? input.gas * Math.min(1, run.sink + run.stuckTimer / 2.5) : 0;
       const friction = Math.max(run.slip, run.lock ?? 0, speed * input.brake * 0.25);
+      const lock = Math.max(0, (run.lock ?? 0) - 0.08) / 0.92;
+      const asphaltSlip = loose ? friction : run.slip;
       const deep = surface === 'deep';
       const live = Number(run.green && !run.done);
       function tune(param, value) {
@@ -51,17 +58,29 @@ export function createTireVoice(context, destination, tire) {
       tune(roll.frequency, (loose ? 320 : 800) * pitch * (0.6 + speed));
       tune(scrape.frequency, (deep ? 220 : loose ? 550 : 1900) * pitch * (0.8 + friction));
       tune(noise.playbackRate, (0.5 + speed + strain * 0.3) * pitch);
-      tune(squeal.frequency, (540 + 240 * speed + 160 * friction) * pitch);
+      tune(rubber.frequency, (380 + 480 * speed + 160 * lock) * Math.sqrt(pitch));
+      tune(braking.gain, loose ? 0 : live * speed * roughness * (0.04 * input.brake + 0.53 * lock));
+      tune(squeal.frequency, (540 + 240 * speed + 160 * asphaltSlip) * pitch);
       tune(rolling.gain, live * speed * roughness * (loose ? 0.29 : 0.13));
-      tune(scraping.gain, live * roughness * (friction * 0.3 + strain * 0.55));
-      tune(skidding.gain, loose ? 0 : live * friction * friction * 0.085);
+      tune(scraping.gain, live * roughness * (asphaltSlip * 0.3 + strain * 0.55));
+      tune(skidding.gain, loose ? 0 : live * asphaltSlip * asphaltSlip * 0.085);
     },
     stop() {
       if (stopped) return;
       stopped = true;
       noise.stop();
       squeal.stop();
-      for (const node of [noise, squeal, roll, scrape, rolling, scraping, skidding])
+      for (const node of [
+        noise,
+        squeal,
+        roll,
+        scrape,
+        rubber,
+        braking,
+        rolling,
+        scraping,
+        skidding,
+      ])
         node.disconnect();
     },
   };

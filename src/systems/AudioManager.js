@@ -4,6 +4,7 @@
  * звук начинается только после первого клика (экран «Нажмите, чтобы начать»).
  * Если файла ещё нет в кэше — молча пропускаем: каркас работает без ассетов.
  */
+import { SFX } from '../config/constants.js';
 import { createEngineVoice } from './engineVoice.js';
 import config from '../../data/config.json';
 import catalog from '../../data/sounds.json';
@@ -42,6 +43,13 @@ class AudioManager {
 
   init(game) {
     this.game = game;
+    const click = (event) => {
+      const button = event.target.closest?.('button, [role="button"]');
+      if (button && !button.matches(':disabled, [aria-disabled="true"], .pedal, .shift'))
+        this.playSfx(SFX.CLICK);
+    };
+    document.addEventListener('click', click, true);
+    game.events.once('destroy', () => document.removeEventListener('click', click, true));
     onSettingsChange(() => this.applyVolume());
     game.events.on('step', (_time, delta) => this.#tickFades(delta));
   }
@@ -91,7 +99,8 @@ class AudioManager {
 
   playSfx(key, extra = {}) {
     if (!this.game || !this.#has(key)) return null;
-    const volume = effectiveVolume('sfx') * (BASE[key] ?? 1) * (extra.volume ?? 1);
+    const shiftLevel = key === SFX.PADDLE || key === SFX.SHIFT ? effectiveVolume('shiftVolume') : 1;
+    const volume = effectiveVolume('sfx') * shiftLevel * (BASE[key] ?? 1) * (extra.volume ?? 1);
     if (volume <= 0) return null;
     this.game.sound.play(key, { ...extra, volume });
     return true;
