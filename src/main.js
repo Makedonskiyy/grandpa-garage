@@ -12,6 +12,7 @@ import './styles/main.css';
 import './styles/ui.css';
 import './styles/drive.css';
 import './styles/drive-hud.css';
+import './styles/result.css';
 import './styles/garage.css';
 import { GAME_WIDTH, GAME_HEIGHT, SCENES, config } from './config/constants.js';
 import { loadSettings } from './systems/settings.js';
