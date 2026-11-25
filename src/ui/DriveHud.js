@@ -92,7 +92,6 @@ export class DriveHud {
   /** Щелчок коробки; на каждом третьем переключении — выстрел в выхлоп. */
   static shiftSound() {
     audio.playSfx(SFX.SHIFT);
-    if (Math.random() < 0.35) audio.playSfx(SFX.BACKFIRE, { delay: 0.08 });
   }
 
   /** Ввод педалей за кадр. */
@@ -187,30 +186,5 @@ export class DriveHud {
       alarm: run.limiter,
     });
     this.speedo.render({ value: run.v * 3.6, text: String(Math.round(run.v * 3.6)) });
-  }
-}
-
-/**
- * Петли звуков заезда: визг резины (асфальт) или чавканье грязи (грунт) — по пробуксовке,
- * треск отсечки. Громкость меняется каждый кадр, без файла звук просто молчит.
- */
-export class DriveSounds {
-  constructor(scene, surface) {
-    this.skid = audio.loopSfx(surface === 'clay' ? SFX.MUD : SFX.SKID);
-    this.limiter = audio.loopSfx(SFX.LIMITER);
-    for (const s of [this.skid, this.limiter]) s?.setVolume(0);
-    scene.events.once('shutdown', () => this.stop());
-  }
-
-  update(run, { mud = 0 } = {}) {
-    const k = audio.sfxLevel();
-    this.skid?.setVolume(k * Math.min(1, Math.max(run.slip, mud)));
-    this.limiter?.setVolume(run.limiter && !run.done ? k * 0.5 : 0);
-  }
-
-  stop() {
-    for (const s of [this.skid, this.limiter]) s?.destroy();
-    this.skid = null;
-    this.limiter = null;
   }
 }

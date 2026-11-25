@@ -59,10 +59,72 @@
           throw new Error(`Missing dominant firing tone at ${expected} Hz`);
       }
       if (rms(2.75, 3) > 1e-6) throw new Error('Engine still audible after stop');
+      // Compare builds at identical RPM and pedal position. Normalized spectral
+      // bands distinguish changes in tone from a simple volume multiplier.
+      async function spectrum(overrides) {
+        const ctx = new OfflineAudioContext(1, rate, rate);
+        const setup = { ...build, engine: 'engine_stock', ...overrides };
+        const state = createRun('race', setup);
+        state.started = true;
+        state.gear = 3;
+        state.v = 22;
+        state.rpm = 4800;
+        const motor = createEngineVoice(ctx, ctx.destination, setup);
+        motor.update(state, { gas: 1, brake: 0 });
+
+        // Analyse the rendered PCM directly to include every output layer.
+        const pcm = (await ctx.startRendering()).getChannelData(0);
+        const bands = [1, 2, 3, 4, 5, 6, 7, 8].map((harmonic) => {
+          let re = 0,
+            im = 0;
+          for (let i = rate / 2; i < rate; i++) {
+            const phase = (2 * Math.PI * 240 * harmonic * i) / rate;
+            re += pcm[i] * Math.cos(phase);
+            im += pcm[i] * Math.sin(phase);
+          }
+          return Math.hypot(re, im);
+        });
+        if (!pcm.every((v) => Number.isFinite(v) && Math.abs(v) < 1)) throw Error('Invalid mix');
+        return bands.map((energy) => energy / Math.max(...bands));
+      }
+      const stock = await spectrum({});
+      for (const variant of [
+        { engine: 'engine_tuned' },
+        { engine: 'engine_turbo' },
+        { exhaust: 'exhaust_straight' },
+      ]) {
+        const profile = await spectrum(variant);
+        if (Math.max(...profile.map((v, i) => Math.abs(v - stock[i]))) < 0.025)
+          throw Error('Indistinct tone: ' + JSON.stringify(variant));
+      }
     }
 
+    async function verifyTires() {
+      const { createTireVoice } = await import('../src/systems/tireVoice.js');
+      async function rms(surface, tire, physics) {
+        const ctx = new OfflineAudioContext(1, 24000, 24000);
+        const voice = createTireVoice(ctx, ctx.destination, tire);
+        voice.update(
+          { green: true, v: 0, slip: 0, lock: 0, sink: 0, stuckTimer: 0, ...physics },
+          { gas: 1, brake: 0 },
+          surface,
+        );
+        const pcm = (await ctx.startRendering()).getChannelData(0);
+        if (!pcm.every((v) => Number.isFinite(v) && Math.abs(v) < 1))
+          throw Error('Invalid tire mix');
+        return Math.sqrt(pcm.reduce((sum, v) => sum + v * v, 0) / pcm.length);
+      }
+      const silent = await rms('asphalt', 'tires_stock', {});
+      const sliding = await rms('asphalt', 'tires_stock', { v: 18, lock: 1 });
+      const rolling = await rms('asphalt', 'tires_stock', { v: 18 });
+      const slicks = await rms('asphalt', 'tires_slicks', { v: 18 });
+      const studded = await rms('asphalt', 'tires_studded', { v: 18 });
+      const stuck = await rms('deep', 'tires_mud', { sink: 1, stuckTimer: 1 });
+      if (silent !== 0 || sliding < rolling * 1.25 || studded < slicks * 1.25 || stuck < 0.01)
+        throw Error('Missing tire response');
+    }
     const result = document.querySelector('#result');
-    verify().then(
+    Promise.all([verify(), verifyTires()]).then(
       () => (result.textContent = 'PASS'),
       (error) => (result.textContent = `FAIL\n${error.stack || error}`),
     );
