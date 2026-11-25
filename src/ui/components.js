@@ -9,7 +9,7 @@ function wire(node, onClick) {
   node.addEventListener('click', (e) => {
     e.stopPropagation();
     if (node.disabled) return;
-    audio.playSfx(node.classList.contains('wbtn--primary') ? SFX.CONFIRM : SFX.CLICK);
+
     onClick?.(e);
   });
   // Клик по HTML не должен листать диалог или срабатывать в сцене.

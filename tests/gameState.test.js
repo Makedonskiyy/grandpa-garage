@@ -125,6 +125,7 @@ describe('settings', () => {
       display: 'ask',
       music: 100,
       sfx: 80,
+      shiftVolume: 85,
       muted: false,
       textSpeed: 'normal',
       shake: true,

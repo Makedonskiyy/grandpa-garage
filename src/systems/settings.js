@@ -35,7 +35,7 @@ export function sanitize(raw) {
   // Старые сохранения: «На весь экран» было одним из масштабов.
   if (raw.scale === 'fullscreen') out.display = 'fullscreen';
   if (DISPLAY_MODES.includes(raw.display)) out.display = raw.display;
-  for (const k of ['music', 'sfx']) {
+  for (const k of ['music', 'sfx', 'shiftVolume']) {
     const v = clampVolume(raw[k]);
     if (v !== null) out[k] = v;
   }

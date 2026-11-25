@@ -79,6 +79,12 @@ export function openSettings() {
           slider(s.sfx, (v) => updateSettings({ sfx: v }), { label: t('settings.sfx') }),
         ),
         row(
+          t('settings.shiftVolume'),
+          slider(s.shiftVolume, (v) => updateSettings({ shiftVolume: v }), {
+            label: t('settings.shiftVolume'),
+          }),
+        ),
+        row(
           t('settings.mute'),
           toggle(s.muted, (v) => updateSettings({ muted: v }), { label: t('settings.mute') }),
         ),
