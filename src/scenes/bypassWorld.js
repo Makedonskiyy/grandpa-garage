@@ -200,24 +200,6 @@ function clump(ctx, r, cx, cy, rx, ry, colors, n, size) {
   ctx.globalAlpha = 0.85;
   ctx.fillStyle = g;
   ctx.fillRect(cx - rx * 1.2, cy - ry * 1.2, rx * 2.4, ry * 2.4);
-  // Просветы в глубине кроны — тёмные провалы между ветками.
-  ctx.globalAlpha = 0.55;
-  ctx.fillStyle = colors[0];
-  for (let i = 0; i < 4 + k / 3; i++) {
-    const dx = (r() * 2 - 1) * 0.6;
-    const dy = r() * 0.8 - 0.1;
-    ctx.beginPath();
-    ctx.ellipse(
-      cx + dx * rx,
-      cy + dy * ry,
-      rx * (0.08 + r() * 0.1),
-      ry * (0.05 + r() * 0.08),
-      0,
-      0,
-      Math.PI * 2,
-    );
-    ctx.fill();
-  }
   // Листва: мелкие пятнышки внутри силуэта, светлее к свету.
   ctx.globalAlpha = 0.75;
   const count = Math.round(n);
@@ -233,55 +215,92 @@ function clump(ctx, r, cx, cy, rx, ry, colors, n, size) {
   ctx.restore();
 }
 
+/**
+ * Сосна обыкновенная в лесу: прямой рыжий ствол без сучьев снизу, крона — верхняя треть
+ * высоты, шириной ≈ 0,3 высоты; из 4–6 неровных хвойных лап на разной высоте, у каждой —
+ * видимая ветка от ствола. Не «шапка на палке»: лапы ниже — шире, к макушке — уже.
+ */
 function pine(ctx, o) {
   const { x, base, h, haze, r } = o;
-  const lean = (r() - 0.5) * h * 0.04;
-  const top = base - h * 0.94;
-  const w = Math.max(1, h * 0.022);
+  const lean = (r() - 0.5) * h * 0.03;
+  const tx = (y) => x + lean * ((base - y) / h);
+  const top = base - h;
+  const crownLow = base - h * (0.6 + r() * 0.08); // нижняя граница кроны
+  const w = Math.max(1.2, h * 0.02);
+  // Ствол: снизу серо-бурый в трещинах, выше — рыжий, тонкий к макушке.
   const g = ctx.createLinearGradient(0, base, 0, top);
-  g.addColorStop(0, mix('#4e3f33', haze));
-  g.addColorStop(0.35, mix('#8a5a3a', haze));
-  g.addColorStop(1, mix('#b8763f', haze));
+  g.addColorStop(0, mix('#4a3b30', haze));
+  g.addColorStop(0.3, mix('#7a5236', haze));
+  g.addColorStop(0.55, mix('#b26f3e', haze));
+  g.addColorStop(1, mix('#c4844a', haze));
   ctx.fillStyle = g;
   ctx.beginPath();
   ctx.moveTo(x - w / 2, base);
   ctx.lineTo(x + w / 2, base);
-  ctx.lineTo(x + lean + w * 0.25, top);
-  ctx.lineTo(x + lean - w * 0.25, top);
+  ctx.lineTo(tx(top) + w * 0.2, top + h * 0.04);
+  ctx.lineTo(tx(top) - w * 0.2, top + h * 0.04);
   ctx.closePath();
   ctx.fill();
-  // Крона — несколько плоских шапок наверху.
+  ctx.fillStyle = mix('#2e241d', haze);
+  for (let i = 0; i < h / 10; i++)
+    ctx.fillRect(x - w / 2 + r() * w, base - r() * h * 0.3, 0.4, 1 + r() * 2);
   const dark = [
-    mix('#18291e', haze),
-    mix('#1f3526', haze),
-    mix('#294230', haze),
-    mix('#35523b', haze),
+    mix('#16261c', haze),
+    mix('#1d3224', haze),
+    mix('#26402d', haze),
+    mix('#33533a', haze),
+    mix('#40623f', haze),
   ];
-  clump(ctx, r, x + lean, top, h * 0.085, h * 0.06, dark, 10, h * 0.018);
-  for (const side of [-1, 1]) {
-    const cy = top + h * (0.035 + r() * 0.025);
-    const cx = x + lean + side * h * (0.042 + r() * 0.02);
-    const rx = h * (0.07 + r() * 0.07);
-    const ry = h * (0.03 + r() * 0.025);
-    clump(ctx, r, cx, cy, rx, ry, dark, 12, Math.max(1, h * 0.02));
+  // Лапы кроны снизу вверх.
+  const n = 4 + Math.floor(r() * 3);
+  for (let i = 0; i < n; i++) {
+    const t = i / (n - 1); // 0 — нижняя лапа, 1 — макушка
+    const y = crownLow + (top + h * 0.05 - crownLow) * t + (r() - 0.5) * h * 0.03;
+    const side = i === n - 1 ? 0 : i % 2 ? 1 : -1;
+    const reach = h * (0.15 - 0.1 * t) * (0.7 + r() * 0.5);
+    const cx = tx(y) + side * reach * 0.55;
+    // Ветка от ствола к лапе.
+    if (side) {
+      ctx.strokeStyle = mix('#5a3e2a', haze);
+      ctx.lineWidth = Math.max(0.5, w * 0.35);
+      ctx.beginPath();
+      ctx.moveTo(tx(y + h * 0.02), y + h * 0.02);
+      ctx.quadraticCurveTo(tx(y) + side * reach * 0.3, y, cx, y - h * 0.005);
+      ctx.stroke();
+    }
+    clump(
+      ctx,
+      r,
+      cx,
+      y - h * 0.012,
+      Math.max(reach * 0.8, h * 0.045),
+      h * (0.035 + 0.01 * r()),
+      dark,
+      10,
+      Math.max(0.8, h * 0.012),
+    );
   }
 }
 
+/**
+ * Берёза повислая: белый ствол до макушки, крона — верхние 55–60 % высоты, узкий овал
+ * шириной ≈ 0,35 высоты, ветви свисают; крона прозрачная — между прядями видно небо и ствол.
+ */
 function birch(ctx, o) {
   const { x, base, h, haze, r } = o;
-  const lean = (r() - 0.5) * h * 0.08;
+  const lean = (r() - 0.5) * h * 0.06;
   const w = Math.max(1, h * 0.022);
-  const top = base - h * 0.87;
+  const top = base - h * 0.95;
   const tx = (y) => x + lean * ((base - y) / h) ** 1.4;
   const wAt = (y) => w * (1 - 0.8 * ((base - y) / (base - top)));
   const leaves = [
-    mix('#3d5732', haze),
-    mix('#55743f', haze),
-    mix('#6b8c4b', haze),
-    mix('#83a259', haze),
-    mix(r() < 0.25 ? '#b9b25c' : '#9bb86d', haze), // у части — желтеющие пряди
+    mix('#3a5430', haze),
+    mix('#4f6d3c', haze),
+    mix('#628447', haze),
+    mix('#7a9c55', haze),
+    mix(r() < 0.25 ? '#b5ad5a' : '#94b266', haze),
   ];
-  // Ствол: светло-серо-белый, с мягкой тенью справа.
+  // Ствол.
   const g = ctx.createLinearGradient(x - w / 2, 0, x + w / 2, 0);
   g.addColorStop(0, mix('#f1efe8', haze * 0.6));
   g.addColorStop(0.6, mix('#e2dfd6', haze * 0.6));
@@ -298,35 +317,45 @@ function birch(ctx, o) {
   ctx.closePath();
   ctx.fill();
   ctx.clip();
-  // Кора: редкие неровные тёмные пятна и тонкие поперечные чечевички, внизу — тёмный комель.
-  const marks = 6 + Math.floor(h / 14);
-  for (let i = 0; i < marks; i++) {
-    const t = 0.08 + r() ** 1.3 * 0.6;
-    const y = base - t * h;
+  // Кора: поперечные чечевички и редкие чёрные пятна, тёмный комель.
+  for (let i = 0; i < 8 + h / 12; i++) {
+    const y = base - h * (0.06 + r() ** 1.3 * 0.7);
     const ww = wAt(y);
-    const big = r() < 0.35;
-    const mw = ww * (big ? 0.5 + r() * 0.5 : 0.25 + r() * 0.35);
-    const mh = big ? 0.8 + r() * 1.2 : 0.35 + r() * 0.3;
+    const big = r() < 0.3;
     ctx.fillStyle = mix(big ? '#2b2826' : '#4a4540', haze);
-    const ox = r() < 0.5 ? -ww / 2 : ww / 2 - mw; // пятна чаще с краю ствола
-    ctx.beginPath();
-    ctx.ellipse(tx(y) + ox + mw / 2, y, mw / 2, mh / 2, (r() - 0.5) * 0.3, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.fillRect(
+      tx(y) - ww / 2 + (big ? 0 : r() * ww * 0.5),
+      y,
+      ww * (big ? 0.7 + r() * 0.3 : 0.3 + r() * 0.3),
+      big ? 1 + r() : 0.5,
+    );
   }
   const bg = ctx.createLinearGradient(0, base, 0, base - h * 0.12);
   bg.addColorStop(0, mix('#3a3430', haze));
   bg.addColorStop(1, 'rgba(58,52,48,0)');
   ctx.fillStyle = bg;
-  ctx.fillRect(x - w / 2, base - h * 0.12, w, h * 0.12);
+  ctx.fillRect(x - w, base - h * 0.12, w * 2, h * 0.12);
   ctx.restore();
-  // Центральная крона и нисходящие боковые ветви сходятся вокруг ствола.
-  clump(ctx, r, tx(base - h * 0.75), base - h * 0.75, h * 0.1, h * 0.24, leaves, 18, h * 0.019);
-  for (const side of [-1, 1]) {
-    for (let i = 0; i < 3; i++) {
-      const y = base - h * (0.79 - i * 0.1 + r() * 0.04);
-      const spread = h * (0.045 + i * 0.018);
-      clump(ctx, r, tx(y) + side * spread, y, spread * 1.1, h * 0.11, leaves, 8, h * 0.016);
-    }
+  // Крона: 6–9 вытянутых вниз прядей вокруг ствола в верхних 55 % — узкий плакучий овал.
+  const crownTop = base - h;
+  const crownLow = base - h * (0.42 + r() * 0.06);
+  const n = 6 + Math.floor(r() * 4);
+  for (let i = 0; i < n; i++) {
+    const t = (i + r() * 0.6) / n;
+    const y = crownTop + (crownLow - crownTop) * t;
+    const width = h * 0.17 * Math.sin(Math.PI * (0.15 + 0.8 * t)); // овал: шире в середине
+    const cx = tx(y) + (r() - 0.5) * 2 * width * 0.6;
+    clump(
+      ctx,
+      r,
+      cx,
+      y,
+      Math.max(h * 0.035, width * 0.55),
+      h * (0.06 + 0.02 * r()),
+      leaves,
+      9,
+      Math.max(0.7, h * 0.011),
+    );
   }
 }
 
@@ -1027,18 +1056,20 @@ function chunkObjects(seed, layer, ci, ppm) {
       }
     });
   } else if (layer.id === 'back') {
-    // Сооружения — редкие, в своих «окнах» по 6 кусков.
-    const slot = Math.floor(ci / 6);
+    // Сооружения — редкие: одно на «окно» в 12 кусков (≈ раз в 300–500 м), и не всегда.
+    const slot = Math.floor(ci / 12);
     const rs = rand(hash(seed, slot, 4242) * 2 ** 32);
-    const at = slot * 6 + Math.floor(rs() * 6);
-    if (at === ci && rs() < 0.75) {
+    const at = slot * 12 + Math.floor(rs() * 12);
+    if (at === ci && rs() < 0.55) {
       const kind = pick(rs, ['busStop', 'truck', 'billboard', 'honeyStand', 'busStop', 'truck']);
       list.push({
         kind,
         x: x0 + 40 + rs() * 200,
-        base: 230,
+        // Глубже машины: мельче по перспективе, и стоит на бровке перед травой луга.
+        base: 232,
+        scale: 0.6,
         h: 0,
-        haze: 0,
+        haze: 0.06,
         w: 380,
         seed: Math.floor(rs() * 2 ** 31),
         name: pick(rs, STOPS),
