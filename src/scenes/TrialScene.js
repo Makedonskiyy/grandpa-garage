@@ -109,6 +109,37 @@ export class TrialScene extends BaseScene {
         ),
       );
     }
+    // Первый раз на площадке — брифинг: что нужно сделать. Светофор ждёт «Понятно».
+    const brief = this.test.brief && !gameState.flags[`brief_${this.test.id}`];
+    if (brief) {
+      this.light.setVisible(false);
+      this.hud.setEnabled(false);
+      const close = showRunOverlay(this.ui, {
+        ok: true,
+        tone: 'is-info',
+        eyebrow: this.test.map.name,
+        title: this.test.brief.title,
+        items: this.test.brief.items,
+        primaryIcon: 'check',
+        primary: {
+          label: t('trial.briefGo'),
+          onClick: () => {
+            close();
+            gameState.flags[`brief_${this.test.id}`] = true;
+            this.light.setVisible(true);
+            this.hud.setEnabled(true);
+            this.#startLight(auto);
+          },
+        },
+      });
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, close);
+      return;
+    }
+    this.#startLight(auto);
+  }
+
+  /** Светофор на старте: красный, жёлтые, зелёный — тронуться можно на зелёный. */
+  #startLight(auto) {
     this.hud.setHintSlot('light');
     this.hud.say(auto ? 'launchAuto' : 'launch');
     this.light.run(this.test.christmasTree, {
@@ -247,6 +278,7 @@ export class TrialScene extends BaseScene {
       }
       if (HAZARDS.includes(s.type)) {
         if (s.type === 'limit') this.#limitSign(box, x0, false);
+        else if (s.type === 'pothole') this.#ruSign(box, x0 - 3 * PPM, 'rough');
         else this.#sign(box, x0 - 2 * PPM, t(`trial.signs.${s.type}`), s.type);
       }
     }
@@ -284,10 +316,52 @@ export class TrialScene extends BaseScene {
         .setAngle(-90)
         .setResolution(getRenderZoom()),
     );
-    this.#sign(box, (z0 + z1) / 2, t('trial.signs.zone'), 'zone');
+    this.#ruSign(box, z1 + 6, 'stop');
   }
 
   /** Знак «40» на столбике у обочины; end — конец ограничения (серый с чертой). */
+  /**
+   * Знаки ПДД на стойке: rough — 1.16 «Неровная дорога» (треугольник с красной каймой),
+   * stop — 2.5 «Движение без остановки запрещено» (красный восьмиугольник STOP).
+   */
+  #ruSign(box, x, kind) {
+    const g = this.add.graphics();
+    g.fillStyle(0x7d8084).fillRect(x - 1, 196, 2, 70);
+    if (kind === 'rough') {
+      g.fillStyle(0xc8202a).fillTriangle(x, 172, x + 14, 196, x - 14, 196);
+      g.fillStyle(0xf2f0ea).fillTriangle(x, 177, x + 10, 193.5, x - 10, 193.5);
+      // Две «горки» неровности.
+      g.fillStyle(0x1b1b1d);
+      g.fillTriangle(x - 7, 191, x - 3.5, 186, x, 191);
+      g.fillTriangle(x, 191, x + 3.5, 186, x + 7, 191);
+    } else {
+      const pts = [];
+      for (let i = 0; i < 8; i++) {
+        const a = Math.PI / 8 + (i * Math.PI) / 4;
+        pts.push({ x: x + Math.cos(a) * 13, y: 184 + Math.sin(a) * 13 });
+      }
+      g.fillStyle(0xf2f0ea).fillPoints(pts, true);
+      g.fillStyle(0xc8202a).fillPoints(
+        pts.map((p) => ({ x: x + (p.x - x) * 0.86, y: 184 + (p.y - 184) * 0.86 })),
+        true,
+      );
+      box.add(g);
+      box.add(
+        this.add
+          .text(x, 184, 'STOP', {
+            fontFamily: '"Onest Variable", Onest, system-ui, sans-serif',
+            fontSize: '7px',
+            fontStyle: '800',
+            color: '#ffffff',
+          })
+          .setOrigin(0.5)
+          .setResolution(getRenderZoom()),
+      );
+      return;
+    }
+    box.add(g);
+  }
+
   #limitSign(box, x, end) {
     const g = this.add.graphics();
     g.fillStyle(0x7d8084).fillRect(x - 1, 206, 2, 60);
