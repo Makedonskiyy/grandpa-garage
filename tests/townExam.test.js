@@ -23,7 +23,8 @@ describe('площадка в городке (экзамен)', () => {
     greenLight(run);
     startRun(run);
     for (let i = 0; i < 240 * 30 && !run.done; i++) {
-      if (run.rpm > run.stats.redline * 0.95) run.gear = Math.min(run.gear + 1, run.stats.ratios.length);
+      if (run.rpm > run.stats.redline * 0.95)
+        run.gear = Math.min(run.gear + 1, run.stats.ratios.length);
       stepRun(run, { gas: 1 }, 1 / 240);
     }
     expect(run.ok).toBe(false);
