@@ -1059,7 +1059,7 @@ function chunkObjects(seed, layer, ci, ppm) {
       const v = r() * (b.birch + b.pine + b.spruce);
       const kind = v < b.birch ? 'birch' : v < b.birch + b.pine ? 'pine' : 'spruce';
       const h =
-        (kind === 'pine' ? 195 + r() * 55 : kind === 'birch' ? 160 + r() * 50 : 120 + r() * 60) *
+        (kind === 'pine' ? 130 + r() * 40 : kind === 'birch' ? 105 + r() * 35 : 80 + r() * 40) *
         tall;
       add(kind, x, 216 + r() * 8, h, 0.16 + r() * 0.12, h * 0.4);
     }
@@ -1119,7 +1119,7 @@ function chunkObjects(seed, layer, ci, ppm) {
         if (!inChunk(x)) continue;
         const h =
           // Не выше экрана: макушки ближних деревьев видны, как на фото.
-          kind === 'pine' ? 155 + gr() * 40 : kind === 'birch' ? 135 + gr() * 40 : 95 + gr() * 40;
+          kind === 'pine' ? 110 + gr() * 30 : kind === 'birch' ? 95 + gr() * 30 : 70 + gr() * 30;
         list.push({
           kind,
           x,
@@ -1457,7 +1457,7 @@ function drawSky(ctx, seed, w, h) {
 // ---------- Сам мир ----------
 
 /** Пикселей текстуры на точку мира у слоёв леса и дороги. */
-const PIXEL_RES = 1;
+const PIXEL_RES = 3; // как у машины: 3 пикселя текстуры на точку мира
 
 /**
  * Чёткие пиксели: прозрачность — только «есть / нет», цвет — шагами палитры
