@@ -1,0 +1,261 @@
+/*
+ * Разбор заезда: значок и причина, «Что делать» по шагам, цифры плитками.
+ * Панель справа от машины, в макете 1920×1080 (масштаб — --ui-scale).
+ */
+.result-panel {
+  gap: 0;
+  max-height: 1000px;
+  padding: 40px 44px;
+  overflow: auto;
+}
+
+.rp-head {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.rp-badge {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: #d31e1e;
+  box-shadow: 0 0 0 8px rgb(211 30 30 / 0.18);
+}
+
+.result-panel.is-ok .rp-badge {
+  background: #2ea846;
+  box-shadow: 0 0 0 8px rgb(46 168 70 / 0.18);
+}
+
+.rp-badge .icon {
+  width: 38px;
+  height: 38px;
+  color: #fff;
+}
+
+.rp-title {
+  margin: 2px 0 0;
+  font-size: 54px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.rp-reason {
+  margin: 20px 0 0;
+  font-size: 28px;
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+  color: #f2ede4;
+}
+
+.rp-section {
+  margin: 30px 0 14px;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: #aaa398;
+}
+
+/* ---------- Что делать ---------- */
+.rp-steps {
+  display: grid;
+  gap: 12px;
+}
+
+.rp-steps .rp-section {
+  margin-bottom: 2px;
+}
+
+.rstep {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  padding: 18px 20px;
+  border-radius: 18px;
+  background: rgb(255 255 255 / 0.05);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.07);
+}
+
+.rstep:first-of-type {
+  background: rgb(236 160 80 / 0.12);
+  box-shadow: inset 0 0 0 1px rgb(236 160 80 / 0.35);
+}
+
+.rstep__icon {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: rgb(255 255 255 / 0.08);
+}
+
+.rstep__icon .icon {
+  width: 30px;
+  height: 30px;
+  color: #f2ede4;
+}
+
+.rstep__num {
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1b1712;
+  background: #eca050;
+}
+
+.rstep__title {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #f7f2ea;
+}
+
+.rstep__text {
+  margin-top: 6px;
+  font-size: 21px;
+  line-height: 1.35;
+  color: #c9c1b4;
+}
+
+/* ---------- Цифры заезда ---------- */
+.rp-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.rmetric {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgb(255 255 255 / 0.04);
+}
+
+.rmetric__label {
+  font-size: 17px;
+  color: #aaa398;
+}
+
+.rmetric__value {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: #f2ede4;
+}
+
+.rmetric.is-ok .rmetric__value {
+  color: #7fc98a;
+}
+
+.rmetric.is-bad .rmetric__value {
+  color: #ff8a7e;
+}
+
+.rbar {
+  height: 8px;
+  margin-top: 4px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: rgb(255 255 255 / 0.1);
+}
+
+.rbar span {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: #c9c1b4;
+}
+
+.rbar.is-ok span {
+  background: #7fc98a;
+}
+
+.rbar.is-bad span {
+  background: #ff7a6e;
+}
+
+/* Шкала прочности: 10 делений, отметка — сколько нужно. */
+.rseg {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.rseg span {
+  position: relative;
+  height: 10px;
+  border-radius: 3px;
+  background: rgb(255 255 255 / 0.12);
+}
+
+.rseg span.is-ok {
+  background: #7fc98a;
+}
+
+.rseg span.is-bad {
+  background: #ff7a6e;
+}
+
+.rseg span.is-need::after {
+  content: '';
+  position: absolute;
+  right: -3px;
+  top: -6px;
+  bottom: -6px;
+  width: 2px;
+  border-radius: 1px;
+  background: #f2ede4;
+}
+
+/* ---------- Кнопки ---------- */
+.rp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  margin-top: 28px;
+}
+
+.rp-actions .wbtn {
+  flex: none;
+  width: auto;
+  height: 64px;
+  padding: 0 26px;
+  font-size: 22px;
+}
+
+.rp-link {
+  margin-left: auto;
+  padding: 8px 4px;
+  border: 0;
+  font: 500 20px/1 var(--font-ui);
+  color: #aaa398;
+  background: none;
+  cursor: pointer;
+}
+
+.rp-link:hover {
+  color: #f2ede4;
+  text-decoration: underline;
+}
