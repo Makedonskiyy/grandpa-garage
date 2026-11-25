@@ -366,6 +366,8 @@ function grassTuft(ctx, o) {
 
 const DRAW = { spruce, pine, birch, bush, grass: grassTuft };
 DRAW.pole = pole;
+DRAW.fieldTree = fieldTree;
+DRAW.fieldBush = fieldBush;
 
 // ---------- Сооружения у дороги ----------
 
@@ -946,6 +948,8 @@ Object.assign(DRAW, { busStop, truck, billboard, honeyStand, farHouses, hayBale 
 
 const POLE_STEP = 260;
 const polePos = (seed, n) => n * POLE_STEP + hash(seed, n, 31) * 30;
+/** Высота опоры: 108–128 точек — опоры не одинаковые. */
+const poleH = (seed, n) => 108 + Math.round(hash(seed, n, 33) * 20);
 
 /** Горизонт: светлая дымка над землёй и тонкая неровная полоса далёкого леса. */
 function drawHorizon(ctx, seed, x0) {
@@ -998,8 +1002,8 @@ function drawField(ctx, seed, x0) {
 
 /** Деревянная опора ЛЭП с траверсой и изоляторами. */
 function pole(ctx, o) {
-  const { x, base } = o;
-  const top = base - 120;
+  const { x, base, h } = o;
+  const top = base - (h || 120);
   ctx.fillStyle = '#5a4c3e';
   ctx.fillRect(Math.round(x) - 1, top, 3, base - top);
   ctx.fillStyle = '#7a6a58';
@@ -1008,6 +1012,48 @@ function pole(ctx, o) {
   ctx.fillRect(Math.round(x) - 9, top + 6, 19, 2);
   ctx.fillStyle = '#d8d8d2';
   for (const dx of [-8, 0, 8]) ctx.fillRect(Math.round(x) + dx, top + 3, 1, 3);
+}
+
+/** Одинокое дерево в поле: короткий ствол, широкая неровная оливковая крона. */
+function fieldTree(ctx, o) {
+  const { x, base, h, haze, r } = o;
+  const w = Math.max(1, h * 0.06);
+  ctx.fillStyle = mix('#4a4038', haze);
+  ctx.fillRect(
+    Math.round(x - w / 2),
+    Math.round(base - h * 0.45),
+    Math.max(1, Math.round(w)),
+    Math.round(h * 0.45),
+  );
+  // Пара веток к кроне.
+  ctx.fillRect(
+    Math.round(x - w * 1.5),
+    Math.round(base - h * 0.5),
+    Math.max(1, Math.round(w)),
+    Math.round(h * 0.12),
+  );
+  const olive = [
+    mix('#3f4a30', haze),
+    mix('#55603c', haze),
+    mix('#6d784a', haze),
+    mix('#8a9060', haze),
+  ];
+  const lean = (r() - 0.5) * h * 0.15;
+  clump(ctx, r, x + lean, base - h * 0.68, h * (0.42 + r() * 0.12), h * 0.3, olive, 16);
+  if (r() < 0.6)
+    clump(ctx, r, x + lean + (r() - 0.5) * h * 0.4, base - h * 0.55, h * 0.25, h * 0.18, olive, 8);
+}
+
+/** Куст в поле: низкий, шире высоты, тусклый. */
+function fieldBush(ctx, o) {
+  const { x, base, h, haze, r } = o;
+  const cols = [
+    mix('#4a5236', haze),
+    mix('#5e6842', haze),
+    mix('#76804f', haze),
+    mix('#8f9662', haze),
+  ];
+  clump(ctx, r, x, base - h * 0.45, h * 0.9, h * 0.45, cols, 10);
 }
 
 // ---------- Генерация объектов по кускам ----------
@@ -1036,7 +1082,8 @@ function chunkObjects(seed, layer, ci, ppm) {
   if (layer.id === 'far') {
     // Вдали — редкие кусты и одинокие деревья у кромки поля, мелкие и в дымке.
     for (let x = x0; x < x0 + CW; x += 60 + r() * 140)
-      if (r() < 0.35) add(r() < 0.5 ? 'birch' : 'bush', x, 186 + r() * 3, 8 + r() * 10, 0.55, 12);
+      if (r() < 0.35)
+        add(r() < 0.5 ? 'fieldTree' : 'fieldBush', x, 186 + r() * 3, 8 + r() * 10, 0.55, 12);
   } else if (layer.id === 'mid') {
     // Поле: одинокие деревья и кусты — редко, по одному-два.
     groves(320, 21, (cx, gr) => {
@@ -1047,7 +1094,7 @@ function chunkObjects(seed, layer, ci, ppm) {
         const x = cx + i * (8 + gr() * 10);
         const h = tree ? 26 + gr() * 18 : 9 + gr() * 8;
         list.push({
-          kind: tree ? 'birch' : 'bush',
+          kind: tree ? 'fieldTree' : 'fieldBush',
           x,
           base: 200 + gr() * 10,
           h,
@@ -1084,9 +1131,9 @@ function chunkObjects(seed, layer, ci, ppm) {
       for (let i = 0; i < 1 + Math.floor(gr() * 3); i++) {
         const x = cx + (gr() - 0.5) * 40;
         if (!inChunk(x)) continue;
-        const kind = 'bush'; // в поле у дороги — только кусты
+        const kind = 'fieldBush'; // в поле у дороги — только кусты
         const h =
-          kind === 'bush' ? 10 + gr() * 14 : kind === 'pine' ? 40 + gr() * 30 : 22 + gr() * 36;
+          kind === 'fieldBush' ? 8 + gr() * 10 : kind === 'pine' ? 40 + gr() * 30 : 22 + gr() * 36;
         list.push({ kind, x, base: 230, h, haze: 0.08, w: 30, seed: Math.floor(gr() * 2 ** 31) });
       }
     });
@@ -1094,7 +1141,7 @@ function chunkObjects(seed, layer, ci, ppm) {
     // Опоры ЛЭП вдоль поля — по одной на ~260 точек; провода рисуются в #finish.
     for (let n = Math.floor(x0 / POLE_STEP); n * POLE_STEP < x0 + CW; n++) {
       const px = polePos(seed, n);
-      if (px >= x0 && px < x0 + CW) add('pole', px, 228, 0, 0.04, 20);
+      if (px >= x0 && px < x0 + CW) add('pole', px, 228, poleH(seed, n), 0.04, 20);
     }
     // Бурьян у обочины — редкими пучками.
     for (let x = x0; x < x0 + CW; x += 14 + r() * 30)
@@ -1107,15 +1154,16 @@ function chunkObjects(seed, layer, ci, ppm) {
 
 function drawRoad(ctx, seed, x0, ppm) {
   const x1 = x0 + CW;
-  // Трава на обочине за асфальтом.
-  const g = ctx.createLinearGradient(0, 200, 0, 232);
-  g.addColorStop(0, '#6f7a4c');
-  g.addColorStop(1, '#8e8a5f');
-  ctx.fillStyle = g;
-  ctx.fillRect(x0, 210, CW, 22);
-  // Щебёночная бровка.
+  // Узкая полоса травы у самой бровки (поле и деревья рисует свой слой — не закрываем их).
+  ctx.fillStyle = '#8a8a5c';
+  ctx.fillRect(x0, 226, CW, 3);
+  // Щебёночная бровка — широкая полоса гравия между травой и асфальтом.
   ctx.fillStyle = '#8b8577';
   ctx.fillRect(x0, 228, CW, 5);
+  for (let i = 0; i < CW * 1.5; i++) {
+    ctx.fillStyle = hash(seed, x0, i, 901) < 0.5 ? '#a49e90' : '#6f6a5e';
+    ctx.fillRect(x0 + hash(seed, x0, i, 902) * CW, 228 + hash(seed, x0, i, 903) * 5, 1, 1);
+  }
   // Асфальт: ровная основа, зерно по мировым координатам (без швов), заплаты, трещины.
   ctx.fillStyle = '#57595c';
   ctx.fillRect(x0, 232, CW, 128);
@@ -1165,6 +1213,13 @@ function drawRoad(ctx, seed, x0, ppm) {
   }
   ctx.fillStyle = 'rgba(232,230,220,0.8)';
   ctx.fillRect(x0, 352, CW, 1.6);
+  // Следы шин: две тёмные полосы по каждой полосе движения, местами прерываются.
+  for (const ty of [262, 270, 318, 326])
+    for (let x = x0; x < x0 + CW; x += 4)
+      if (hash(seed, Math.floor(x / 60), ty, 950) > 0.35) {
+        ctx.fillStyle = 'rgba(40,40,42,0.18)';
+        ctx.fillRect(x, ty, 4, 2);
+      }
 }
 
 /** Масштаб предметов дальней обочины: она за машиной, поэтому всё там видно мельче. */
@@ -1543,8 +1598,10 @@ export class BypassWorld {
         const b = polePos(this.seed, n + 1);
         for (const dx of [-8, 0, 8]) {
           ctx.beginPath();
-          ctx.moveTo(a + dx, 228 - 117);
-          ctx.quadraticCurveTo((a + b) / 2 + dx, 228 - 96, b + dx, 228 - 117);
+          const ya = 228 - poleH(this.seed, n) + 3;
+          const yb = 228 - poleH(this.seed, n + 1) + 3;
+          ctx.moveTo(a + dx, ya);
+          ctx.quadraticCurveTo((a + b) / 2 + dx, Math.max(ya, yb) + 18, b + dx, yb);
           ctx.stroke();
         }
       }
