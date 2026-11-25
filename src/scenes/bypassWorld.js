@@ -1424,6 +1424,27 @@ function drawSky(ctx, seed, w, h) {
 
 // ---------- Сам мир ----------
 
+/** Пикселей текстуры на точку мира у слоёв леса и дороги. */
+const PIXEL_RES = 1;
+
+/**
+ * Чёткие пиксели: прозрачность — только «есть / нет», цвет — шагами палитры
+ * (по 16 уровней на канал), без полупрозрачной каши по краям крон.
+ */
+function pixelate(ctx, w, h) {
+  const img = ctx.getImageData(0, 0, w, h);
+  const d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i + 3] < 110) {
+      d[i + 3] = 0;
+      continue;
+    }
+    d[i + 3] = 255;
+    for (let k = 0; k < 3; k++) d[i + k] = Math.round(d[i + k] / 16) * 16;
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
 export class BypassWorld {
   /**
    * @param {Phaser.Scene} scene
@@ -1437,23 +1458,26 @@ export class BypassWorld {
     // сколько их на экране, — листва, трава и кора остаются мелкими и чёткими.
     // Размеры холстов чётные. Полушаг сохраняет целое число пикселей на всех
     // слоях: округление размеров браузером иначе оставляет щель на стыке.
-    this.res = Phaser.Math.Clamp(Math.round(getRenderZoom() * 2) / 2, 1, 4);
+    // Пиксель-арт: лес рисуется по точкам мира (1 точка = 1 пиксель текстуры), без сглаживания.
+    // Небо остаётся гладким.
+    this.skyRes = Phaser.Math.Clamp(Math.round(getRenderZoom() * 2) / 2, 1, 4);
+    this.res = PIXEL_RES;
     this.id = `bw${Math.floor(Math.random() * 1e9)}`;
 
     this.queue = [];
 
     const skyKey = `${this.id}_sky`;
     const c = document.createElement('canvas');
-    c.width = VIEW_W * this.res;
-    c.height = 240 * this.res;
+    c.width = VIEW_W * this.skyRes;
+    c.height = 240 * this.skyRes;
     const ctx = c.getContext('2d');
-    ctx.scale(this.res, this.res);
+    ctx.scale(this.skyRes, this.skyRes);
     drawSky(ctx, this.seed, VIEW_W, 240);
     scene.textures.addCanvas(skyKey, c).setFilter(Phaser.Textures.FilterMode.LINEAR);
     this.sky = scene.add
       .tileSprite(0, 0, VIEW_W, 240, skyKey)
       .setOrigin(0)
-      .setTileScale(1 / this.res);
+      .setTileScale(1 / this.skyRes);
 
     this.layers = LAYERS.map((spec) => ({
       spec,
@@ -1570,8 +1594,9 @@ export class BypassWorld {
       ctx.fillStyle = g;
       ctx.fillRect(x0, 160, CW, 72);
     }
+    pixelate(ctx, c.width, c.height);
     const key = `${this.id}_${spec.id}_${ci}`;
-    this.scene.textures.addCanvas(key, c).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    this.scene.textures.addCanvas(key, c).setFilter(Phaser.Textures.FilterMode.NEAREST);
     const img = this.scene.add
       .image(ci * CW, spec.y0, key)
       .setOrigin(0)
@@ -1590,7 +1615,7 @@ export class BypassWorld {
    */
   update(scroll, now = false) {
     const tu = performance.now();
-    this.sky.tilePositionX = scroll * 0.02 * this.res;
+    this.sky.tilePositionX = scroll * 0.02 * this.skyRes;
     const pending = [];
     for (const layer of this.layers) {
       const s = scroll * layer.spec.k;
