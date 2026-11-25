@@ -16,6 +16,7 @@ import { getSettings } from '../systems/settings.js';
 import { getRenderZoom } from '../systems/scale.js';
 import { backdrop, prop, roadsideProps, rng } from './scenery.js';
 import { BypassWorld } from './bypassWorld.js';
+import { TownWorld } from './townWorld.js';
 import { DriveSounds } from '../systems/DriveSounds.js';
 import { DriveHud } from '../ui/DriveHud.js';
 
@@ -34,10 +35,11 @@ const SEG_COLORS = {
   ruts: '#a0703c',
   deep: '#2c2117',
   asphalt: '#55585e',
-  bump: '#e0b43a',
+  pothole: '#3a3b3e',
+  limit: '#c62828',
 };
 /** Участки, о которых предупреждаем знаком и подсказкой. */
-const HAZARDS = ['ruts', 'deep', 'bump'];
+const HAZARDS = ['ruts', 'deep', 'pothole', 'limit'];
 
 /**
  * Обкатка (ТЗ 3.7): раскисшая грунтовка за гаражами, параллакс в 3 слоя. Машину ведёт физика
@@ -71,6 +73,9 @@ export class TrialScene extends BaseScene {
     if (this.theme === 'free') {
       // Объездная — свой бесконечный лес у каждого игрока.
       this.world = new BypassWorld(this, { seed: gameState.flags.worldSeed ?? 1, ppm: PPM });
+    } else if (this.theme === 'track') {
+      // Площадка в городке — дневной городок с хрущёвками, тоже свой у каждого игрока.
+      this.world = new TownWorld(this, { seed: gameState.flags.worldSeed ?? 1, ppm: PPM });
     } else this.#createParallax();
     this.track = this.#drawTrack();
     this.car = buildCar(this, gameState.build, gameState.cosmetics, {
@@ -229,15 +234,20 @@ export class TrialScene extends BaseScene {
         g.fillStyle(0x45474c).fillRect(x0, 264, w, 96);
         g.fillStyle(0x7a7468).fillRect(x0, 264, w, 3);
         for (let x = x0; x < x0 + w; x += 40) g.fillStyle(0xe8e6dc).fillRect(x, 312, 22, 2);
-      } else if (s.type === 'bump') {
-        // Лежачий полицейский: жёлто-чёрные полосы.
-        for (let x = x0; x < x0 + w; x += 6) {
-          g.fillStyle(((x - x0) / 6) % 2 ? 0x1b1b1d : 0xe0b43a).fillRect(x, 266, 6, 94);
+      } else if (s.type === 'pothole') {
+        // Ямы на обеих полосах: тёмные выбоины с рваным краем и светлой кромкой.
+        for (const y of [282, 318]) {
+          g.fillStyle(0x1e1f22).fillEllipse(x0 + w / 2, y, w * 0.9, 9);
+          g.fillStyle(0x2c2d31).fillEllipse(x0 + w / 2 + 3, y + 1, w * 0.6, 5);
+          g.fillStyle(0x6c6d70, 0.8).fillRect(x0 + w * 0.1, y - 5, w * 0.8, 1);
         }
-        g.fillStyle(0x000000, 0.25).fillRect(x0, 266, w, 2);
+      } else if (s.type === 'limit') {
+        // Конец ограничения — знак «40» с чертой в конце участка.
+        this.#limitSign(box, x0 + w, true);
       }
       if (HAZARDS.includes(s.type)) {
-        this.#sign(box, x0 - 2 * PPM, t(`trial.signs.${s.type}`), s.type);
+        if (s.type === 'limit') this.#limitSign(box, x0, false);
+        else this.#sign(box, x0 - 2 * PPM, t(`trial.signs.${s.type}`), s.type);
       }
     }
     const props = this.world ? [] : roadsideProps(this.theme, this.test.track.length);
@@ -258,13 +268,44 @@ export class TrialScene extends BaseScene {
     this.#sign(box, tx, t('trial.signs.trap'), 'trap');
     const z0 = zone.from * PPM;
     const z1 = zone.to * PPM;
-    g.fillStyle(0xe0b43a, 0.35).fillRect(z0, 266, z1 - z0, 94);
+    // Зона остановки — разметка как на экзаменационной площадке: рамка и стоп-линия.
+    g.fillStyle(0xe8e8e2, 0.18).fillRect(z0, 266, z1 - z0, 94);
     g.fillStyle(0xe8e8e2).fillRect(z0, 266, 2, 94);
-    g.fillStyle(0xe8e8e2).fillRect(z1 - 2, 266, 2, 94);
-    for (const x of [z0, z1])
-      for (const y of [262, 300, 344])
-        box.add(this.add.image(x, y, prop(this, 'cone')).setOrigin(0.5, 1));
+    g.fillStyle(0xe8e8e2).fillRect(z1 - 5, 266, 5, 94); // стоп-линия
+    box.add(
+      this.add
+        .text((z0 + z1) / 2, 300, 'СТОП', {
+          fontFamily: '"Onest Variable", Onest, system-ui, sans-serif',
+          fontSize: '14px',
+          fontStyle: '800',
+          color: 'rgba(232,232,226,0.85)',
+        })
+        .setOrigin(0.5)
+        .setAngle(-90)
+        .setResolution(getRenderZoom()),
+    );
     this.#sign(box, (z0 + z1) / 2, t('trial.signs.zone'), 'zone');
+  }
+
+  /** Знак «40» на столбике у обочины; end — конец ограничения (серый с чертой). */
+  #limitSign(box, x, end) {
+    const g = this.add.graphics();
+    g.fillStyle(0x7d8084).fillRect(x - 1, 206, 2, 60);
+    g.fillStyle(end ? 0x9a9da2 : 0xc8202a).fillCircle(x, 198, 11);
+    g.fillStyle(0xf2f0ea).fillCircle(x, 198, end ? 10 : 8);
+    if (end) g.lineStyle(1.4, 0x3a3c40).lineBetween(x - 7, 205, x + 7, 191);
+    box.add(g);
+    box.add(
+      this.add
+        .text(x, 198, '40', {
+          fontFamily: '"Onest Variable", Onest, system-ui, sans-serif',
+          fontSize: '10px',
+          fontStyle: '800',
+          color: end ? '#5a5c60' : '#1b1b1d',
+        })
+        .setOrigin(0.5)
+        .setResolution(getRenderZoom()),
+    );
   }
 
   /** Финиш: столбик с клетчатым флажком. */
@@ -363,7 +404,7 @@ export class TrialScene extends BaseScene {
     this.cover.x = this.track.x;
     this.startBox.x = CAR_X - run.x * PPM;
     const seg = segmentAt(this.test, run.x);
-    if (seg.type === 'bump' && this.lastSeg !== 'bump' && run.v > 0.5) {
+    if (seg.type === 'pothole' && this.lastSeg !== 'pothole' && run.v > 0.5) {
       this.car.bump(14 + run.v * 6);
       audio.playSfx(SFX.BUMP, { volume: Math.min(1, 0.4 + run.v / 10) });
     }
@@ -436,9 +477,12 @@ export class TrialScene extends BaseScene {
     if (seg.type === 'ruts') {
       return run.v > 6 ? this.hud.say('ruts', 'warn') : this.hud.say('rutsIn');
     }
+    if (seg.type === 'limit' || this.#nextHazard(run)?.type === 'limit')
+      if (run.v > 9 || seg.type !== 'limit')
+        return this.hud.say('limit', run.v > 11 ? 'warn' : 'info');
     if (
-      seg.type === 'bump' ||
-      (this.#nextHazard(run)?.type === 'bump' &&
+      seg.type === 'pothole' ||
+      (this.#nextHazard(run)?.type === 'pothole' &&
         this.#nextHazard(run).from - this.#local(run) < WARN_M)
     ) {
       return this.hud.say('bump', run.v > 5 ? 'warn' : 'info');
