@@ -82,9 +82,9 @@ export class TrialScene extends BaseScene {
     this.mud = this.#makeMud();
     this.fx = new TireFx(this, this.car); // дым и след шин на асфальте
     audio.playSfx(SFX.CAR_START);
-    this.engine = audio.loopSfx(SFX.ENGINE);
+    this.engine = audio.startEngine(gameState.build);
     this.sounds = new DriveSounds(this, this.test.surface);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.engine?.destroy());
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.engine?.stop());
 
     this.#buildHud();
     // Светофор — на экране сверху: трогается игрок сам, на зелёный.
@@ -385,7 +385,7 @@ export class TrialScene extends BaseScene {
     if (splash && !this.mud.emitting) this.mud.start();
     else if (!splash && this.mud.emitting) this.mud.stop();
 
-    this.engine?.setRate?.(0.6 + (run.rpm / run.stats.redline) * 0.9);
+    this.engine?.update(run, input);
     this.hud.render();
     this.sounds.update(run, { mud: seg.type === 'deep' && run.v > 1 ? 0.6 : 0 });
     this.#renderMeters();

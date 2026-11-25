@@ -4,6 +4,7 @@
  * звук начинается только после первого клика (экран «Нажмите, чтобы начать»).
  * Если файла ещё нет в кэше — молча пропускаем: каркас работает без ассетов.
  */
+import { createEngineVoice } from './engineVoice.js';
 import config from '../../data/config.json';
 import catalog from '../../data/sounds.json';
 
@@ -94,6 +95,29 @@ class AudioManager {
     if (volume <= 0) return null;
     this.game.sound.play(key, { ...extra, volume });
     return true;
+  }
+
+  startEngine(build) {
+    const sound = this.game?.sound;
+    if (!sound?.context || !sound.destination) return null;
+    const output = sound.context.createGain();
+    const applyLevel = () => {
+      output.gain.value = effectiveVolume('sfx');
+    };
+    applyLevel();
+    output.connect(sound.destination);
+    let voice = createEngineVoice(sound.context, output, build);
+    const unsubscribe = onSettingsChange(applyLevel);
+    return {
+      update: (run, input) => voice?.update(run, input),
+      stop() {
+        if (!voice) return;
+        unsubscribe();
+        voice.stop();
+        voice = null;
+        output.disconnect();
+      },
+    };
   }
 
   /** Зацикленный звук (мотор), громкость и высоту тона меняет вызывающий. */
