@@ -29,8 +29,11 @@ export function showRunOverlay(ui, o) {
     'section',
     { class: `ui-abs run-over ${tone}`, role: 'dialog', 'aria-modal': 'true' },
     [
-      el('div', { class: 'run-over__card' }, [
-        o.eyebrow ? el('div', { class: 'run-over__eyebrow', text: o.eyebrow }) : null,
+      el('div', { class: 'run-over__glow', 'aria-hidden': 'true' }),
+      el('div', { class: 'run-over__body' }, [
+        el('div', { class: 'run-over__badge', 'aria-hidden': 'true' }, [
+          icon(o.badge ?? (o.ok ? 'check' : 'close')),
+        ]),
         el('h1', { class: 'run-over__title', text: o.title }),
         o.text ? el('p', { class: 'run-over__text', text: tidy(o.text) }) : null,
         o.items
@@ -41,7 +44,7 @@ export function showRunOverlay(ui, o) {
                 el('li', {}, [
                   el('span', { class: 'run-over__num', text: String(i + 1) }),
                   el('div', {}, [
-                    el('b', { text: it.title }),
+                    el('b', { text: tidy(it.title) }),
                     it.text ? el('span', { text: tidy(it.text) }) : null,
                   ]),
                 ]),

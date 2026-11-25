@@ -1,13 +1,13 @@
 .map-picker {
   position: absolute;
   inset: 0;
+  /* Затемнение до краёв окна: на широких экранах сцена шире макета 1920. */
+  inset-inline: calc((1920px - var(--stage-width, 1920px)) / 2);
   z-index: 50;
   display: grid;
   grid-template: minmax(0, 1fr) / minmax(0, 1fr);
   padding: 2.5% 3.5%;
   background: rgb(18 16 14 / 76%);
-  /* Затемнение и за пределами макета 16:9 — без светлых полос по краям на нестандартных экранах. */
-  box-shadow: 0 0 0 4000px rgb(18 16 14 / 76%);
   color: var(--workshop-ink, #f5eee2);
   font-family: var(--font-ui);
   line-height: 1.3;
