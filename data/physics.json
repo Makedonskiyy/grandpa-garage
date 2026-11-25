@@ -15,6 +15,7 @@
     "clay": 0.075
   },
   "brakeMu": 0.9,
+  "handbrakeMultiplier": 1.12,
   "slip": {
     "kinetic": 0.72,
     "rise": 7,

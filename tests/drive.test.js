@@ -6,6 +6,7 @@ import {
   startRun,
   greenLight,
   shiftUp,
+  shiftDown,
   runBot,
   predict,
   summarize,
@@ -136,6 +137,82 @@ describe('баланс: идеальный водитель', () => {
 });
 
 describe('езда игрока', () => {
+  it('на месте можно включить первую с нейтрали, а вторую — после начала движения', () => {
+    const run = createRun('race', BASE);
+    greenLight(run);
+    expect(shiftUp(run)).toBe(true);
+    expect(run.gear).toBe(1);
+    expect(shiftUp(run)).toBe(false);
+
+    expect(shiftDown(run)).toBe(true);
+    expect(run.gear).toBe(0);
+    while (run.shiftTimer > 0) stepRun(run);
+    expect(shiftUp(run)).toBe(true);
+    while (run.shiftTimer > 0) stepRun(run);
+    expect(run.v).toBe(0);
+    expect(shiftUp(run)).toBe(false);
+
+    stepRun(run, { gas: 1 }, 0.1);
+    expect(run.v).toBeGreaterThan(0);
+    expect(shiftUp(run)).toBe(true);
+    expect(run.gear).toBe(2);
+  });
+
+  it.each([2, 3, 4, 5, 6])('после остановки на передаче %i трогается только с первой', (gear) => {
+    const run = createRun('trial_free', { ...BASE, gearbox: 'gearbox_close' });
+    greenLight(run);
+    startRun(run);
+    run.v = 20;
+    for (let next = 2; next <= gear; next++) {
+      expect(shiftUp(run)).toBe(true);
+      while (run.shiftTimer > 0) stepRun(run);
+    }
+    expect(run.gear).toBe(gear);
+    while (run.v > 0 && run.t < 10) stepRun(run, { handbrake: true });
+    expect(run.v).toBe(0);
+
+    const stoppedAt = run.x;
+    stepRun(run, { gas: 1 }, 0.1);
+    expect(run.v).toBe(0);
+    expect(run.x).toBe(stoppedAt);
+    expect(run.drive).toBe(0);
+
+    while (run.gear > 1) {
+      expect(shiftDown(run)).toBe(true);
+      while (run.shiftTimer > 0) stepRun(run);
+    }
+    stepRun(run, { gas: 1 }, 0.1);
+    expect(run.v).toBeGreaterThan(0);
+  });
+
+  it('ручник быстрее обычного тормоза, даже если газ удерживают', () => {
+    const initial = createRun('trial_free', BASE);
+    greenLight(initial);
+    startRun(initial);
+    initial.v = 20;
+
+    const stop = (input) => {
+      const run = structuredClone(initial);
+      while (run.v > 0 && run.t < 10) stepRun(run, input);
+      expect(run.v).toBe(0);
+      return run;
+    };
+
+    const normal = stop({ brake: 1 });
+    const handbrake = stop({ handbrake: true, gas: 1 });
+    const both = stop({ handbrake: true, brake: 1 });
+    expect(handbrake.t).toBeLessThan(normal.t);
+    expect(handbrake.x).toBeLessThan(normal.x);
+    expect(both.x).toBe(handbrake.x);
+    expect(handbrake.rearLocked).toBe(true);
+    expect(handbrake.drive).toBe(0);
+    expect(handbrake.lock).toBe(0);
+
+    stepRun(handbrake, { gas: 0.5 });
+    expect(handbrake.rearLocked).toBe(false);
+    expect(handbrake.drive).toBeGreaterThan(0);
+  });
+
   const fast = {
     ...BASE,
     tires: 'tires_slicks',

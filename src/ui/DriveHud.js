@@ -176,7 +176,7 @@ export class DriveHud {
     const zone = run.auto && run.started ? null : greenZone(run);
     this.inZone = Boolean(zone && run.rpm >= zone[0] && run.rpm <= zone[1]);
     let gear = String(run.gear);
-    if (!run.started) gear = 'N';
+    if (!run.started || run.gear === 0) gear = 'N';
     else if (run.shiftTimer > 0) gear = '·';
     this.tacho.render({
       value: run.rpm,

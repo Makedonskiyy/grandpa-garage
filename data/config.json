@@ -44,6 +44,7 @@
     "keys": {
       "gas": ["KeyW", "ArrowUp"],
       "brake": ["KeyS", "ArrowDown"],
+      "handbrake": ["Space"],
       "shiftUp": ["KeyE", "ShiftLeft", "ShiftRight"],
       "shiftDown": ["KeyQ", "ControlLeft", "ControlRight"]
     },
