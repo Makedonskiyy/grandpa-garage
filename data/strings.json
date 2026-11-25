@@ -323,7 +323,8 @@
     "toGarage": "В гараж",
     "freeDistance": "{m} м · макс. {v} км/ч · рекорд {best} км/ч",
     "freeSub": "макс {v} · рекорд {best} км/ч",
-    "ofTotal": "из {total} м"
+    "ofTotal": "из {total} м",
+    "briefGo": "Понятно, поехали"
   },
   "race": {
     "you": "Ты",
