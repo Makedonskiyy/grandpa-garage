@@ -311,13 +311,14 @@ export class CarRig extends Phaser.GameObjects.Container {
       .image(
         car.taillight.x - AX,
         car.taillight.y - AY - PIVOT_Y,
-        glowTexture(scene, 'fx_brake', 24, 36, (ctx) => {
-          const g = ctx.createRadialGradient(12, 18, 1, 12, 18, 16);
+        glowTexture(scene, 'fx_brake2', 44, 56, (ctx) => {
+          // Радиус меньше половины холста — ореол гаснет до края, без обрезанной рамки.
+          const g = ctx.createRadialGradient(22, 28, 1, 22, 28, 20);
           g.addColorStop(0, 'rgba(255,255,255,0.9)');
           g.addColorStop(0.35, 'rgba(255,255,255,0.35)');
           g.addColorStop(1, 'rgba(255,255,255,0)');
           ctx.fillStyle = g;
-          ctx.fillRect(0, 0, 24, 36);
+          ctx.fillRect(0, 0, 44, 56);
         }),
       )
       .setScale(1 / GLOW_K)
