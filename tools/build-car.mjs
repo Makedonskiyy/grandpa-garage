@@ -336,14 +336,12 @@ async function loadMaps() {
 
 // ---------- Детали, которых чертёж не даёт цветом (координаты чертежа, сетка 432) ----------
 
-// Поворотник R34 — янтарная секция в переднем углу фары (в профиле — её передний край).
+// Поворотник R34 — янтарная секция в заднем (внутреннем) конце фары, у крыла кузова.
 const TURN = [
-  [811, 153.6],
-  [815, 154.2],
-  [818.6, 157.6],
-  [824.6, 176],
-  [817, 178.6],
-  [811, 178.4],
+  [756, 150],
+  [766, 150.5],
+  [766, 179],
+  [756, 179],
 ];
 const LOWER_VENT = X2([
   [399, 105.6],
@@ -382,7 +380,7 @@ const HEAD_BIG = [
 ];
 // Секции фары (по x) и блики ламп — как на чертёжной фаре, только крупнее.
 const LAMPS = [
-  { x0: 760, x1: 785, glint: [771, 160] },
+  { x0: 769, x1: 787, glint: [777, 160] },
   { x0: 791, x1: 816, glint: [803, 162] },
 ];
 const MIRROR_BOX = { x0: 490, x1: 526, y0: 92, y1: 114 };
@@ -430,14 +428,15 @@ async function bodyMasks() {
       if (m.body.at(x, y) && ((x > 700 && y >= 240) || (x < 150 && y >= 232))) m.dark.put(x, y);
   m.side = m.door.or(m.quarter);
   m.glass = m.side.or(m.wind, m.rear);
-  const turnPoly = polyMask(TURN);
-  m.turn = turnPoly.minus(turnPoly.minus(m.head));
   m.vent = polyMask(LOWER_VENT);
   m.duct = polyMask(SIDE_DUCT);
   m.tail = ellipseMask(TAIL.cx, TAIL.cy, TAIL.rx, TAIL.ry, TAIL.tilt);
   // Фара — крупнее чертёжной, но в пределах кузова.
   const head = polyMask(HEAD_BIG);
   m.head = head.minus(head.minus(m.body));
+  // Поворотник — внутри новой фары (после неё: старая, чертёжная, меньше).
+  const turnPoly = polyMask(TURN);
+  m.turn = turnPoly.minus(turnPoly.minus(m.head));
   m.trim = m.dark.or(m.head, m.turn, m.vent, m.duct, m.marker, m.tail);
   m.hood = new Mask();
   const hood = X2([
