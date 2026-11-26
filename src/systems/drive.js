@@ -172,7 +172,8 @@ export function startRun(run) {
   run.started = true;
   run.gear = 1;
   run.reaction = run.t;
-  run.launchRpm = Math.max(run.rpm, run.ph.clutch.launchMinRpm);
+  // Под нагрузкой обороты проседают: сцепление не держит двигатель на отсечке.
+  run.launchRpm = clamp(run.rpm, run.ph.clutch.launchMinRpm, run.stats.redline * 0.96);
   // Автомат трогается мягко, как с гидротрансформатором: не выше лучших оборотов старта.
   if (run.auto) run.launchRpm = Math.min(run.launchRpm, bestLaunchRpm(run));
   run.events.push({ type: 'start', rpm: run.rpm });
@@ -357,7 +358,7 @@ function trialHazards(run, seg, surf, gas, drive, limit, h) {
         // Ниже безопасной скорости подвеска гасит удар целиком.
         const sp = Math.max(0, run.v - (surf.safeSpeed ?? 0)) / test.damage.refSpeed;
         run.damage += surf.hit * run.stats.impact * sp * sp;
-        run.events.push({ type: 'hit', v: run.v });
+        run.events.push({ type: 'hit', v: run.v, surface: at.type });
       }
     }
   }

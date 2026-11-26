@@ -87,8 +87,7 @@ export class TrialScene extends BaseScene {
     this.cover = this.#drawMudCover(); // грязь поверх колёс в глубоких участках
     this.mud = this.#makeMud();
     this.fx = new TireFx(this, this.car); // дым и след шин на асфальте
-    audio.playSfx(SFX.CAR_START);
-    this.engine = audio.startEngine(gameState.build);
+    this.engine = audio.startEngine(gameState.build, this.run);
     this.sounds = new DriveSounds(this, gameState.build.tires);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.engine?.stop());
 
@@ -481,11 +480,6 @@ export class TrialScene extends BaseScene {
     this.cover.x = this.track.x;
     this.startBox.x = CAR_X - run.x * PPM;
     const seg = segmentAt(this.test, run.x);
-    if (seg.type === 'pothole' && this.lastSeg !== 'pothole' && run.v > 0.5) {
-      this.car.bump(14 + run.v * 6);
-      audio.playSfx(SFX.BUMP, { volume: Math.min(1, 0.4 + run.v / 10) });
-    }
-    this.lastSeg = seg.type;
     if (seg.type === 'ruts' && Math.random() < dt * (1 + run.v * 0.9)) {
       this.car.bump(10 + run.v * 4);
       audio.playSfx(SFX.BUMP, { volume: Math.min(1, 0.3 + run.v / 12) });
@@ -540,6 +534,10 @@ export class TrialScene extends BaseScene {
   /** Подсказка: что впереди и что делать прямо сейчас. */
   #hints(run, seg) {
     for (const e of run.events.splice(0)) {
+      if (e.type === 'hit' && e.surface === 'pothole') {
+        this.car.bump(5 + e.v * 4);
+        audio.playSfx(SFX.BUMP, { volume: Math.min(1, 0.28 + e.v / 14) });
+      }
       if (e.type === 'overrev') this.hud.say('overrev', 'warn');
       if (e.type === 'early') this.hud.say('early', 'warn');
     }
