@@ -602,6 +602,26 @@
   color: #ff8a7e;
 }
 
+.race-progress {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 15%;
+  width: 70%;
+  height: 4px;
+  appearance: none;
+  accent-color: var(--ui-accent);
+}
+
+.race-progress::-webkit-progress-bar {
+  border-radius: 4px;
+  background: rgb(255 255 255 / 0.25);
+}
+
+.race-progress::-webkit-progress-value {
+  border-radius: 4px;
+  background: var(--ui-accent);
+}
+
 .drive-hint[data-slot='clock'] {
   top: 206px;
 }

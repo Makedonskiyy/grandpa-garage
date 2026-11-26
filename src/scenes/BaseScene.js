@@ -21,27 +21,30 @@ export class BaseScene extends Phaser.Scene {
   }
 
   /** Вызывать в начале create(): сброс флагов и появление сцены. */
-  enter() {
+  enter({ steadyCamera = false } = {}) {
     closeAllModals();
     this._leaving = false;
     this._ui = null;
+    this._steadyCamera = steadyCamera;
     this.input.enabled = true;
     const cam = this.cameras.main;
     fitCamera(cam); // мир 640×360 на весь холст
     if (isShutterClosed()) {
       // Сцена появляется из-под ставни с лёгким отъездом камеры.
-      const zoom = getRenderZoom();
-      cam
-        .setOrigin(0.5)
-        .setZoom(zoom * 1.04)
-        .centerOn(WORLD.width / 2, WORLD.height / 2);
-      this.tweens.add({
-        targets: cam,
-        zoom,
-        duration: 900,
-        ease: 'Sine.easeOut',
-        onComplete: () => fitCamera(cam),
-      });
+      if (!steadyCamera) {
+        const zoom = getRenderZoom();
+        cam
+          .setOrigin(0.5)
+          .setZoom(zoom * 1.04)
+          .centerOn(WORLD.width / 2, WORLD.height / 2);
+        this.tweens.add({
+          targets: cam,
+          zoom,
+          duration: 900,
+          ease: 'Sine.easeOut',
+          onComplete: () => fitCamera(cam),
+        });
+      }
       // Кадр на отрисовку сцены, затем ставня вверх.
       this.time.delayedCall(60, openShutter);
     } else {
@@ -58,10 +61,12 @@ export class BaseScene extends Phaser.Scene {
     this.input.enabled = false;
     if (this._ui) this._ui.style.pointerEvents = 'none';
     // Камера чуть наезжает, пока ставня опускается.
-    const cam = this.cameras.main;
-    const zoom = cam.zoom;
-    cam.setOrigin(0.5).centerOn(WORLD.width / 2, WORLD.height / 2);
-    this.tweens.add({ targets: cam, zoom: zoom * 1.03, duration: 420, ease: 'Sine.easeIn' });
+    if (!this._steadyCamera) {
+      const cam = this.cameras.main;
+      const zoom = cam.zoom;
+      cam.setOrigin(0.5).centerOn(WORLD.width / 2, WORLD.height / 2);
+      this.tweens.add({ targets: cam, zoom: zoom * 1.03, duration: 420, ease: 'Sine.easeIn' });
+    }
     closeShutter().then(() => this.scene.start(key, data));
   }
 }

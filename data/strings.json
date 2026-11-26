@@ -347,6 +347,7 @@
     "startLine": "СТАРТ",
     "finishLine": "ФИНИШ",
     "gapEven": "Вровень с Палычем",
+    "progress": "Дистанция до финиша",
     "gapRival": "Палыч впереди на {m} м",
     "gapYou": "Ты впереди на {m} м",
     "taunts": {
@@ -408,6 +409,9 @@
     "raceTime": "Время заезда: {time} с",
     "winningParts": "Победная сборка: {parts}",
     "playAgain": "Играть снова",
+    "menu": "В главное меню",
+    "exit": "Закрыть игру",
+    "closeTab": "Можно закрыть вкладку. Прогресс сохранён.",
     "title": "Палыч обогнан",
     "attemptsLabel": "Попытки",
     "attemptsValue": "обкатка {trial} · заезд {race}",

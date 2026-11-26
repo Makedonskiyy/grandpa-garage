@@ -1706,7 +1706,48 @@ kbd {
 
 .ending-panel__actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 16px;
+}
+
+.credits-choice {
+  inset: 0 var(--scene-bleed);
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 24px;
+  padding: 40px;
+  color: var(--ui-text);
+  text-align: center;
+}
+
+.credits-choice h1 {
+  margin: 0;
+  font: 500 84px/1.1 var(--font-story);
+}
+
+.credits-choice__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px;
+}
+
+.credits-choice .wbtn {
+  height: 76px;
+  padding: 0 32px;
+  font-size: 26px;
+  border-radius: 18px;
+}
+
+.credits-choice .icon {
+  width: 28px;
+  height: 28px;
+}
+
+.credits-choice__message {
+  min-height: 1.5em;
+  margin: 0;
 }
 
 /* Ссылка на GitHub в меню — иконка в правом верхнем углу. */

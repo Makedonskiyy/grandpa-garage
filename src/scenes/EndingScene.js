@@ -5,7 +5,7 @@ import { drawGarageRoom, placeGarageCar } from './garageBackdrop.js';
 import { StoryStage } from '../systems/StoryStage.js';
 import { audio } from '../systems/AudioManager.js';
 import { formatSeconds, getPart } from '../systems/simulate.js';
-import { gameState, resetGame } from '../gameState.js';
+import { gameState } from '../gameState.js';
 import { el } from '../ui/dom.js';
 import { webButton } from '../ui/components.js';
 import { t } from '../systems/strings.js';
@@ -13,7 +13,7 @@ import { t } from '../systems/strings.js';
 // Победившая машина в центре под лампой — как в гараже, только крупнее итогов.
 const STAGE = { carX: 320, groundY: 248, scale: 1.3 };
 
-/** Финал (ТЗ 3.11): реплики 16–19, машина в гараже, итоги, «Играть снова». */
+/** Победившая машина, итог заезда и переход к титрам. */
 export class EndingScene extends BaseScene {
   constructor() {
     super(SCENES.ENDING);
@@ -32,6 +32,7 @@ export class EndingScene extends BaseScene {
     }));
 
     await new StoryStage(this).play('ending');
+    if (!this.scene.isActive()) return;
 
     const win = gameState.winningResult;
     const parts = partsData.slots
@@ -59,10 +60,6 @@ export class EndingScene extends BaseScene {
             icon: 'play',
           }),
           webButton(t('ending.toGarage'), () => this.goTo(SCENES.GARAGE), { icon: 'service' }),
-          webButton(t('ending.playAgain'), () => {
-            resetGame();
-            this.goTo(SCENES.MENU);
-          }),
         ]),
       ]),
     );

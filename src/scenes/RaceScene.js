@@ -44,7 +44,7 @@ export class RaceScene extends BaseScene {
   }
 
   async create(data = {}) {
-    this.enter();
+    this.enter({ steadyCamera: true });
     audio.playMusic(MUSIC.DRIVE);
     this.ambience = AMB.NIGHT;
     audio.playAmbience(this.ambience);
@@ -61,7 +61,8 @@ export class RaceScene extends BaseScene {
     });
     this.rivalDist = 0;
     this.said = new Set();
-    this.shook = false;
+    this.viewDistance = 0;
+    this.coastSpeed = 0;
     this.state = 'intro';
 
     this.world = new CityWorld(this, { seed: gameState.flags.worldSeed ?? 1, ppm: PPM });
@@ -140,10 +141,17 @@ export class RaceScene extends BaseScene {
   #buildHud() {
     this.$time = el('div', { class: 'race-clock__value', text: '0,00' });
     this.$gap = el('div', { class: 'race-gap' });
+    this.$progress = el('progress', {
+      class: 'race-progress',
+      max: this.total,
+      value: 0,
+      'aria-label': t('race.progress'),
+    });
     this.$clock = el('div', { class: 'ui-abs race-clock' }, [
       el('div', { class: 'race-clock__label', text: t('race.timer') }),
       this.$time,
       this.$gap,
+      this.$progress,
     ]);
     // Метка Палыча у края экрана, когда он ушёл из кадра.
     this.$edgeText = el('span');
@@ -154,7 +162,14 @@ export class RaceScene extends BaseScene {
 
   /** x на экране для метра трассы — по переднему бамперу игрока. */
   #x(m) {
-    return this.frontX + (m - this.run.x) * PPM;
+    return this.frontX + (m - this.viewDistance) * PPM;
+  }
+
+  #scrollTrack() {
+    const scroll = this.viewDistance * PPM;
+    this.world.update(scroll);
+    this.marks.back.x = this.frontX - scroll;
+    this.marks.front.x = this.frontX - scroll;
   }
 
   /**
@@ -279,9 +294,19 @@ export class RaceScene extends BaseScene {
       if (run.done) return this.#finish(); // тронулся раньше — фальстарт
     }
     if (this.state !== 'running') {
-      // Подвеска успокаивается до старта и после финиша; перегазовка чуть приседает.
-      const rev = this.state === 'tree' ? input.gas * 0.8 : 0;
-      this.player.step(dt, { accel: rev - input.brake * 2 });
+      // После финиша машина докатывается. Время и дистанция результата уже зафиксированы.
+      const previousSpeed = this.coastSpeed;
+      this.coastSpeed = Math.max(0, this.coastSpeed - dt * 22);
+      const coast = (previousSpeed + this.coastSpeed) * 0.5 * dt;
+      if (coast > 0) {
+        this.viewDistance += coast;
+        this.#scrollTrack();
+        this.#placeRival();
+      }
+      this.player.step(dt, {
+        distance: coast * (car.wheels.radius / run.ph.wheelRadius) * this.player.scaleX,
+        accel: dt > 0 ? (this.coastSpeed - previousSpeed) / dt : 0,
+      });
       this.#tireFx(dt, false);
       this.hud.render();
       this.engine?.update(run, input);
@@ -294,22 +319,14 @@ export class RaceScene extends BaseScene {
     this.#hints(run);
 
     // Город, разметка и финиш едут навстречу; машина игрока стоит на месте.
-    const scroll = run.x * PPM;
-    this.world.update(scroll);
-    this.marks.back.x = this.frontX - scroll;
-    this.marks.front.x = this.frontX - scroll;
+    this.viewDistance = run.x;
+    this.#scrollTrack();
     const toWheel = (car.wheels.radius / run.ph.wheelRadius) * this.player.scaleX;
     this.player.step(dt, {
       distance: (run.x - prevX) * toWheel * (1 + run.slip * 2) + run.slip * 3,
       accel: run.accel ?? 0,
       rearLocked: run.rearLocked,
     });
-    // Рывок камеры при срыве со старта.
-    if (!this.shook && run.x > 0.3) {
-      this.shook = true;
-      this.cameras.main.shake(260, 0.004);
-    }
-
     const prevRival = this.rivalDist;
     this.rivalDist = this.rivalRun.at(run.t);
     spinWheels(this.rival, (this.rivalDist - prevRival) * PPM);
@@ -320,10 +337,10 @@ export class RaceScene extends BaseScene {
     this.hud.render();
     this.sounds.update(run, input, 'asphalt');
     this.$time.textContent = formatSeconds(run.t);
+    this.$progress.value = Math.min(this.total, run.x);
     this.engine?.update(run, input);
 
-    const rivalDone = run.t >= this.test.rivalTime;
-    if ((run.done && (rivalDone || run.reasonKey === 'jump')) || run.t > MAX_SEC) this.#finish();
+    if (run.done || run.t >= MAX_SEC) this.#finish();
   }
 
   /** Разрыв под секундомером, метка Палыча у края экрана, реплики по ходу. */
@@ -385,6 +402,7 @@ export class RaceScene extends BaseScene {
   #finish() {
     if (this.state === 'finished') return;
     this.state = 'finished';
+    this.coastSpeed = this.run.reasonKey === 'broken' ? 0 : this.run.v;
     if (this.run.reasonKey === 'jump') {
       this.light.foul();
       audio.playSfx(SFX.FOUL);
@@ -409,6 +427,7 @@ export class RaceScene extends BaseScene {
       this.hud.setVisible(false);
       this.light.setVisible(false);
       this.$edge.hidden = true;
+      this.$clock.classList.add('is-hidden');
       const ok = this.result.ok;
       const close = showRunOverlay(this.ui, {
         ok,
