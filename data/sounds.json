@@ -104,7 +104,7 @@
     {
       "key": "ui_click",
       "group": "ui",
-      "duration": "0.1–0.2",
+      "duration": "0.075",
       "loop": false,
       "volume": 0.6,
       "what": "Обычное нажатие: мягкий щелчок тумблера"
@@ -112,7 +112,7 @@
     {
       "key": "ui_click_2",
       "group": "ui",
-      "duration": "0.12",
+      "duration": "0.075",
       "loop": false,
       "volume": 0.6,
       "what": "Второй вариант короткого щелчка кнопки"
@@ -120,7 +120,7 @@
     {
       "key": "ui_click_3",
       "group": "ui",
-      "duration": "0.12",
+      "duration": "0.075",
       "loop": false,
       "volume": 0.6,
       "what": "Третий вариант короткого щелчка кнопки"
@@ -234,7 +234,7 @@
     {
       "key": "tune_install",
       "group": "garage",
-      "duration": "0.5–0.8",
+      "duration": "0.27",
       "loop": false,
       "volume": 0.7,
       "what": "Поставить деталь: болты и глухой металлический стук"
@@ -242,7 +242,7 @@
     {
       "key": "tune_remove",
       "group": "garage",
-      "duration": "0.5–0.8",
+      "duration": "0.29",
       "loop": false,
       "volume": 0.6,
       "what": "Снять деталь: откручивание, деталь кладут на пол"
@@ -250,7 +250,7 @@
     {
       "key": "tune_wheel",
       "group": "garage",
-      "duration": "0.6–1.0",
+      "duration": "0.36",
       "loop": false,
       "volume": 0.7,
       "what": "Шины и диски: гайковёрт"

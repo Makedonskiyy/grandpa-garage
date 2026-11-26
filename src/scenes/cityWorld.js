@@ -62,24 +62,6 @@ function vgrad(ctx, x, y, w, h, top, bottom) {
 }
 
 /** Неоновая надпись: светящийся ореол и яркая сердцевина. */
-function neon(ctx, text, x, y, size, color, align = 'center') {
-  ctx.save();
-  ctx.font = `700 ${size}px ${FONT}`;
-  ctx.textAlign = align;
-  ctx.textBaseline = 'middle';
-  ctx.shadowColor = color;
-  ctx.shadowBlur = size * 1.4;
-  ctx.fillStyle = color;
-  ctx.fillText(text, x, y);
-  ctx.shadowBlur = size * 0.5;
-  ctx.fillText(text, x, y);
-  ctx.shadowBlur = 0;
-  ctx.globalAlpha = 0.75;
-  ctx.fillStyle = '#fff6e8';
-  ctx.fillText(text, x, y);
-  ctx.restore();
-}
-
 /** Мягкое пятно света (натриевый фонарь, окно, вывеска). */
 function glow(ctx, x, y, rx, ry, color, a) {
   ctx.save();
@@ -609,48 +591,6 @@ function busShelter(ctx, o) {
   ctx.fillRect(x + 8, base - 10, w - 26, 1.6);
 }
 
-function metro(ctx, o) {
-  const { x } = o;
-  const base = SIDEWALK + 2;
-  const w = 46;
-  vgrad(ctx, x, base - 26, w, 26, '#3a3d42', '#24262a');
-  ctx.fillStyle = '#9fd2a8';
-  ctx.globalAlpha = 0.45;
-  ctx.fillRect(x + 6, base - 14, w - 12, 14);
-  ctx.globalAlpha = 1;
-  glow(ctx, x + w / 2, base - 6, 30, 12, '170,255,190', 0.25);
-  ctx.fillStyle = '#1b1c1f';
-  ctx.fillRect(x - 2, base - 30, w + 4, 6);
-  neon(ctx, 'ПЕРЕХОД', x + w / 2, base - 27, 4.4, '#f4f0e6');
-  neon(ctx, 'М', x + w / 2, base - 38, 10, '#ff2a2a');
-  glow(ctx, x + w / 2, base - 38, 18, 14, '255,40,40', 0.3);
-}
-
-function kiosk(ctx, o) {
-  const { x, r } = o;
-  const base = SIDEWALK + 2;
-  const w = 40;
-  vgrad(ctx, x, base - 24, w, 24, '#cfc8b6', '#8f8878');
-  ctx.fillStyle = '#16171a';
-  ctx.fillRect(x + 3, base - 19, w - 6, 11);
-  vgrad(ctx, x + 4, base - 18, w - 8, 9, 'rgba(255,220,160,0.85)', 'rgba(255,190,120,0.5)');
-  for (let i = 0; i < 9; i++) {
-    ctx.fillStyle = pick(r, ['#c94a3a', '#2f6fb0', '#e0a13a', '#3d8a5a', '#f2efe6']);
-    ctx.fillRect(x + 5 + i * 3.4, base - 17 + (i % 3) * 2.6, 2.4, 2);
-  }
-  ctx.fillStyle = '#b23a2a';
-  ctx.fillRect(x - 1, base - 28, w + 2, 5);
-  neon(
-    ctx,
-    pick(r, ['ОБМЕН ВАЛЮТ', 'ПЕЧАТЬ', 'ЦВЕТЫ 24', 'ТАБАК']),
-    x + w / 2,
-    base - 25.5,
-    3.6,
-    '#fff3d6',
-  );
-  glow(ctx, x + w / 2, base - 12, 30, 12, '255,200,130', 0.25);
-}
-
 function fence(ctx, x0, x1) {
   const base = SIDEWALK + 2;
   ctx.fillStyle = '#2a2c30';
@@ -660,28 +600,6 @@ function fence(ctx, x0, x1) {
   for (let x = Math.ceil(x0 / 44) * 44; x < x1; x += 44) ctx.fillRect(x - 0.5, base - 11, 1.4, 11);
 }
 
-function poleAd(ctx, o) {
-  const { x, r } = o;
-  const base = SIDEWALK + 2;
-  const [title, sub, bg, fg] = pick(r, ROOF_ADS);
-  ctx.fillStyle = '#2a2c30';
-  ctx.fillRect(x + 13, base - 40, 2.4, 40);
-  ctx.fillRect(x - 1, base - 72, 30, 34);
-  vgrad(ctx, x, base - 71, 28, 32, bg, bg);
-  glow(ctx, x + 14, base - 55, 24, 24, '255,240,210', 0.18);
-  ctx.save();
-  ctx.translate(x + 14, base - 55);
-  ctx.font = `800 4.6px ${FONT}`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillStyle = fg;
-  const words = title.split(' ');
-  words.forEach((wd, i) => ctx.fillText(wd, 0, -4 + i * 5.4 - (words.length - 1) * 2));
-  ctx.font = `500 2.8px ${FONT}`;
-  ctx.fillText(sub, 0, 10);
-  ctx.restore();
-}
-
 const DRAW = {
   stalinka,
   khrushchevka,
@@ -689,9 +607,6 @@ const DRAW = {
   light: streetLight,
   tree: autumnTree,
   shelter: busShelter,
-  metro,
-  kiosk,
-  poleAd,
 };
 
 // ---------- Генерация ----------
@@ -719,14 +634,14 @@ function chunkObjects(seed, spec, ci) {
           kind: 'khrushchevka',
           x,
           w,
-          ad: r() < 0.3 ? pick(r, ROOF_ADS) : null,
+          ad: r() < 0.12 ? pick(r, ROOF_ADS) : null,
           shop: r() < 0.4,
           span: w + 10,
         });
       x += w + (r() < 0.25 ? 14 + r() * 20 : 0);
     }
   } else if (spec.id === 'street') {
-    // Фонари — ровным шагом, между ними — деревья, остановки, метро, ларьки, щиты.
+    // Фонари — ровным шагом, между ними — деревья и редкие остановки.
     const step = 150;
     for (let n = Math.floor(x0 / step); n * step < x0 + CW; n++) {
       const lx = n * step + 20;
@@ -735,10 +650,7 @@ function chunkObjects(seed, spec, ci) {
       const mid = n * step + 60;
       if (mid < x0 || mid >= x0 + CW) continue;
       const v = rs();
-      if (v < 0.16) add({ kind: 'metro', x: mid, span: 60 });
-      else if (v < 0.36) add({ kind: 'shelter', x: mid, span: 70 });
-      else if (v < 0.5) add({ kind: 'kiosk', x: mid + 10, span: 50 });
-      else if (v < 0.6) add({ kind: 'poleAd', x: mid + 20, span: 40 });
+      if (v < 0.18) add({ kind: 'shelter', x: mid, span: 70 });
       for (let k = 0; k < 2; k++)
         if (rs() < 0.65)
           add({ kind: 'tree', x: n * step + 45 + k * 70 + rs() * 20, h: 50 + rs() * 30, span: 40 });
