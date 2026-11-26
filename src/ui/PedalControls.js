@@ -121,8 +121,9 @@ export class PedalControls {
 
   #bindKeyboard() {
     this.onKeyDown = (e) => {
+      if (isModalOpen()) return;
       if (isPedalKey(e.code, 'handbrake')) {
-        if (!this.enabled || isModalOpen()) return;
+        if (!this.enabled) return;
         e.preventDefault();
         if (!e.repeat) this.keys.add(e.code);
         return;

@@ -924,6 +924,41 @@ kbd {
   overflow: hidden;
 }
 
+.story__workbench {
+  display: none;
+}
+
+.story-layer.has-workbench .story__workbench {
+  display: block;
+  inset: auto var(--scene-bleed) 0;
+  height: 302px;
+  border-top: 4px solid #a97646;
+  background:
+    linear-gradient(90deg, #21140ccc, transparent 35% 73%, #21140caa),
+    linear-gradient(transparent 47%, #29170e 47% 50%, #50321e 50% 53%, #352419 53%),
+    repeating-linear-gradient(0deg, #775030 0 3px, #694528 3px 5px, #805636 5px 17px);
+  box-shadow: 0 -5px 16px #1c110963;
+}
+
+.story-layer.has-workbench .story-note__folded {
+  left: 58%;
+  bottom: 190px;
+  width: 248px;
+  height: 140px;
+  margin-left: -124px;
+  transform: rotate(-7deg) skewX(-8deg);
+  animation: none;
+}
+
+.story-layer.has-workbench .story-note__folded:hover {
+  transform: rotate(-7deg) skewX(-8deg) translateY(-6px);
+}
+
+.story-layer.has-workbench .story-note.is-folded .story-note__hint {
+  left: 58%;
+  bottom: 54px;
+}
+
 /* Персонаж: корень — выход на сцену, тело — фокус (кто говорит), спрайт — дыхание. */
 .story__actor {
   position: absolute;
@@ -1499,15 +1534,24 @@ kbd {
   left: 40px;
   right: 40px;
   bottom: 40px;
-  height: 168px;
-  padding: 0 48px;
+  max-height: 380px;
+  overflow: auto;
+  padding: 26px 32px 20px;
   display: grid;
-  grid-template-columns: 1.2fr 1fr 1fr 1.6fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 40px;
+  gap: 16px 28px;
+}
+
+.ending-panel__summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 32px;
 }
 
 .ending-panel__title {
+  margin: 0;
   font-size: 40px;
   font-weight: 500;
   line-height: 1.15;
@@ -1526,12 +1570,26 @@ kbd {
   font-variant-numeric: tabular-nums;
 }
 
-.ending-panel .wbtn {
-  height: 80px;
-  padding: 0 36px;
-  font-size: 24px;
-  border-radius: 16px;
-  box-shadow: none;
+.ending-panel__build {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--ui-line-strong);
+  padding-top: 12px;
+  font-size: 22px;
+}
+
+.ending-panel__build summary {
+  width: fit-content;
+  cursor: pointer;
+}
+
+.ending-panel__build ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  padding: 0;
+  margin: 12px 0 0;
+  list-style: none;
+  color: var(--ui-text-2);
 }
 
 .ending-panel .icon {
@@ -1713,6 +1771,7 @@ kbd {
 .ending-panel__actions {
   display: flex;
   flex-wrap: wrap;
+  justify-content: end;
   gap: 16px;
 }
 
@@ -1760,4 +1819,106 @@ kbd {
 .menu-github {
   top: 40px;
   right: 40px;
+}
+
+/* Выбор соперника и профиль для тестовых дуэлей. */
+.duel-actions,
+.duel-label {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.duel-lobby > p,
+.duel-players p,
+.duel-invite p {
+  margin: 0;
+}
+
+.duel-count {
+  font-weight: 650;
+}
+
+.duel-status,
+.duel-empty,
+.duel-players p {
+  color: var(--ui-text-2);
+  font-size: 21px;
+}
+
+.duel-form,
+.duel-lobby {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+}
+
+.duel-form p {
+  margin: 0;
+}
+
+.duel-nick {
+  min-width: 0;
+  max-width: 100%;
+  width: 300px;
+  min-height: 54px;
+  padding: 0 16px;
+  border: 1px solid var(--ui-line-strong);
+  border-radius: 10px;
+  background: var(--ui-d0);
+  color: var(--ui-text);
+  font: inherit;
+}
+
+.duel-button,
+.map-picker .duel-button {
+  width: fit-content;
+  height: 58px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 12px;
+  font: 650 22px/1 var(--font-ui);
+  box-shadow: none;
+}
+
+.duel-form > .duel-button {
+  background: var(--ui-accent);
+  color: var(--ui-ink);
+  cursor: pointer;
+}
+
+.duel-invite:empty,
+.duel-status:empty {
+  display: none;
+}
+
+.duel-invite,
+.duel-players {
+  width: 100%;
+}
+
+.duel-invite:not(:empty),
+.duel-players li {
+  padding: 14px 20px;
+  border: 1px solid var(--ui-line);
+  border-radius: 12px;
+}
+
+.duel-invite .duel-actions {
+  margin-top: 12px;
+}
+
+.duel-players {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.duel-players li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 8px;
 }

@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { TireFx } from '../systems/TireFx.js';
 import config from '../../data/config.json';
 import car from '../../data/car.json';
+import cosmetics from '../../data/cosmetics.json';
 import { BaseScene } from './BaseScene.js';
 import { SCENES, MUSIC, SFX, AMB } from '../config/constants.js';
 import { buildCar, buildRivalCar } from '../systems/buildCar.js';
@@ -21,6 +22,8 @@ import { t } from '../systems/strings.js';
 import { DriveSounds } from '../systems/DriveSounds.js';
 import { DriveHud } from '../ui/DriveHud.js';
 import { CityWorld } from './cityWorld.js';
+import { DUEL_COUNTDOWN_MS, DUEL_DISTANCE, DUEL_SECONDS } from '../../server/duel-rules.js';
+import { duelBuild, duelCondition, leaveLobby, lobbyRequest } from '../systems/multiplayer.js';
 
 const cfg = config.race;
 const MAX_SEC = 30; // дальше ждать нет смысла — Палыч давно на финише
@@ -50,10 +53,16 @@ export class RaceScene extends BaseScene {
     audio.playAmbience(this.ambience);
 
     this.test = getTest('race');
-    const auto = getSettings().gearbox === 'auto';
-    this.run = createRun('race', gameState.build, { condition: gameState.car, auto });
-    this.best = runBot('race', gameState.build, { condition: gameState.car });
-    this.total = this.test.formula.distance;
+    this.duel = data.duel ? { ...data.duel } : null;
+    this.playerLaneY = this.duel ? 274 : cfg.playerLaneY;
+    const build = this.duel ? duelBuild : gameState.build;
+    const condition = this.duel ? duelCondition : gameState.car;
+    const auto = !this.duel && getSettings().gearbox === 'auto';
+    this.run = createRun('race', build, { condition, auto });
+    this.best = this.duel ? null : runBot('race', build, { condition });
+    this.total = this.duel ? DUEL_DISTANCE : this.test.formula.distance;
+    this.run.length = this.total;
+    this.rivalName = this.duel?.rival ?? t('race.rival');
     this.rivalRun = rivalProfile({
       distance: this.total,
       time: this.test.rivalTime,
@@ -65,22 +74,33 @@ export class RaceScene extends BaseScene {
     this.coastSpeed = 0;
     this.state = 'intro';
 
-    this.world = new CityWorld(this, { seed: gameState.flags.worldSeed ?? 1, ppm: PPM });
+    this.world = new CityWorld(this, {
+      seed: this.duel ? 1 : (gameState.flags.worldSeed ?? 1),
+      ppm: PPM,
+    });
     this.marks = this.#drawMarks(); // старт и финиш: полоса и арка над дорогой
     // Заглушка Палыча на дальней полосе в масштабе машины игрока.
-    this.rival = buildRivalCar(this, {
+    const rivalPose = {
       x: 0,
       y: cfg.rivalLaneY,
       scale: cfg.carScale,
-    });
+    };
+    this.rival = this.duel
+      ? buildCar(
+          this,
+          build,
+          { ...cosmetics.defaults, paint: 'blue' },
+          { ...rivalPose, night: true },
+        )
+      : buildRivalCar(this, rivalPose);
     this.rival.front = cfg.playerFront * cfg.carScale;
     this.rival.plateOffset = 100 * cfg.carScale;
-    this.player = buildCar(this, gameState.build, gameState.cosmetics, {
+    this.player = buildCar(this, build, this.duel ? cosmetics.defaults : gameState.cosmetics, {
       x: cfg.playerX,
-      y: cfg.playerLaneY,
+      y: this.playerLaneY,
       scale: cfg.carScale,
       night: true,
-      dirty: gameState.car.dirty && 'dust',
+      dirty: condition.dirty && 'dust',
     });
     this.player.front = cfg.playerFront * cfg.carScale;
     this.player.plateOffset = 92 * cfg.carScale;
@@ -89,7 +109,8 @@ export class RaceScene extends BaseScene {
     this.marks.front.x = this.frontX;
     // Ближняя стойка и перекладина арки — поверх машин.
     this.children.bringToTop(this.marks.front);
-    this.#nameplate(this.rival, t('race.rival'));
+    this.#nameplate(this.rival, this.rivalName);
+    if (this.duel) this.#nameplate(this.player, 'Вы');
     this.#placeRival();
     this.fx = new TireFx(this, this.player); // дым из-под шин и след на асфальте
 
@@ -97,15 +118,15 @@ export class RaceScene extends BaseScene {
     // Светофор — на экране сверху; после зелёного уходит, на его место встаёт секундомер.
     this.light = new ScreenLight(this);
     this.light.setVisible(false);
-    this.engine = audio.startEngine(gameState.build, this.run);
-    this.sounds = new DriveSounds(this, gameState.build.tires);
+    this.engine = audio.startEngine(build, this.run);
+    this.sounds = new DriveSounds(this, build.tires);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.engine?.stop());
 
     this.hud.setVisible(false);
     this.$clock.style.visibility = 'hidden';
     this.hud.setEnabled(false);
     // «Попробовать снова» — сразу к старту, без реплик перед заездом.
-    if (!data.retry) {
+    if (!this.duel && !data.retry) {
       await new StoryStage(this).play('preRace');
       // Пока шла сценка, игрок мог уйти из сцены.
       if (!this.scene.isActive() || this._leaving) return;
@@ -119,6 +140,28 @@ export class RaceScene extends BaseScene {
     this.state = 'tree';
     this.hud.setHintSlot('light');
     this.hud.say(this.run.auto ? 'launchAuto' : 'launch');
+    if (this.duel) {
+      const { token } = this.duel;
+      const disconnect = () => leaveLobby(token);
+      window.addEventListener('pagehide', disconnect, { once: true });
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+        window.removeEventListener('pagehide', disconnect);
+        disconnect();
+      });
+      this.duel.lastContact = performance.now();
+      this.duel.nextPoll = 0;
+      this.duel.sequence = 0;
+      this.duel.roundTrip = Infinity;
+      this.duelStatus = el('div', {
+        class: 'ui-abs duel-race-status',
+        role: 'status',
+        text: 'Ждём подключения обоих игроков',
+      });
+      this.ui.append(this.duelStatus);
+      this.hud.setEnabled(false);
+      this.light.show([0]);
+      return;
+    }
     this.#taunt('start');
     this.light.run(this.test.christmasTree, {
       onAmber: () => audio.playSfx(SFX.TREE_BEEP),
@@ -262,7 +305,7 @@ export class RaceScene extends BaseScene {
 
   /** Реплика Палыча над его машиной — каждая не больше раза за заезд. */
   #taunt(key) {
-    if (this.said.has(key)) return;
+    if (this.duel || this.said.has(key)) return;
     this.said.add(key);
     this.bubble?.destroy();
     const b = this.add
@@ -298,6 +341,7 @@ export class RaceScene extends BaseScene {
     const dt = delta / 1000;
     const input = this.hud.input(dt);
     const run = this.run;
+    if (this.duel) this.#updateDuel(dt);
     if (this.state === 'tree') {
       stepRun(run, input, dt); // мотор на нейтрали, до зелёного
       if (run.done) return this.#finish(); // тронулся раньше — фальстарт
@@ -324,7 +368,7 @@ export class RaceScene extends BaseScene {
 
     const prevX = run.x;
     stepRun(run, input, dt);
-    if (prevX <= 20 && run.x > 20) this.player.setRoadDirt('dust');
+    if (!this.duel && prevX <= 20 && run.x > 20) this.player.setRoadDirt('dust');
     this.#hints(run);
 
     // Город, разметка и финиш едут навстречу; машина игрока стоит на месте.
@@ -336,7 +380,7 @@ export class RaceScene extends BaseScene {
       accel: run.accel ?? 0,
       rearLocked: run.rearLocked,
     });
-    this.rivalDist = this.rivalRun.at(run.t);
+    if (!this.duel) this.rivalDist = this.rivalRun.at(run.t);
     this.#placeRival();
     this.#gap();
 
@@ -347,7 +391,129 @@ export class RaceScene extends BaseScene {
     this.$progress.value = Math.min(this.total, run.x);
     this.engine?.update(run, input);
 
-    if (run.done || run.t >= MAX_SEC) this.#finish();
+    if (run.done || (this.duel ? this.#duelElapsed() >= DUEL_SECONDS : run.t >= MAX_SEC))
+      this.#finish();
+  }
+
+  #duelElapsed() {
+    if (this.duel.startAt === null) return -Infinity;
+    return (performance.now() + this.duel.clockOffset - this.duel.startAt) / 1000;
+  }
+
+  #updateDuel(dt) {
+    const duel = this.duel;
+    if (duel.closed) return;
+    const now = performance.now();
+    const elapsed = this.#duelElapsed();
+    if (this.state === 'tree' && duel.startAt !== null) {
+      const phase = Math.min(3, Math.max(0, Math.floor(4 + elapsed / (DUEL_COUNTDOWN_MS / 4000))));
+      if (elapsed >= 0) {
+        this.light.show([4]);
+        audio.playSfx(SFX.TREE_GO);
+        greenLight(this.run);
+        this.state = 'running';
+        this.time.delayedCall(1400, () => {
+          this.light.hide();
+          this.$clock.classList.remove('is-hidden');
+          this.hud.setHintSlot('clock');
+        });
+      } else if (duel.phase !== phase) {
+        duel.phase = phase;
+        this.light.show([0, 1, 2, 3].slice(0, phase + 1));
+        if (phase > 0) audio.playSfx(SFX.TREE_BEEP);
+      }
+    }
+    const previous = this.rivalDist;
+    this.rivalDist += Math.max(0, (duel.peer?.distance ?? 0) - previous) * Math.min(1, dt * 12);
+    if (duel.peer?.done && duel.peer.distance - this.rivalDist < 0.1) {
+      this.rivalDist = duel.peer.distance;
+    }
+    this.rival.step(dt, { distance: (this.rivalDist - previous) * PPM });
+    this.#placeRival();
+    if (now - duel.lastContact > 12000) return this.#showDuelResult(null);
+    this.duelStatus.textContent =
+      now - duel.lastContact > 1500
+        ? 'Восстанавливаем связь…'
+        : duel.startAt === null
+          ? 'Ждём подключения обоих игроков'
+          : '';
+    if (duel.pending || now < duel.nextPoll) return;
+    duel.pending = true;
+    duel.nextPoll = now + 150;
+    const state = duel.final ?? {
+      distance: this.run.x,
+      elapsed: Math.min(DUEL_SECONDS, Math.max(0, elapsed)),
+    };
+    const request =
+      duel.startAt === null
+        ? { action: 'ready', id: duel.id }
+        : { action: 'tick', id: duel.id, state: { ...state, sequence: ++duel.sequence } };
+    void lobbyRequest(request, duel.token)
+      .then((next) => {
+        if (!this.scene.isActive() || this._leaving || this.duel !== duel) return;
+        duel.lastContact = performance.now();
+        if (next.race?.id !== duel.id) return this.#showDuelResult(null);
+        if (duel.startAt === null || (elapsed < -0.5 && next.roundTrip < duel.roundTrip)) {
+          duel.clockOffset = next.clockOffset;
+          duel.roundTrip = next.roundTrip;
+        }
+        if (duel.startAt === null && next.race.startAt !== null) this.hud.setEnabled(true);
+        duel.startAt = next.race.startAt;
+        duel.peer = next.race.peer;
+        duel.confirmed = next.race.own;
+        if (next.race.result) this.#showDuelResult(next.race.result);
+      })
+      .catch((error) => {
+        if (error.status === 401 && this.scene.isActive() && this.duel === duel && !this._leaving)
+          this.#showDuelResult(null);
+      })
+      .finally(() => {
+        duel.pending = false;
+      });
+  }
+
+  #showDuelResult(result) {
+    if (this.duel.closed) return;
+    this.duel.closed = true;
+    this.duelStatus.remove();
+    this.state = 'finished';
+    this.coastSpeed = 0;
+    this.hud.setEnabled(false);
+    this.hud.setVisible(false);
+    this.light.stop();
+    this.light.setVisible(false);
+    this.engine?.stop();
+    this.sounds.stop();
+    this.fx.stop();
+    this.$clock.classList.add('is-hidden');
+    this.$edge.hidden = true;
+    const won = result?.winner === this.duel.playerId;
+    const own = this.duel.confirmed;
+    const peer = this.duel.peer;
+    const time = (state) =>
+      state?.done === 'finish' ? formatSeconds(state.elapsed) + ' с' : 'нет финиша';
+    const title = !result
+      ? 'Связь с лобби потеряна'
+      : result.reason === 'left'
+        ? 'Соперник вышел'
+        : result.reason === 'not_ready'
+          ? 'Заезд не начался'
+          : result.winner === null
+            ? 'Ничья'
+            : won
+              ? 'Вы выиграли'
+              : 'Вы проиграли';
+    const close = showRunOverlay(this.ui, {
+      ok: won,
+      title,
+      text:
+        result?.reason === 'finish'
+          ? `Ваше время — ${time(own)}. ${this.rivalName} — ${time(peer)}.`
+          : '',
+      primaryIcon: 'garage',
+      primary: { label: 'В гараж', onClick: () => this.goTo(SCENES.GARAGE) },
+    });
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, close);
   }
 
   /** Разрыв под секундомером, метка Палыча у края экрана, реплики по ходу. */
@@ -359,7 +525,9 @@ export class RaceScene extends BaseScene {
       this.$gap.textContent = t('race.gapEven');
       this.$gap.dataset.tone = '';
     } else if (d > 0) {
-      this.$gap.textContent = t('race.gapRival', { m: meters });
+      this.$gap.textContent = this.duel
+        ? `${this.rivalName} впереди на ${meters} м`
+        : t('race.gapRival', { m: meters });
       this.$gap.dataset.tone = 'bad';
     } else {
       this.$gap.textContent = t('race.gapYou', { m: meters });
@@ -374,7 +542,7 @@ export class RaceScene extends BaseScene {
       this.$edge.dataset.side = off;
       this.$edge.style.top = `${(this.rival.y - 46) * UI_K}px`;
       this.$edgeText.textContent =
-        off === 'right' ? `${t('race.rival')} +${meters} м ▶` : `◀ ${t('race.rival')} −${meters} м`;
+        off === 'right' ? `${this.rivalName} +${meters} м ▶` : `◀ ${this.rivalName} −${meters} м`;
     }
     if (this.run.x > 30) {
       if (d > 8) this.#taunt('ahead');
@@ -388,7 +556,7 @@ export class RaceScene extends BaseScene {
     this.fx.update(dt, {
       run: this.run,
       toScreenX: (m) => cfg.playerX + (m - this.run.x) * PPM,
-      groundY: cfg.playerLaneY,
+      groundY: this.playerLaneY,
       asphalt: live,
     });
   }
@@ -419,6 +587,13 @@ export class RaceScene extends BaseScene {
     this.fx.stop();
     this.engine?.stop();
     this.sounds.stop();
+    if (this.duel) {
+      const distance = Math.min(this.total, this.run.x);
+      const elapsed = Math.min(DUEL_SECONDS, Math.max(0, this.#duelElapsed()));
+      this.duel.final = { distance, elapsed, done: distance >= this.total ? 'finish' : 'dnf' };
+      this.$gap.textContent = 'Ждём результат соперника';
+      return;
+    }
     // Не доехал за отведённое время — итог по тому, что успел.
     if (!this.run.done) {
       this.run.done = true;

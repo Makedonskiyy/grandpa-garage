@@ -14,6 +14,8 @@ import {
 } from '../systems/settings.js';
 import { canFullscreen } from '../systems/scale.js';
 import { t } from '../systems/strings.js';
+import { nicknameForm } from './DuelLobby.js';
+import { getNickname, setNickname } from '../systems/multiplayer.js';
 
 /**
  * Строка настройки: подпись (и пояснение) слева, контрол справа;
@@ -124,7 +126,16 @@ export function openSettings() {
             section(t('settings.sections.screen'), screen),
             section(t('settings.sections.game'), game),
           ]),
-          el('div', { class: 'settings__col' }, [section(t('settings.sections.sound'), sound)]),
+          el('div', { class: 'settings__col' }, [
+            section(t('settings.sections.sound'), sound),
+            getNickname()
+              ? section('Мультиплеер', [
+                  nicknameForm((nick) => {
+                    if (!setNickname(nick)) throw new Error('Выбери другой ник.');
+                  }),
+                ])
+              : null,
+          ]),
         ]),
       ];
     },

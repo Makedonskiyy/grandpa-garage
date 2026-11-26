@@ -29,7 +29,8 @@ body {
 }
 
 #stage {
-  position: absolute;
+  --scene-bleed: 0px;
+  position: fixed;
   left: 50%;
   top: 50%;
   width: var(--stage-width, 1920px);
@@ -58,7 +59,6 @@ body {
 #ui-root {
   position: absolute;
   inset: 0 auto 0 50%;
-  --scene-bleed: calc((1920px - var(--stage-width, 1920px)) / 2);
   width: 1920px;
   transform: translateX(-50%);
   pointer-events: none;
