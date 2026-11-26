@@ -21,7 +21,6 @@
     "car": "node tools/build-car.mjs",
     "characters": "node tools/build-characters.mjs",
     "hud": "node tools/build-hud.mjs",
-    "start-light": "py -I tools/build-start-light.py",
     "menu-bg": "node tools/build-menu-bg.mjs",
     "sound-doc": "node tools/build-sound-doc.mjs && prettier --write docs/sound"
   },

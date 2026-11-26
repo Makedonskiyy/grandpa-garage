@@ -3,8 +3,20 @@ import globals from 'globals';
 import prettier from 'eslint-config-prettier';
 
 export default [
-  // .claude — локальные скиллы и инструменты Claude Code (чужой код, в git не входит).
-  { ignores: ['dist/', 'node_modules/', 'coverage/', '.claude/'] },
+  // Локальные настройки и инструменты не участвуют в проверке игры.
+  {
+    ignores: [
+      'dist/',
+      'node_modules/',
+      'coverage/',
+      '.claude/',
+      '.agents/',
+      '.codex/',
+      '.route-ui/',
+      '.route-smoke.mjs',
+      '.local-assets/',
+    ],
+  },
   js.configs.recommended,
   {
     files: ['**/*.js', '**/*.mjs'],
