@@ -160,8 +160,7 @@
 
 /* Затемнение низа меню под кнопками — фон читается, кнопки видны. */
 .menu-shade {
-  left: 0;
-  right: 0;
+  inset-inline: var(--scene-bleed);
   bottom: 0;
   height: 640px;
   background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.76) 100%);
@@ -896,7 +895,7 @@ kbd {
  * Так белый текст и кнопки читаются даже на светлом небе. Без своего фона приглушается вся сцена.
  */
 .story__shade {
-  inset: 0;
+  inset: 0 var(--scene-bleed);
   background-color: rgb(8 7 6 / 0.18);
   background-image:
     linear-gradient(

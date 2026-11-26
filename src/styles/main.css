@@ -58,6 +58,7 @@ body {
 #ui-root {
   position: absolute;
   inset: 0 auto 0 50%;
+  --scene-bleed: calc((1920px - var(--stage-width, 1920px)) / 2);
   width: 1920px;
   transform: translateX(-50%);
   pointer-events: none;
@@ -72,7 +73,7 @@ body {
 
 /* Затемнения перекрывают холст до краёв окна. */
 #ui-root > :is(.shutter, .ui-modals) {
-  inset-inline: calc((1920px - var(--stage-width, 1920px)) / 2);
+  inset-inline: var(--scene-bleed);
 }
 
 .ui-layer > * {
