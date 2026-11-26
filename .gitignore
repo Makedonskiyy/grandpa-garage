@@ -16,8 +16,6 @@ coverage/
 
 # Редакторы и ОС
 .vscode/*
-!.vscode/extensions.json
-!.vscode/settings.json
 .idea/
 .DS_Store
 Thumbs.db
@@ -31,5 +29,25 @@ desktop.ini
 # Исходники артов (тяжёлые рабочие файлы держим вне репозитория)
 *.aseprite.bak
 
-# Локальные настройки Claude Code / превью
+# Локальные инструменты и рабочие копии
 .claude/
+.agents/
+.codex/
+/.route-ui/
+/.route-smoke.mjs
+/.local-assets/
+
+# Промежуточные арты, референсы и материалы разработки
+/art/preview/
+/art/templates/
+/art/source/*-reference.*
+/art/source/garage_room.jpg
+/art/source/logo.png
+/art/source/start-light/
+/docs/Dedov-garage-TZ.md
+/docs/car/
+/tests/engineVoice.html
+/*.jpg
+/*.png
+/*.wav
+/*.zip
