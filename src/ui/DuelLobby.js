@@ -96,7 +96,7 @@ export function openDuelLobby(onRace) {
           if (next.race) {
             passedToRace = true;
             close();
-            onRace({ ...next.race, playerId: next.id, clockOffset: next.clockOffset, token });
+            onRace({ ...next.race, playerId: next.id, token });
             return;
           }
           view = next;

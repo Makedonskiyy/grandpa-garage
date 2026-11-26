@@ -57,7 +57,9 @@ export async function lobbyRequest(body, token, { keepalive = false } = {}) {
     error.status = response.status;
     throw error;
   }
-  result.clockOffset = result.now - (started + performance.now()) / 2;
+  const received = performance.now();
+  result.roundTrip = received - started;
+  result.clockOffset = result.now - (started + received) / 2;
   return result;
 }
 

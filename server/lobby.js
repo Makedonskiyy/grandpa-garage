@@ -27,8 +27,14 @@ export function createLobby({ origin = '', now = Date.now } = {}) {
       if (invite.until <= time) invites.delete(id);
     }
     for (const [id, race] of races) {
-      if (!race.result && time >= race.startAt + (DUEL_SECONDS + 6) * 1000) settle(race, true);
-      if (time >= race.startAt + 120000) {
+      if (!race.result) {
+        if (race.startAt === null && time >= race.readyUntil) {
+          race.result = { winner: null, reason: 'not_ready' };
+        } else if (race.startAt !== null && time >= race.startAt + (DUEL_SECONDS + 6) * 1000) {
+          settle(race, true);
+        }
+      }
+      if (time >= (race.startAt ?? race.readyUntil) + 120000) {
         for (const player of race.players) if (player.race === race) player.race = null;
         races.delete(id);
       }
@@ -103,7 +109,9 @@ export function createLobby({ origin = '', now = Date.now } = {}) {
       const race = {
         id: randomUUID(),
         players: [invite.from, player],
-        startAt: time + DUEL_COUNTDOWN_MS + 1500,
+        readyUntil: time + 20000,
+        ready: new Set(),
+        startAt: null,
         states: {},
         result: null,
       };
@@ -111,10 +119,20 @@ export function createLobby({ origin = '', now = Date.now } = {}) {
       races.set(race.id, race);
       return;
     }
-    if (action !== 'tick' || !body.state) return;
     const race = player.race;
-    if (!race || race.id !== id || race.result || race.states[player.id]?.done) return;
-    const { distance, elapsed, done } = body.state;
+    if (!race || race.id !== id || race.result) return;
+    if (action === 'ready') {
+      race.ready.add(player.id);
+      if (race.ready.size === 2 && race.startAt === null) {
+        race.startAt = time + DUEL_COUNTDOWN_MS + 1500;
+      }
+      return;
+    }
+    const previous = race.states[player.id];
+    if (action !== 'tick' || !body.state || race.startAt === null || previous?.done) return;
+    const { distance, elapsed, done, sequence } = body.state;
+    if (!Number.isSafeInteger(sequence) || sequence <= 0) return 'Неверный номер обновления';
+    if (sequence <= (previous?.sequence ?? 0)) return;
     if (
       !Number.isFinite(distance) ||
       !Number.isFinite(elapsed) ||
@@ -123,12 +141,13 @@ export function createLobby({ origin = '', now = Date.now } = {}) {
       elapsed < 0 ||
       elapsed > DUEL_SECONDS + 1 ||
       elapsed > Math.max(0, (time - race.startAt) / 1000) + 1 ||
+      (time < race.startAt && (distance > 0 || elapsed > 0 || done === 'finish')) ||
       (done && !['finish', 'dnf'].includes(done)) ||
       (done === 'finish' && distance < DUEL_DISTANCE)
     )
       return 'Неверное состояние заезда';
-    if (distance < (race.states[player.id]?.distance ?? 0)) return;
-    race.states[player.id] = { distance, elapsed, done: done || null };
+    if (distance < (previous?.distance ?? 0) || elapsed < (previous?.elapsed ?? 0)) return;
+    race.states[player.id] = { distance, elapsed, sequence, done: done || null };
     settle(race);
   }
 

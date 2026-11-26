@@ -675,3 +675,17 @@
 .run-over.is-info .run-over__actions {
   margin-top: 26px;
 }
+.duel-race-status {
+  top: 170px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 18px;
+  border-radius: 10px;
+  background: rgb(18 16 14 / 0.9);
+  font: 600 23px/1.3 var(--font-ui);
+  pointer-events: none;
+}
+
+.duel-race-status:empty {
+  display: none;
+}

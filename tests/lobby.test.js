@@ -54,10 +54,17 @@ describe('test multiplayer lobby', () => {
     const a = await send({ action: 'join', nick: 'Racer_one' });
     const b = await send({ action: 'join', nick: 'Racer_two' });
     const invitation = await invite(a, b);
-    const { race } = await send({ action: 'accept', id: invitation }, b);
-    expect((await send({ action: 'poll' }, a)).race.startAt).toBe(race.startAt);
-    const tick = (player, state) => send({ action: 'tick', id: race.id, state }, player);
-    expect((await tick(a, { distance: 400, elapsed: 10, done: 'finish' })).status).toBe(409);
+    const accepted = (await send({ action: 'accept', id: invitation }, b)).race;
+    const ready = (player) => send({ action: 'ready', id: accepted.id }, player);
+    expect((await ready(b)).race.startAt).toBeNull();
+    now += 7000;
+    expect((await ready(b)).race.startAt).toBeNull();
+    const { race } = await ready(a);
+    expect(race.startAt).toBe(now + 5000);
+    expect((await ready(b)).race.startAt).toBe(race.startAt);
+    const tick = (player, state) =>
+      send({ action: 'tick', id: race.id, state: { sequence: 1, ...state } }, player);
+    expect((await tick(a, { distance: 40, elapsed: 0 })).status).toBe(409);
     now = race.startAt;
     await send({ action: 'poll' }, a);
     await send({ action: 'poll' }, b);
@@ -69,6 +76,50 @@ describe('test multiplayer lobby', () => {
     expect((await tick(a, { distance: 400, elapsed: 9, done: 'finish' })).race.result.winner).toBe(
       b.id,
     );
+  });
+
+  it('keeps the latest progress during reordered requests and final packet retries', async () => {
+    const a = await send({ action: 'join', nick: 'Racer_one' });
+    const b = await send({ action: 'join', nick: 'Racer_two' });
+    const invitation = await invite(a, b);
+    const { race } = await send({ action: 'accept', id: invitation }, b);
+    const id = race.id;
+    await send({ action: 'ready', id }, a);
+    const { startAt } = (await send({ action: 'ready', id }, b)).race;
+    now = startAt + 4500;
+    const tick = (state) => send({ action: 'tick', id, state }, a);
+    await tick({ sequence: 3, distance: 80, elapsed: 4 });
+    await tick({ sequence: 2, distance: 60, elapsed: 3 });
+    await tick({ sequence: 4, distance: 100, elapsed: 3 });
+    expect((await send({ action: 'poll' }, b)).race.peer).toMatchObject({
+      sequence: 3,
+      distance: 80,
+      elapsed: 4,
+    });
+    now = startAt + 12000;
+    await send({ action: 'poll' }, b);
+    const finish = { sequence: 5, distance: 400, elapsed: 12, done: 'finish' };
+    await tick(finish);
+    const retried = await tick(finish);
+    expect(retried.race.own).toEqual(finish);
+    expect(retried.race.result).toBeNull();
+  });
+
+  it('cancels readiness when a connected player never loads the track', async () => {
+    const a = await send({ action: 'join', nick: 'Racer_one' });
+    const b = await send({ action: 'join', nick: 'Racer_two' });
+    const invitation = await invite(a, b);
+    const { race } = await send({ action: 'accept', id: invitation }, b);
+    const id = race.id;
+    await send({ action: 'ready', id }, a);
+    now += 10000;
+    await send({ action: 'ready', id }, a);
+    await send({ action: 'poll' }, b);
+    now += 10000;
+    const timedOut = await send({ action: 'ready', id }, b);
+    expect(timedOut.race.startAt).toBeNull();
+    expect(timedOut.race.result).toEqual({ winner: null, reason: 'not_ready' });
+    expect((await send({ action: 'poll' }, a)).race.result).toEqual(timedOut.race.result);
   });
 
   it('ends an active duel when one player leaves', async () => {
