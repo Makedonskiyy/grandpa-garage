@@ -89,7 +89,7 @@ export function createEngineVoice(context, destination, build = {}) {
   return {
     update(run, input = {}) {
       if (stopped) return;
-      const rpm = Math.max(500, run.rpm);
+      const rpm = Math.max(500, Math.min(run.rpm, run.stats.redline));
       const rev = Math.min(1, rpm / run.stats.redline);
       const gas = Math.min(1, Math.max(0, input.gas ?? 0));
       const load = gas * (run.shiftTimer > 0 ? 0.1 : 1);
@@ -111,8 +111,9 @@ export function createEngineVoice(context, destination, build = {}) {
 
       const set = (param, value, tau = 0.035) =>
         param.setTargetAtTime(value, context.currentTime, tau);
-      set(ignition.gain, run.limiter ? 0.54 : 1, 0.005);
-      set(cut.level.gain, run.limiter ? 0.45 : 0, 0.005);
+      const limiterLoad = gas * Math.max(0, Math.min(1, (rev - 0.98) / 0.02));
+      set(ignition.gain, 1 - limiterLoad * 0.3);
+      set(cut.level.gain, limiterLoad * 0.24);
       set(bark.osc.frequency, rpm / 10);
       set(bark.level.gain, load * ((chip ? 0.26 : 0) + induction * 0.15));
       set(exhaust.osc.frequency, rpm / 20);

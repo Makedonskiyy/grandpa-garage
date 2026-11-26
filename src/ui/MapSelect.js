@@ -1,4 +1,5 @@
 import { el } from './dom.js';
+import { webButton } from './components.js';
 import { icon } from './icons.js';
 import { t } from '../systems/strings.js';
 import { getTest } from '../systems/simulate.js';
@@ -30,48 +31,25 @@ export function openMapSelect(root, onPick, { start } = {}) {
     return { id, test, title, kind, locked, verdict };
   });
 
-  const back = el('button', { class: 'map-picker__back', type: 'button', onclick: close }, [
-    icon('back'),
-    t('maps.back'),
-  ]);
-  const go = el('button', { class: 'map-picker__go', type: 'button', onclick: launch });
+  const back = webButton(t('maps.back'), close, { icon: 'back' });
+  const go = webButton('', launch, { variant: 'primary', icon: 'play' });
   const heading = el('h1', { id: 'map-picker-title', text: t('maps.title') });
-  const rows = tracks.map(({ title, kind, locked, verdict }, i) =>
-    el(
-      'button',
-      {
-        class: `map-picker__row${locked ? ' is-locked' : ''}`,
-        type: 'button',
-        onclick: () => show(i),
-        onpointerenter: (e) => {
-          if (e.pointerType === 'mouse') show(i);
-        },
-        onfocus: () => show(i),
-      },
-      [
-        el('span', { class: 'map-picker__num', text: String(i + 1).padStart(2, '0') }),
-        el('span', { class: 'map-picker__row-main' }, [
-          el('span', { class: 'map-picker__row-name', text: title }),
-          el('span', { class: 'map-picker__row-meta' }, [
-            el('span', { class: 'map-picker__kind', text: t(`maps.tag.${kind}`) }),
-            locked ? el('span', { class: 'map-picker__lock', text: t('maps.lockedShort') }) : null,
-            verdict
-              ? el('span', {
-                  class: `map-picker__dot ${verdict.ok ? 'is-ok' : 'is-bad'}`,
-                  title: verdict.ok ? t('maps.canPass') : t('maps.cannot'),
-                })
-              : null,
-          ]),
-        ]),
-      ],
-    ),
+  const rows = tracks.map(({ title, kind, locked, test }, i) =>
+    el('button', { class: 'map-picker__route', type: 'button', onclick: () => show(i) }, [
+      el('span', {
+        class: 'map-picker__photo map-picker__art--' + test.mode,
+        'aria-hidden': 'true',
+      }),
+      el('span', { class: 'map-picker__route-copy' }, [
+        el('span', {
+          class: 'map-picker__kind',
+          text: t(locked ? 'maps.lockedShort' : 'maps.tag.' + kind),
+        }),
+        el('strong', { text: title }),
+      ]),
+    ]),
   );
-  const art = el('div', { class: 'map-picker__art', 'aria-hidden': 'true' });
-  const details = el('div', {
-    class: 'map-picker__details',
-    'aria-live': 'polite',
-    'aria-atomic': 'true',
-  });
+  const details = el('div', { class: 'map-picker__details', 'aria-live': 'polite' });
   const node = el(
     'section',
     {
@@ -82,19 +60,13 @@ export function openMapSelect(root, onPick, { start } = {}) {
       tabindex: '-1',
     },
     [
-      el('aside', { class: 'map-picker__list' }, [
-        heading,
-        el(
-          'div',
-          { class: 'map-picker__rows', role: 'group', 'aria-labelledby': heading.id },
-          rows,
-        ),
-        back,
-      ]),
-      el('div', { class: 'map-picker__stage' }, [
-        art,
-        el('div', { class: 'map-picker__bottom' }, [details, go]),
-      ]),
+      el('header', { class: 'map-picker__header' }, [heading, back]),
+      el(
+        'div',
+        { class: 'map-picker__routes', role: 'group', 'aria-labelledby': heading.id },
+        rows,
+      ),
+      el('footer', { class: 'map-picker__footer' }, [details, go]),
     ],
   );
 
@@ -102,12 +74,10 @@ export function openMapSelect(root, onPick, { start } = {}) {
 
   function show(i) {
     index = (i + tracks.length) % tracks.length;
-    const { id, test, title, kind, locked, verdict } = tracks[index];
+    const { id, test, title, locked, verdict } = tracks[index];
     const startLabel = id === 'race' ? 'maps.goRace' : test.practice ? 'maps.free' : 'maps.go';
     rows.forEach((row, k) => row.setAttribute('aria-pressed', String(k === index)));
-    art.className = `map-picker__art map-picker__art--${test.mode}${locked ? ' is-locked' : ''}`;
     details.replaceChildren(
-      el('span', { class: 'map-picker__kind', text: t(`maps.tag.${kind}`) }),
       el('h2', { text: title }),
       el('p', { class: 'map-picker__goal', text: locked ? t('maps.locked') : test.goal }),
     );
@@ -120,10 +90,7 @@ export function openMapSelect(root, onPick, { start } = {}) {
       );
     }
     go.disabled = locked;
-    go.replaceChildren(
-      icon(locked ? 'warning' : 'play'),
-      t(locked ? 'maps.lockedShort' : startLabel),
-    );
+    go.querySelector('.wbtn__label').textContent = t(locked ? 'maps.lockedShort' : startLabel);
   }
 
   function launch() {
@@ -144,11 +111,13 @@ export function openMapSelect(root, onPick, { start } = {}) {
   node.addEventListener('keydown', (e) => {
     if (e.altKey || e.ctrlKey || e.metaKey) return;
     switch (e.code) {
+      case 'ArrowRight':
       case 'ArrowDown':
       case 'KeyS':
+      case 'ArrowLeft':
       case 'ArrowUp':
       case 'KeyW':
-        show(index + (e.code === 'ArrowDown' || e.code === 'KeyS' ? 1 : -1));
+        show(index + (['ArrowRight', 'ArrowDown', 'KeyS'].includes(e.code) ? 1 : -1));
         if (rows.includes(e.target)) rows[index].focus();
         break;
       case 'Enter':
