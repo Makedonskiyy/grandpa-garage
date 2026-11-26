@@ -40,8 +40,10 @@ import { colorPicker } from '../ui/colorPicker.js';
 import { wheelThumb } from '../ui/wheelThumb.js';
 import { openSettings } from '../ui/SettingsPanel.js';
 import { openHowTo } from '../ui/HowToPanel.js';
+import { openGarageGuide } from '../ui/GarageGuide.js';
 import { openMapSelect } from '../ui/MapSelect.js';
 import { t } from '../systems/strings.js';
+import { saveGame } from '../systems/save.js';
 
 const cfg = config.garage;
 const TILES = [...partsData.groups.map((g) => g.id), 'looks', 'service'];
@@ -138,18 +140,25 @@ export class GarageScene extends BaseScene {
       this.alive = false;
       off();
     });
-    if (!gameState.flags.garageIntroSeen) this.#playGarageIntro();
+    this.#showIntroduction();
   }
 
   update(_time, delta) {
     this.car.step(delta / 1000);
   }
 
-  async #playGarageIntro() {
-    gameState.flags.garageIntroSeen = true;
-    this.ui.style.visibility = 'hidden';
-    await new StoryStage(this).play('garageIntro');
-    this.ui.style.visibility = '';
+  async #showIntroduction() {
+    if (!gameState.flags.garageIntroSeen) {
+      this.ui.style.visibility = 'hidden';
+      await new StoryStage(this).play('garageIntro');
+      if (!this.alive) return;
+      this.ui.style.visibility = '';
+      gameState.flags.garageIntroSeen = true;
+    }
+    if (gameState.flags.garageGuideSeen || gameState.passed.trial) return;
+    openGarageGuide();
+    gameState.flags.garageGuideSeen = true;
+    saveGame(gameState);
   }
 
   // ---------- Расчёты с кэшем: прогноз — это прогон бота ----------

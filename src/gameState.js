@@ -36,6 +36,7 @@ export function createInitialState() {
     flags: {
       introSeen: false,
       garageIntroSeen: false,
+      garageGuideSeen: false,
       palychMet: false,
       // Свой мир объездной у каждого игрока (scenes/bypassWorld.js).
       worldSeed: Math.floor(Math.random() * 2 ** 31),
