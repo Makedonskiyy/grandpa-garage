@@ -50,6 +50,7 @@ export function openMapSelect(root, onPick, { start } = {}) {
     ]),
   );
   const details = el('div', { class: 'map-picker__details', 'aria-live': 'polite' });
+  const preview = el('div', { class: 'map-picker__preview', 'aria-hidden': 'true' });
   const node = el(
     'section',
     {
@@ -61,12 +62,17 @@ export function openMapSelect(root, onPick, { start } = {}) {
     },
     [
       el('header', { class: 'map-picker__header' }, [heading, back]),
-      el(
-        'div',
-        { class: 'map-picker__routes', role: 'group', 'aria-labelledby': heading.id },
-        rows,
-      ),
-      el('footer', { class: 'map-picker__footer' }, [details, go]),
+      el('div', { class: 'map-picker__layout' }, [
+        el(
+          'div',
+          { class: 'map-picker__routes', role: 'group', 'aria-labelledby': heading.id },
+          rows,
+        ),
+        el('div', { class: 'map-picker__selection' }, [
+          preview,
+          el('footer', { class: 'map-picker__footer' }, [details, go]),
+        ]),
+      ]),
     ],
   );
 
@@ -76,6 +82,7 @@ export function openMapSelect(root, onPick, { start } = {}) {
     index = (i + tracks.length) % tracks.length;
     const { id, test, title, locked, verdict } = tracks[index];
     const startLabel = id === 'race' ? 'maps.goRace' : test.practice ? 'maps.free' : 'maps.go';
+    preview.className = 'map-picker__preview map-picker__art--' + test.mode;
     rows.forEach((row, k) => row.setAttribute('aria-pressed', String(k === index)));
     details.replaceChildren(
       el('h2', { text: title }),
@@ -123,7 +130,7 @@ export function openMapSelect(root, onPick, { start } = {}) {
       case 'Enter':
       case 'NumpadEnter':
         e.stopPropagation();
-        if (e.target === go || e.target === back) return;
+        if (e.target === go || e.target === back || rows.includes(e.target)) return;
         e.preventDefault();
         go.click();
         return;

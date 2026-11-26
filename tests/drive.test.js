@@ -81,6 +81,23 @@ describe('характеристики сборки', () => {
 });
 
 describe('баланс: идеальный водитель', () => {
+  it.each([false, true])('битурбо на шестой достигает около 300 км/ч (автомат: %s)', (auto) => {
+    const build = {
+      ...BASE,
+      engine: 'engine_turbo',
+      intake: 'intake_cold',
+      exhaust: 'exhaust_straight',
+      ecu: 'ecu_chip',
+      gearbox: 'gearbox_close',
+      body: 'body_light',
+      tires: 'tires_slicks',
+      suspension: 'suspension_sport',
+    };
+    const run = drive('trial_free', build, { auto });
+    expect(run.gear).toBe(6);
+    expect(run.v * 3.6).toBeGreaterThanOrEqual(295);
+    expect(run.v * 3.6).toBeLessThanOrEqual(310);
+  });
   const trialOk = [...CORE, ...TUNED].filter((b) => runBot('trial', b).ok);
   const raceOk = [...CORE, ...TUNED].filter((b) => runBot('race', b).ok);
 
