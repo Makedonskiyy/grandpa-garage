@@ -14,9 +14,9 @@ const SLIDES = [...TRIAL_MAPS, 'race'];
  * Экран «Куда поедем»: слева маршрутный лист, справа превью выбранной трассы.
  * @param {HTMLElement} root слой интерфейса сцены
  * @param {(id: string) => void} onPick id трассы: одна из TRIAL_MAPS или 'race'
- * @param {{ start?: string, complete?: boolean, onMultiplayer?: () => void }} [opts]
+ * @param {{ start?: string }} [opts] с какой строки открыть
  */
-export function openMapSelect(root, onPick, { start, complete = true, onMultiplayer } = {}) {
+export function openMapSelect(root, onPick, { start } = {}) {
   const opener = document.activeElement;
   const raceOpen = gameState.passed.trial;
   let index = Math.max(0, SLIDES.indexOf(start ?? gameState.trialMap ?? 'trial'));
@@ -32,9 +32,6 @@ export function openMapSelect(root, onPick, { start, complete = true, onMultipla
   });
 
   const back = webButton(t('maps.back'), close, { icon: 'back' });
-  const multiplayer = onMultiplayer
-    ? webButton('Мультиплеер', onMultiplayer, { className: 'duel-button' })
-    : null;
   const go = webButton('', launch, { variant: 'primary', icon: 'play' });
   const heading = el('h1', { id: 'map-picker-title', text: t('maps.title') });
   const rows = tracks.map(({ title, kind, locked, test }, i) =>
@@ -53,6 +50,7 @@ export function openMapSelect(root, onPick, { start, complete = true, onMultipla
     ]),
   );
   const details = el('div', { class: 'map-picker__details', 'aria-live': 'polite' });
+  const preview = el('div', { class: 'map-picker__preview', 'aria-hidden': 'true' });
   const node = el(
     'section',
     {
@@ -63,16 +61,18 @@ export function openMapSelect(root, onPick, { start, complete = true, onMultipla
       tabindex: '-1',
     },
     [
-      el('header', { class: 'map-picker__header' }, [
-        heading,
-        el('div', { class: 'duel-actions' }, [multiplayer, back]),
+      el('header', { class: 'map-picker__header' }, [heading, back]),
+      el('div', { class: 'map-picker__layout' }, [
+        el(
+          'div',
+          { class: 'map-picker__routes', role: 'group', 'aria-labelledby': heading.id },
+          rows,
+        ),
+        el('div', { class: 'map-picker__selection' }, [
+          preview,
+          el('footer', { class: 'map-picker__footer' }, [details, go]),
+        ]),
       ]),
-      el(
-        'div',
-        { class: 'map-picker__routes', role: 'group', 'aria-labelledby': heading.id },
-        rows,
-      ),
-      el('footer', { class: 'map-picker__footer' }, [details, go]),
     ],
   );
 
@@ -82,6 +82,7 @@ export function openMapSelect(root, onPick, { start, complete = true, onMultipla
     index = (i + tracks.length) % tracks.length;
     const { id, test, title, locked, verdict } = tracks[index];
     const startLabel = id === 'race' ? 'maps.goRace' : test.practice ? 'maps.free' : 'maps.go';
+    preview.className = 'map-picker__preview map-picker__art--' + test.mode;
     rows.forEach((row, k) => row.setAttribute('aria-pressed', String(k === index)));
     details.replaceChildren(
       el('h2', { text: title }),
@@ -95,15 +96,13 @@ export function openMapSelect(root, onPick, { start, complete = true, onMultipla
         ]),
       );
     }
-    if (!complete && !locked)
-      details.append(el('p', { text: 'Установи недостающие детали в гараже.' }));
-    go.disabled = locked || !complete;
+    go.disabled = locked;
     go.querySelector('.wbtn__label').textContent = t(locked ? 'maps.lockedShort' : startLabel);
   }
 
   function launch() {
     const { id, locked } = tracks[index];
-    if (locked || !complete) return;
+    if (locked) return;
     if (id !== 'race') gameState.trialMap = id;
     close();
     onPick(id);
@@ -131,7 +130,7 @@ export function openMapSelect(root, onPick, { start, complete = true, onMultipla
       case 'Enter':
       case 'NumpadEnter':
         e.stopPropagation();
-        if (e.target === go || e.target === back || e.target === multiplayer) return;
+        if (e.target === go || e.target === back || rows.includes(e.target)) return;
         e.preventDefault();
         go.click();
         return;

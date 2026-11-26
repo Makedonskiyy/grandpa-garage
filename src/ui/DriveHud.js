@@ -59,7 +59,7 @@ export class DriveHud {
     });
     this.speedo = createGauge({
       className: 'gauge--speedo',
-      max: 280,
+      max: 320,
       major: 40,
       minor: 4,
       label: (v) => String(v),

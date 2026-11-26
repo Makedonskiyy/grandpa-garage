@@ -42,7 +42,6 @@ import { openSettings } from '../ui/SettingsPanel.js';
 import { openHowTo } from '../ui/HowToPanel.js';
 import { openGarageGuide } from '../ui/GarageGuide.js';
 import { openMapSelect } from '../ui/MapSelect.js';
-import { openDuelLobby } from '../ui/DuelLobby.js';
 import { t } from '../systems/strings.js';
 import { saveGame } from '../systems/save.js';
 
@@ -328,6 +327,7 @@ export class GarageScene extends BaseScene {
   }
 
   #renderLaunch(missing) {
+    this.$launch.disabled = missing.length > 0;
     this.$launchSub.textContent = missing.length
       ? t('garage.missing', {
           slots: missing.map((s) => getSlot(s).name.toLowerCase()).join(', '),
@@ -924,12 +924,10 @@ export class GarageScene extends BaseScene {
   }
 
   #launch() {
-    const complete = this.#stats(gameState.build).complete;
+    if (!this.#stats(gameState.build).complete) return;
     // Всегда — выбор трассы на весь экран: обкатка доступна и после неё, заезд — когда открыт.
     openMapSelect(this.ui, (id) => this.goTo(id === 'race' ? SCENES.RACE : SCENES.TRIAL), {
       start: this.testId === 'race' ? 'race' : undefined,
-      complete,
-      onMultiplayer: () => openDuelLobby((duel) => this.goTo(SCENES.RACE, { duel })),
     });
   }
 }
