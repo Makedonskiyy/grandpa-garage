@@ -35,10 +35,7 @@ export class EndingScene extends BaseScene {
     if (!this.scene.isActive()) return;
 
     const win = gameState.winningResult;
-    const parts = partsData.slots
-      .map((s) => getPart(gameState.build[s.id])?.name)
-      .filter(Boolean)
-      .join(', ');
+    const parts = partsData.slots.map((s) => getPart(gameState.build[s.id])?.name).filter(Boolean);
     const stat = (label, value) =>
       el('div', {}, [
         el('div', { class: 'ending-stat__label', text: label }),
@@ -47,19 +44,30 @@ export class EndingScene extends BaseScene {
 
     this.ui.append(
       el('section', { class: 'ui-abs surface ending-panel' }, [
-        el('h1', { class: 'ending-panel__title', text: t('ending.title') }),
-        stat(t('ending.attemptsLabel'), t('ending.attemptsValue', gameState.attempts)),
-        stat(
-          t('ending.timeLabel'),
-          win?.details?.time ? `${formatSeconds(win.details.time)} ${t('garage.units.sec')}` : '—',
-        ),
-        stat(t('ending.partsLabel'), parts),
+        el('div', { class: 'ending-panel__summary' }, [
+          el('h1', { class: 'ending-panel__title', text: t('ending.title') }),
+          stat(
+            t('ending.timeLabel'),
+            win?.details?.time
+              ? `${formatSeconds(win.details.time)} ${t('garage.units.sec')}`
+              : '—',
+          ),
+          stat(t('ending.attemptsLabel'), t('ending.attemptsValue', gameState.attempts)),
+        ]),
         el('div', { class: 'ending-panel__actions' }, [
           webButton(t('ending.credits'), () => this.goTo(SCENES.CREDITS), {
             variant: 'primary',
             icon: 'play',
           }),
           webButton(t('ending.toGarage'), () => this.goTo(SCENES.GARAGE), { icon: 'service' }),
+        ]),
+        el('details', { class: 'ending-panel__build' }, [
+          el('summary', { text: t('ending.partsLabel') }),
+          el(
+            'ul',
+            {},
+            parts.map((name) => el('li', { text: name })),
+          ),
         ]),
       ]),
     );

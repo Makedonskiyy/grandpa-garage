@@ -1534,15 +1534,24 @@ kbd {
   left: 40px;
   right: 40px;
   bottom: 40px;
-  height: 168px;
-  padding: 0 48px;
+  max-height: 380px;
+  overflow: auto;
+  padding: 26px 32px 20px;
   display: grid;
-  grid-template-columns: 1.2fr 1fr 1fr 1.6fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 40px;
+  gap: 16px 28px;
+}
+
+.ending-panel__summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 32px;
 }
 
 .ending-panel__title {
+  margin: 0;
   font-size: 40px;
   font-weight: 500;
   line-height: 1.15;
@@ -1561,12 +1570,26 @@ kbd {
   font-variant-numeric: tabular-nums;
 }
 
-.ending-panel .wbtn {
-  height: 80px;
-  padding: 0 36px;
-  font-size: 24px;
-  border-radius: 16px;
-  box-shadow: none;
+.ending-panel__build {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--ui-line-strong);
+  padding-top: 12px;
+  font-size: 22px;
+}
+
+.ending-panel__build summary {
+  width: fit-content;
+  cursor: pointer;
+}
+
+.ending-panel__build ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  padding: 0;
+  margin: 12px 0 0;
+  list-style: none;
+  color: var(--ui-text-2);
 }
 
 .ending-panel .icon {
@@ -1748,6 +1771,7 @@ kbd {
 .ending-panel__actions {
   display: flex;
   flex-wrap: wrap;
+  justify-content: end;
   gap: 16px;
 }
 
