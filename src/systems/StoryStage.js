@@ -142,6 +142,7 @@ export class StoryStage {
     this.layer.append(
       this.$shade,
       this.$actors,
+      el('div', { class: 'ui-abs story__workbench', 'aria-hidden': 'true' }),
       this.$box,
       this.$center,
       this.$note,
@@ -276,6 +277,8 @@ export class StoryStage {
     if (n.phase === 'folded') {
       n.phase = 'open';
       this.$note.className = 'ui-abs story-note is-open';
+      const right = n.lines[0].cast?.right;
+      if (right) this.#setActor('right', right);
       this.$paper = el('div', { class: 'story-note__paper' });
       clear(this.$note).append(
         this.$paper,
@@ -359,6 +362,7 @@ export class StoryStage {
   #setBackground(key) {
     if (key === this.bgKey) return;
     this.bgKey = key;
+    this.layer.classList.toggle('has-workbench', key === 'workbench');
     // Атмосфера фона (птицы, ветер, гул лампы) — из data/story-backgrounds.json.
     const sound = storyBackgrounds.backgrounds[key]?.sound;
     if (sound) audio.playAmbience(sound);

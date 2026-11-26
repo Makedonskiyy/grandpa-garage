@@ -924,6 +924,41 @@ kbd {
   overflow: hidden;
 }
 
+.story__workbench {
+  display: none;
+}
+
+.story-layer.has-workbench .story__workbench {
+  display: block;
+  inset: auto var(--scene-bleed) 0;
+  height: 302px;
+  border-top: 4px solid #a97646;
+  background:
+    linear-gradient(90deg, #21140ccc, transparent 35% 73%, #21140caa),
+    linear-gradient(transparent 47%, #29170e 47% 50%, #50321e 50% 53%, #352419 53%),
+    repeating-linear-gradient(0deg, #775030 0 3px, #694528 3px 5px, #805636 5px 17px);
+  box-shadow: 0 -5px 16px #1c110963;
+}
+
+.story-layer.has-workbench .story-note__folded {
+  left: 58%;
+  bottom: 190px;
+  width: 248px;
+  height: 140px;
+  margin-left: -124px;
+  transform: rotate(-7deg) skewX(-8deg);
+  animation: none;
+}
+
+.story-layer.has-workbench .story-note__folded:hover {
+  transform: rotate(-7deg) skewX(-8deg) translateY(-6px);
+}
+
+.story-layer.has-workbench .story-note.is-folded .story-note__hint {
+  left: 58%;
+  bottom: 54px;
+}
+
 /* Персонаж: корень — выход на сцену, тело — фокус (кто говорит), спрайт — дыхание. */
 .story__actor {
   position: absolute;
