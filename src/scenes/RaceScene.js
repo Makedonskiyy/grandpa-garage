@@ -98,9 +98,9 @@ export class RaceScene extends BaseScene {
     this.light = new ScreenLight(this);
     this.light.setVisible(false);
     audio.playSfx(SFX.CAR_START);
-    this.engine = audio.loopSfx(SFX.ENGINE);
+    this.engine = audio.startEngine(gameState.build);
     this.sounds = new DriveSounds(this, gameState.build.tires);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.engine?.destroy());
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.engine?.stop());
 
     this.hud.setVisible(false);
     this.$clock.style.visibility = 'hidden';
@@ -285,7 +285,7 @@ export class RaceScene extends BaseScene {
       this.player.step(dt, { accel: rev - input.brake * 2 });
       this.#tireFx(dt, false);
       this.hud.render();
-      this.#sound();
+      this.engine?.update(run, input);
       return;
     }
 
@@ -320,7 +320,7 @@ export class RaceScene extends BaseScene {
     this.hud.render();
     this.sounds.update(run, input, 'asphalt');
     this.$time.textContent = formatSeconds(run.t);
-    this.#sound();
+    this.engine?.update(run, input);
 
     const rivalDone = run.t >= this.test.rivalTime;
     if ((run.done && (rivalDone || run.reasonKey === 'jump')) || run.t > MAX_SEC) this.#finish();
@@ -380,10 +380,6 @@ export class RaceScene extends BaseScene {
       return this.hud.say(run.gear >= run.stats.ratios.length ? 'limiterTop' : 'limiter', 'warn');
     if (!run.auto && this.hud.inZone) return this.hud.say('shift');
     this.hud.quiet();
-  }
-
-  #sound() {
-    this.engine?.setRate?.(0.6 + (this.run.rpm / this.run.stats.redline) * 0.9);
   }
 
   #finish() {

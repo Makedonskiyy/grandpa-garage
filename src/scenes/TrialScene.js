@@ -114,10 +114,11 @@ export class TrialScene extends BaseScene {
     if (brief) {
       this.light.setVisible(false);
       this.hud.setEnabled(false);
+      this.hud.setVisible(false);
       const close = showRunOverlay(this.ui, {
         ok: true,
         tone: 'is-info',
-        eyebrow: this.test.map.name,
+        badge: 'info',
         title: this.test.brief.title,
         items: this.test.brief.items,
         primaryIcon: 'check',
@@ -127,6 +128,7 @@ export class TrialScene extends BaseScene {
             close();
             gameState.flags[`brief_${this.test.id}`] = true;
             this.light.setVisible(true);
+            this.hud.setVisible(true);
             this.hud.setEnabled(true);
             this.#startLight(auto);
           },

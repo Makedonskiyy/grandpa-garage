@@ -178,7 +178,7 @@ export class DriveHud {
     if (!run.started || run.gear === 0) gear = 'N';
     else if (run.shiftTimer > 0) gear = '·';
     this.tacho.render({
-      value: run.rpm,
+      value: Math.min(run.rpm, run.stats.redline),
       text: gear,
       sub: run.auto ? t('race.modeAuto') : t('race.modeManual'),
       zone,

@@ -1,4 +1,5 @@
 import { el } from './dom.js';
+import { webButton } from './components.js';
 import { icon } from './icons.js';
 import { t } from '../systems/strings.js';
 import { getTest } from '../systems/simulate.js';
@@ -9,17 +10,11 @@ import '../styles/map-select-refresh.css';
 export const TRIAL_MAPS = ['trial', 'trial_track', 'trial_free'];
 const SLIDES = [...TRIAL_MAPS, 'race'];
 
-function artwork(mode, locked) {
-  return el('span', {
-    class: `map-picker__art map-picker__art--${mode}${locked ? ' is-locked' : ''}`,
-    'aria-hidden': 'true',
-  });
-}
-
 /**
+ * Экран «Куда поедем»: слева маршрутный лист, справа превью выбранной трассы.
  * @param {HTMLElement} root слой интерфейса сцены
  * @param {(id: string) => void} onPick id трассы: одна из TRIAL_MAPS или 'race'
- * @param {{ start?: string }} [opts] с какой карточки открыть
+ * @param {{ start?: string }} [opts] с какой строки открыть
  */
 export function openMapSelect(root, onPick, { start } = {}) {
   const opener = document.activeElement;
@@ -36,59 +31,53 @@ export function openMapSelect(root, onPick, { start } = {}) {
     return { id, test, title, kind, locked, verdict };
   });
 
-  const back = el('button', { class: 'map-picker__back', type: 'button', onclick: close }, [
-    icon('back'),
-    t('maps.back'),
-  ]);
-  const go = el('button', { class: 'map-picker__go', type: 'button', onclick: launch });
-  const choices = tracks.map(({ test, title, locked }, i) =>
-    el('button', { class: 'map-picker__choice', type: 'button', onclick: () => show(i) }, [
-      artwork(test.mode, locked),
-      el('span', { class: 'map-picker__choice-label' }, [
-        title,
-        locked ? el('span', { class: 'map-picker__locked', text: t('maps.lockedShort') }) : null,
+  const back = webButton(t('maps.back'), close, { icon: 'back' });
+  const go = webButton('', launch, { variant: 'primary', icon: 'play' });
+  const heading = el('h1', { id: 'map-picker-title', text: t('maps.title') });
+  const rows = tracks.map(({ title, kind, locked, test }, i) =>
+    el('button', { class: 'map-picker__route', type: 'button', onclick: () => show(i) }, [
+      el('span', {
+        class: 'map-picker__photo map-picker__art--' + test.mode,
+        'aria-hidden': 'true',
+      }),
+      el('span', { class: 'map-picker__route-copy' }, [
+        el('span', {
+          class: 'map-picker__kind',
+          text: t(locked ? 'maps.lockedShort' : 'maps.tag.' + kind),
+        }),
+        el('strong', { text: title }),
       ]),
     ]),
   );
-  const preview = el('div', { class: 'map-picker__preview' });
-  const details = el('div', {
-    class: 'map-picker__details',
-    'aria-live': 'polite',
-    'aria-atomic': 'true',
-  });
-  const title = el('h1', { id: 'map-picker-title', text: t('maps.title') });
-  const panel = el('div', { class: 'map-picker__panel' }, [
-    el('header', { class: 'map-picker__header' }, [title, back]),
-    el('div', { class: 'map-picker__feature' }, [preview, details]),
-    el(
-      'div',
-      { class: 'map-picker__choices', role: 'group', 'aria-labelledby': title.id },
-      choices,
-    ),
-    el('footer', { class: 'map-picker__footer' }, go),
-  ]);
+  const details = el('div', { class: 'map-picker__details', 'aria-live': 'polite' });
   const node = el(
     'section',
     {
       class: 'map-picker',
       role: 'dialog',
       'aria-modal': 'true',
-      'aria-labelledby': title.id,
+      'aria-labelledby': heading.id,
       tabindex: '-1',
     },
-    panel,
+    [
+      el('header', { class: 'map-picker__header' }, [heading, back]),
+      el(
+        'div',
+        { class: 'map-picker__routes', role: 'group', 'aria-labelledby': heading.id },
+        rows,
+      ),
+      el('footer', { class: 'map-picker__footer' }, [details, go]),
+    ],
   );
 
   const background = [...root.children].filter((child) => !child.inert);
 
   function show(i) {
     index = (i + tracks.length) % tracks.length;
-    const { id, test, title, kind, locked, verdict } = tracks[index];
+    const { id, test, title, locked, verdict } = tracks[index];
     const startLabel = id === 'race' ? 'maps.goRace' : test.practice ? 'maps.free' : 'maps.go';
-    choices.forEach((choice, k) => choice.setAttribute('aria-pressed', String(k === index)));
-    preview.replaceChildren(artwork(test.mode, locked));
+    rows.forEach((row, k) => row.setAttribute('aria-pressed', String(k === index)));
     details.replaceChildren(
-      el('span', { class: 'map-picker__kind', text: t(`maps.tag.${kind}`) }),
       el('h2', { text: title }),
       el('p', { class: 'map-picker__goal', text: locked ? t('maps.locked') : test.goal }),
     );
@@ -100,12 +89,8 @@ export function openMapSelect(root, onPick, { start } = {}) {
         ]),
       );
     }
-    if (locked && document.activeElement === go) choices[index].focus();
     go.disabled = locked;
-    go.replaceChildren(
-      icon(locked ? 'warning' : 'play'),
-      t(locked ? 'maps.lockedShort' : startLabel),
-    );
+    go.querySelector('.wbtn__label').textContent = t(locked ? 'maps.lockedShort' : startLabel);
   }
 
   function launch() {
@@ -124,34 +109,26 @@ export function openMapSelect(root, onPick, { start } = {}) {
   }
 
   node.addEventListener('keydown', (e) => {
-    if (e.key === 'Tab') {
-      const last = go.disabled ? choices.at(-1) : go;
-      if (e.shiftKey && (e.target === back || e.target === node)) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && e.target === last) {
-        e.preventDefault();
-        back.focus();
-      }
-      return;
-    }
-
     if (e.altKey || e.ctrlKey || e.metaKey) return;
     switch (e.code) {
       case 'ArrowRight':
-      case 'KeyD':
+      case 'ArrowDown':
+      case 'KeyS':
       case 'ArrowLeft':
-      case 'KeyA':
-        show(index + (e.code === 'ArrowRight' || e.code === 'KeyD' ? 1 : -1));
-        if (choices.includes(e.target)) choices[index].focus();
+      case 'ArrowUp':
+      case 'KeyW':
+        show(index + (['ArrowRight', 'ArrowDown', 'KeyS'].includes(e.code) ? 1 : -1));
+        if (rows.includes(e.target)) rows[index].focus();
         break;
       case 'Enter':
+      case 'NumpadEnter':
+        e.stopPropagation();
+        if (e.target === go || e.target === back) return;
+        e.preventDefault();
+        go.click();
+        return;
       case 'Space':
         e.stopPropagation();
-        if (e.target === node) {
-          e.preventDefault();
-          go.click();
-        }
         return;
       case 'Escape':
         close();
@@ -162,38 +139,6 @@ export function openMapSelect(root, onPick, { start } = {}) {
     e.preventDefault();
     e.stopPropagation();
   });
-
-  let wheelAt = -Infinity;
-  panel.addEventListener(
-    'wheel',
-    (e) => {
-      const horizontal = Math.abs(e.deltaX) > Math.abs(e.deltaY);
-      if (!horizontal && panel.scrollHeight > panel.clientHeight) return;
-      const delta = horizontal ? e.deltaX : e.deltaY;
-      if (!delta || e.ctrlKey) return;
-      if (e.cancelable) e.preventDefault();
-      const now = performance.now();
-      if (now - wheelAt < 350) return;
-      wheelAt = now;
-      show(index + Math.sign(delta));
-    },
-    { passive: false },
-  );
-
-  let swipe = null;
-  preview.addEventListener('pointerdown', (e) => {
-    if (!e.isPrimary || e.button !== 0) return;
-    swipe = { x: e.clientX, y: e.clientY };
-    preview.setPointerCapture(e.pointerId);
-  });
-  preview.addEventListener('pointerup', (e) => {
-    if (!e.isPrimary || !swipe) return;
-    const dx = e.clientX - swipe.x;
-    const dy = e.clientY - swipe.y;
-    swipe = null;
-    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) show(index - Math.sign(dx));
-  });
-  preview.addEventListener('lostpointercapture', () => (swipe = null));
 
   root.append(node);
   background.forEach((child) => (child.inert = true));
