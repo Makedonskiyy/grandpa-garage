@@ -1796,3 +1796,105 @@ kbd {
   top: 40px;
   right: 40px;
 }
+
+/* Выбор соперника и профиль для тестовых дуэлей. */
+.duel-actions,
+.duel-label {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.duel-lobby > p,
+.duel-players p,
+.duel-invite p {
+  margin: 0;
+}
+
+.duel-count {
+  font-weight: 650;
+}
+
+.duel-status,
+.duel-empty,
+.duel-players p {
+  color: var(--ui-text-2);
+  font-size: 21px;
+}
+
+.duel-form,
+.duel-lobby {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+}
+
+.duel-form p {
+  margin: 0;
+}
+
+.duel-nick {
+  min-width: 0;
+  max-width: 100%;
+  width: 300px;
+  min-height: 54px;
+  padding: 0 16px;
+  border: 1px solid var(--ui-line-strong);
+  border-radius: 10px;
+  background: var(--ui-d0);
+  color: var(--ui-text);
+  font: inherit;
+}
+
+.duel-button,
+.map-picker .duel-button {
+  width: fit-content;
+  height: 58px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 12px;
+  font: 650 22px/1 var(--font-ui);
+  box-shadow: none;
+}
+
+.duel-form > .duel-button {
+  background: var(--ui-accent);
+  color: var(--ui-ink);
+  cursor: pointer;
+}
+
+.duel-invite:empty,
+.duel-status:empty {
+  display: none;
+}
+
+.duel-invite,
+.duel-players {
+  width: 100%;
+}
+
+.duel-invite:not(:empty),
+.duel-players li {
+  padding: 14px 20px;
+  border: 1px solid var(--ui-line);
+  border-radius: 12px;
+}
+
+.duel-invite .duel-actions {
+  margin-top: 12px;
+}
+
+.duel-players {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.duel-players li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 8px;
+}

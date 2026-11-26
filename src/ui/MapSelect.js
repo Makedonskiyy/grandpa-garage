@@ -14,9 +14,9 @@ const SLIDES = [...TRIAL_MAPS, 'race'];
  * Экран «Куда поедем»: слева маршрутный лист, справа превью выбранной трассы.
  * @param {HTMLElement} root слой интерфейса сцены
  * @param {(id: string) => void} onPick id трассы: одна из TRIAL_MAPS или 'race'
- * @param {{ start?: string }} [opts] с какой строки открыть
+ * @param {{ start?: string, complete?: boolean, onMultiplayer?: () => void }} [opts]
  */
-export function openMapSelect(root, onPick, { start } = {}) {
+export function openMapSelect(root, onPick, { start, complete = true, onMultiplayer } = {}) {
   const opener = document.activeElement;
   const raceOpen = gameState.passed.trial;
   let index = Math.max(0, SLIDES.indexOf(start ?? gameState.trialMap ?? 'trial'));
@@ -32,6 +32,9 @@ export function openMapSelect(root, onPick, { start } = {}) {
   });
 
   const back = webButton(t('maps.back'), close, { icon: 'back' });
+  const multiplayer = onMultiplayer
+    ? webButton('Мультиплеер', onMultiplayer, { className: 'duel-button' })
+    : null;
   const go = webButton('', launch, { variant: 'primary', icon: 'play' });
   const heading = el('h1', { id: 'map-picker-title', text: t('maps.title') });
   const rows = tracks.map(({ title, kind, locked, test }, i) =>
@@ -60,7 +63,10 @@ export function openMapSelect(root, onPick, { start } = {}) {
       tabindex: '-1',
     },
     [
-      el('header', { class: 'map-picker__header' }, [heading, back]),
+      el('header', { class: 'map-picker__header' }, [
+        heading,
+        el('div', { class: 'duel-actions' }, [multiplayer, back]),
+      ]),
       el(
         'div',
         { class: 'map-picker__routes', role: 'group', 'aria-labelledby': heading.id },
@@ -89,13 +95,15 @@ export function openMapSelect(root, onPick, { start } = {}) {
         ]),
       );
     }
-    go.disabled = locked;
+    if (!complete && !locked)
+      details.append(el('p', { text: 'Установи недостающие детали в гараже.' }));
+    go.disabled = locked || !complete;
     go.querySelector('.wbtn__label').textContent = t(locked ? 'maps.lockedShort' : startLabel);
   }
 
   function launch() {
     const { id, locked } = tracks[index];
-    if (locked) return;
+    if (locked || !complete) return;
     if (id !== 'race') gameState.trialMap = id;
     close();
     onPick(id);
@@ -123,7 +131,7 @@ export function openMapSelect(root, onPick, { start } = {}) {
       case 'Enter':
       case 'NumpadEnter':
         e.stopPropagation();
-        if (e.target === go || e.target === back) return;
+        if (e.target === go || e.target === back || e.target === multiplayer) return;
         e.preventDefault();
         go.click();
         return;

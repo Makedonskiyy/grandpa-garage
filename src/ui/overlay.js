@@ -34,16 +34,19 @@ const openModals = [];
 /**
  * Открывает модальное окно: тёмная панель с заголовком, крестиком и подсказкой «Esc — закрыть».
  * build(close) возвращает содержимое панели.
- * @param {{ id?: string, title?: string, size?: 'md'|'lg' }} [opts]
+ * @param {{ id?: string, title?: string, size?: 'md'|'lg', onClose?: () => void }} [opts]
  * @returns {() => void} функция закрытия
  */
-export function openModal(build, { id, title, size = 'md' } = {}) {
+export function openModal(build, { id, title, size = 'md', onClose } = {}) {
   if (id && openModals.some((m) => m.id === id)) return () => {};
   const backdrop = el('div', { class: 'modal-backdrop' });
   const close = () => {
     backdrop.remove();
     const i = openModals.findIndex((m) => m.backdrop === backdrop);
-    if (i >= 0) openModals.splice(i, 1);
+    if (i >= 0) {
+      openModals.splice(i, 1);
+      onClose?.();
+    }
   };
   backdrop.addEventListener('pointerdown', (e) => {
     if (e.target === backdrop) close();

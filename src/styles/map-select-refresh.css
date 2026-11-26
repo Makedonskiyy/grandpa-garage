@@ -1,6 +1,6 @@
 .map-picker {
   position: absolute;
-  inset: 0 calc((1920px - var(--stage-width, 1920px)) / 2);
+  inset: 0 var(--scene-bleed);
   z-index: 50;
   display: grid;
   align-content: center;
