@@ -312,7 +312,8 @@
 }
 
 .modal__body {
-  overflow: auto;
+  min-width: 0;
+  overflow: hidden auto;
   padding: 24px 48px 32px;
 }
 
@@ -361,12 +362,13 @@ kbd {
 /* ---------- Настройки: две колонки — слева экран и игра, справа звук ---------- */
 .settings {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 64px;
 }
 
 .settings__col {
   display: grid;
+  min-width: 0;
   align-content: start;
 }
 
@@ -378,11 +380,15 @@ kbd {
 
 .setting {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 24px;
   min-height: 72px;
   padding: 4px 0;
+}
+
+.setting:has(.slider) {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 58%);
 }
 
 /* Сегменты — под подписью, на всю ширину колонки. */
@@ -509,7 +515,7 @@ kbd {
 /* Ползунок: дорожка 8 px, пройденная часть — цветом ушанки, значение справа. */
 .slider {
   display: grid;
-  grid-template-columns: 360px 56px;
+  grid-template-columns: minmax(0, 1fr) 56px;
   align-items: center;
   gap: 24px;
 }

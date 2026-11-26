@@ -1,6 +1,6 @@
 import { BaseScene } from './BaseScene.js';
 import { SCENES, MUSIC, WORLD } from '../config/constants.js';
-import { buildCar, buildRivalCar, spinWheels } from '../systems/buildCar.js';
+import { buildCar, buildRivalCar } from '../systems/buildCar.js';
 import { StoryStage } from '../systems/StoryStage.js';
 import { audio } from '../systems/AudioManager.js';
 import { gameState } from '../gameState.js';
@@ -9,8 +9,7 @@ import { gameState } from '../gameState.js';
 const GROUND = 226;
 
 /**
- * Сцена Палыча (ТЗ 3.8): у ворот гаража №7 стоит японка, подъезжает вишнёвая «девятка»
- * Палыча, диалог 11–14. Фон — ряд гаражей кооператива «Заря» в ноябре.
+ * Сцена знакомства с Палычем у ворот гаража №7.
  */
 export class PalychScene extends BaseScene {
   constructor() {
@@ -28,18 +27,17 @@ export class PalychScene extends BaseScene {
       scale: 0.9,
       dirty: gameState.car.dirty,
     });
-    const rival = buildRivalCar(this, { x: WORLD.width + 120, y: GROUND, scale: 1 });
-    let prevX = rival.x;
+    const rival = buildRivalCar(this, {
+      x: WORLD.width + 120,
+      y: GROUND,
+      scale: this.player.scaleX,
+    });
     await new Promise((resolve) =>
       this.tweens.add({
         targets: rival,
         x: 486,
         duration: 1800,
         ease: 'Cubic.easeOut',
-        onUpdate: () => {
-          spinWheels(rival, rival.x - prevX);
-          prevX = rival.x;
-        },
         onComplete: resolve,
       }),
     );

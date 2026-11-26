@@ -76,11 +76,15 @@ export async function setFullscreen(on) {
 
 export function initScale(game, stage = document.getElementById('stage')) {
   stage.style.height = `${UI_HEIGHT}px`;
+  let frame = 0;
 
   const apply = () => {
+    frame = 0;
     const { scale } = getSettings();
-    const width = window.innerWidth;
-    const zoom = computeZoom(scale, width, window.innerHeight);
+    const width = document.documentElement.clientWidth;
+    const height = document.documentElement.clientHeight;
+    // При выходе из F11 фиксированный масштаб тоже должен помещаться в окно.
+    const zoom = Math.min(computeZoom(scale, width, height), computeZoom('auto', width, height));
     const canvasZoom = computeCanvasZoom(scale, width, zoom);
     const canvasScale = canvasZoom / zoom;
     const dpr = window.devicePixelRatio || 1;
@@ -92,22 +96,37 @@ export function initScale(game, stage = document.getElementById('stage')) {
     renderZoom = canvasZoom * dpr;
     game.scale.resize(Math.round(GAME_WIDTH * renderZoom), Math.round(GAME_HEIGHT * renderZoom));
     for (const scene of game.scene.getScenes(false)) {
-      if (scene.cameras?.main) fitCamera(scene.cameras.main);
+      const camera = scene.cameras?.main;
+      if (!camera) continue;
+      // Незавершённый переход не должен возвращать камере размер до F11.
+      scene.tweens?.killTweensOf(camera);
+      fitCamera(camera);
     }
     for (const fn of listeners) fn(renderZoom);
     // Phaser пересчитывает координаты указателя по getBoundingClientRect канваса.
     game.scale.refresh();
   };
 
-  window.addEventListener('resize', apply);
-  document.addEventListener('fullscreenchange', apply);
-  onSettingsChange((s, prev) => {
+  const schedule = () => {
+    if (!frame) frame = requestAnimationFrame(apply);
+  };
+  window.addEventListener('resize', schedule);
+  window.visualViewport?.addEventListener('resize', schedule);
+  document.addEventListener('fullscreenchange', schedule);
+  const unsubscribe = onSettingsChange((s, prev) => {
     // Полный экран переключаем только когда игрок сменил режим экрана, а не громкость.
     if (s.display !== prev.display && s.display !== 'ask') {
-      setFullscreen(s.display === 'fullscreen').finally(apply);
+      setFullscreen(s.display === 'fullscreen').finally(schedule);
     } else if (s.scale !== prev.scale) {
-      apply();
+      schedule();
     }
+  });
+  game.events.once('destroy', () => {
+    cancelAnimationFrame(frame);
+    window.removeEventListener('resize', schedule);
+    window.visualViewport?.removeEventListener('resize', schedule);
+    document.removeEventListener('fullscreenchange', schedule);
+    unsubscribe();
   });
   apply();
 }

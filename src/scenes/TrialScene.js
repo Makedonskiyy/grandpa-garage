@@ -18,6 +18,7 @@ import { backdrop, prop, roadsideProps, rng } from './scenery.js';
 import { BypassWorld } from './bypassWorld.js';
 import { TownWorld } from './townWorld.js';
 import { DriveSounds } from '../systems/DriveSounds.js';
+import { garageExit } from '../ui/GarageExit.js';
 import { DriveHud } from '../ui/DriveHud.js';
 
 /**
@@ -95,20 +96,7 @@ export class TrialScene extends BaseScene {
     // Светофор — на экране сверху: трогается игрок сам, на зелёный.
     this.startBox = this.add.container(CAR_X, SHIFT);
     this.light = new ScreenLight(this);
-    if (this.test.practice) {
-      if (!gameState.car.dirty && this.run.x > 20) gameState.car.dirty = 'dust';
-      this.ui.append(
-        el(
-          'button',
-          {
-            class: 'ui-abs garage-exit',
-            type: 'button',
-            onclick: () => this.#finish(true),
-          },
-          [icon('garage'), t('trial.toGarage')],
-        ),
-      );
-    }
+    this.ui.append(garageExit(() => this.#exitToGarage()));
     // Первый раз на площадке — брифинг: что нужно сделать. Светофор ждёт «Понятно».
     const brief = this.test.brief && !gameState.flags[`brief_${this.test.id}`];
     if (brief) {
@@ -459,7 +447,7 @@ export class TrialScene extends BaseScene {
   }
 
   update(_time, delta) {
-    if (!this.hud) return;
+    if (!this.hud || this._leaving) return;
     const dt = delta / 1000;
     const run = this.run;
     const input = this.hud.input(dt);
@@ -586,8 +574,32 @@ export class TrialScene extends BaseScene {
     return this.test.track.segments.find((s) => s.from > x && HAZARDS.includes(s.type));
   }
 
-  /** @param {boolean} [quit] объездная: «В гараж» */
-  #finish(quit = false) {
+  #exitToGarage() {
+    if (this._leaving) return;
+    this.light.stop();
+    this.hud.setEnabled(false);
+    this.engine?.stop();
+    this.sounds.stop();
+    this.mud.stop();
+    if (!this.done) {
+      this.done = true;
+      this.#savePractice();
+    }
+    this.goTo(SCENES.GARAGE);
+  }
+
+  #savePractice() {
+    if (!this.test.practice) return;
+    if (!gameState.car.dirty && this.run.x > 20) gameState.car.dirty = 'dust';
+    const m = Math.round(this.run.x);
+    gameState.flags.freeBest = Math.max(gameState.flags.freeBest ?? 0, m);
+    gameState.flags.freeTopSpeed = Math.max(
+      gameState.flags.freeTopSpeed ?? 0,
+      Math.round(this.run.log.topSpeed * 3.6),
+    );
+  }
+
+  #finish() {
     if (this.done) return;
     this.done = true;
     this.hud.setEnabled(false);
@@ -607,23 +619,18 @@ export class TrialScene extends BaseScene {
       this.#puff(0x5a4630, this.car.x - 82, this.car.y - 6);
     }
     if (this.run.ok) this.hud.say('finish', 'good');
-    if (!quit) audio.playSfx(this.result.ok ? SFX.SUCCESS : SFX.FAIL);
+    audio.playSfx(this.result.ok ? SFX.SUCCESS : SFX.FAIL);
 
     // Объездная — практика: не засчитывается, только рекорд дистанции.
     if (this.test.practice) {
-      if (!gameState.car.dirty && this.run.x > 20) gameState.car.dirty = 'dust';
-      const m = Math.round(this.run.x);
-      gameState.flags.freeBest = Math.max(gameState.flags.freeBest ?? 0, m);
-      gameState.flags.freeTopSpeed = Math.max(
-        gameState.flags.freeTopSpeed ?? 0,
-        Math.round(this.run.log.topSpeed * 3.6),
-      );
-      if (!quit) this.hud.say('freeEnd', 'warn');
-      this.time.delayedCall(quit ? 200 : 1600, () => this.goTo(SCENES.GARAGE));
+      this.#savePractice();
+      this.hud.say('freeEnd', 'warn');
+      this.time.delayedCall(1600, () => this.goTo(SCENES.GARAGE));
       return;
     }
+    recordResult('trial', { ...this.result, map: this.test.id });
     this.time.delayedCall(1400, () => {
-      recordResult('trial', { ...this.result, map: this.test.id });
+      if (this._leaving) return;
       this.hud.setVisible(false);
       this.light.setVisible(false);
       const ok = this.result.ok;

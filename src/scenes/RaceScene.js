@@ -4,8 +4,8 @@ import config from '../../data/config.json';
 import car from '../../data/car.json';
 import { BaseScene } from './BaseScene.js';
 import { SCENES, MUSIC, SFX, AMB } from '../config/constants.js';
-import { buildCar, buildRivalCar, spinWheels } from '../systems/buildCar.js';
-import { MARK2 } from '../systems/markII.js';
+import { buildCar, buildRivalCar } from '../systems/buildCar.js';
+import { garageExit } from '../ui/GarageExit.js';
 import { rivalProfile } from '../systems/rival.js';
 import { getTest, formatSeconds } from '../systems/simulate.js';
 import { createRun, stepRun, greenLight, runBot, summarize } from '../systems/drive.js';
@@ -67,15 +67,14 @@ export class RaceScene extends BaseScene {
 
     this.world = new CityWorld(this, { seed: gameState.flags.worldSeed ?? 1, ppm: PPM });
     this.marks = this.#drawMarks(); // старт и финиш: полоса и арка над дорогой
-    // Палыч — на дальней полосе, чуть меньше (дальше от зрителя).
+    // Заглушка Палыча на дальней полосе в масштабе машины игрока.
     this.rival = buildRivalCar(this, {
       x: 0,
       y: cfg.rivalLaneY,
-      scale: cfg.rivalScale,
-      night: true,
+      scale: cfg.carScale,
     });
-    this.rival.front = MARK2.front * cfg.rivalScale;
-    this.rival.plateOffset = 100 * cfg.rivalScale;
+    this.rival.front = cfg.playerFront * cfg.carScale;
+    this.rival.plateOffset = 100 * cfg.carScale;
     this.player = buildCar(this, gameState.build, gameState.cosmetics, {
       x: cfg.playerX,
       y: cfg.playerLaneY,
@@ -109,7 +108,7 @@ export class RaceScene extends BaseScene {
     if (!data.retry) {
       await new StoryStage(this).play('preRace');
       // Пока шла сценка, игрок мог уйти из сцены.
-      if (!this.scene.isActive()) return;
+      if (!this.scene.isActive() || this._leaving) return;
     }
     this.hud.setVisible(true);
     this.light.setVisible(true);
@@ -156,7 +155,17 @@ export class RaceScene extends BaseScene {
     // Метка Палыча у края экрана, когда он ушёл из кадра.
     this.$edgeText = el('span');
     this.$edge = el('div', { class: 'ui-abs rival-edge', hidden: true }, [this.$edgeText]);
-    this.ui.append(this.$clock, this.$edge);
+    this.ui.append(
+      this.$clock,
+      this.$edge,
+      garageExit(() => {
+        this.light.stop();
+        this.hud.setEnabled(false);
+        this.engine?.stop();
+        this.sounds.stop();
+        this.goTo(SCENES.GARAGE);
+      }),
+    );
     this.hud = new DriveHud(this, this.run, { className: 'dash--race' });
   }
 
@@ -285,7 +294,7 @@ export class RaceScene extends BaseScene {
   }
 
   update(_time, delta) {
-    if (!this.hud) return;
+    if (!this.hud || this._leaving) return;
     const dt = delta / 1000;
     const input = this.hud.input(dt);
     const run = this.run;
@@ -327,9 +336,7 @@ export class RaceScene extends BaseScene {
       accel: run.accel ?? 0,
       rearLocked: run.rearLocked,
     });
-    const prevRival = this.rivalDist;
     this.rivalDist = this.rivalRun.at(run.t);
-    spinWheels(this.rival, (this.rivalDist - prevRival) * PPM);
     this.#placeRival();
     this.#gap();
 
@@ -422,8 +429,9 @@ export class RaceScene extends BaseScene {
     this.$time.textContent = formatSeconds(this.run.t);
     if (this.result.ok) this.#taunt('lost');
     audio.playSfx(this.result.ok ? SFX.SUCCESS : SFX.FAIL);
+    recordResult('race', this.result);
     this.time.delayedCall(cfg.finishHoldMs, () => {
-      recordResult('race', this.result);
+      if (this._leaving) return;
       this.hud.setVisible(false);
       this.light.setVisible(false);
       this.$edge.hidden = true;

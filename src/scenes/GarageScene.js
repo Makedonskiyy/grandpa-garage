@@ -126,7 +126,6 @@ export class GarageScene extends BaseScene {
       groundY: cfg.groundY,
       scale: cfg.carScale,
     }));
-    this.focus = this.add.graphics().setBlendMode(Phaser.BlendModes.ADD);
     this.lastBuild = JSON.stringify(gameState.build);
     this.lastLooks = JSON.stringify(gameState.cosmetics);
 
@@ -142,9 +141,8 @@ export class GarageScene extends BaseScene {
     if (!gameState.flags.garageIntroSeen) this.#playGarageIntro();
   }
 
-  update(time, delta) {
+  update(_time, delta) {
     this.car.step(delta / 1000);
-    this.#drawFocus(time);
   }
 
   async #playGarageIntro() {
@@ -914,30 +912,6 @@ export class GarageScene extends BaseScene {
           ])
         : null,
     );
-  }
-
-  /** Мягко пульсирующее пятно на той части машины, к которой относится раздел. */
-  #drawFocus(time) {
-    const g = this.focus;
-    g.clear();
-    const marks = FOCUS[this.view.tile];
-    if (!marks) return;
-    const w = this.car.scaleX * 288;
-    const left = cfg.carX - w / 2;
-    const a = 0.05 + 0.04 * Math.sin(time / 260);
-    const r = 19.4 * this.car.scaleX;
-    for (const k of marks) {
-      const x = left + k * w;
-      const y =
-        this.view.tile === 'wheels' || this.view.tile === 'chassis'
-          ? cfg.groundY - r
-          : cfg.groundY - r * 2.2;
-      for (const [rr, aa] of [
-        [r * 1.5, a],
-        [r * 1.2, a * 1.2],
-      ])
-        g.fillStyle(0xffe2b0, aa).fillCircle(x, y, rr);
-    }
   }
 
   #launch() {

@@ -80,6 +80,12 @@ body {
   pointer-events: auto;
 }
 
+/* Тёмная полоса прокрутки для панелей, которые действительно прокручиваются. */
+#ui-root :where(*) {
+  scrollbar-width: thin;
+  scrollbar-color: #63584b transparent;
+}
+
 .ui-abs {
   position: absolute;
 }
