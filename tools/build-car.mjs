@@ -825,6 +825,21 @@ function layerDirt(m) {
   return p;
 }
 
+/** Сухая дорожная пыль: тонкий налёт вдоль порогов и арок. */
+function layerDust(m) {
+  const p = new Pix();
+  const r = rng(51);
+  for (let y = 173; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      if (!m.paint.at(x, y)) continue;
+      const edge = Math.min(dist(x, y, AXR), dist(x, y, AXF)) < ARCH_R + 10;
+      const density = Math.min(1, (y - 173) / 65) * (edge ? 0.68 : 0.38);
+      if (r() < density) p.set(x, y, '#b4aa91', 26 + Math.round(r() * 43));
+    }
+  }
+  return p;
+}
+
 function layerOverlay(kind, m) {
   const p = new Pix();
   if (kind === 'rust') {
@@ -1183,6 +1198,7 @@ async function main() {
   await save('car_headlight', await layerHeadlight(m).png());
   await save('car_brake', await layerBrake(m).png());
   await save('car_dirt', await layerDirt(m).png());
+  await save('car_dust', await layerDust(m).png());
   for (const k of ['rust', 'cage', 'light'])
     await save(`car_overlay_${k}`, await layerOverlay(k, m).png());
   await save('car_spoiler_lip_paint', await layerSpoiler('lip', 'paint', m).png());

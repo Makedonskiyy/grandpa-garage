@@ -20,7 +20,7 @@
 
 .dash__shade {
   position: absolute;
-  inset: 0;
+  inset: 0 var(--scene-bleed);
   background: linear-gradient(to top, rgb(0 0 0 / 0.72), rgb(0 0 0 / 0.35) 55%, transparent);
   pointer-events: none !important;
 }

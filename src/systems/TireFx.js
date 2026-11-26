@@ -105,8 +105,14 @@ export class TireFx {
     const rearLock = run.rearLocked ? skid : 0;
     // Полный привод: в пробуксовке дымят обе оси, задняя сильнее; на торможении — передняя.
     const axles = {
-      rear: { x: car.wheels.rear.x - car.anchor.x, power: Math.max(spin, lock * 0.7, rearLock) },
-      front: { x: car.wheels.front.x - car.anchor.x, power: Math.max(spin * 0.6, lock) },
+      rear: {
+        x: car.wheels.rear.x - car.anchor.x,
+        power: Math.max(run.rearLocked ? 0 : spin, lock * 0.7, rearLock),
+      },
+      front: {
+        x: car.wheels.front.x - car.anchor.x,
+        power: Math.max(spin * (run.rearLocked ? 1 : 0.6), lock),
+      },
     };
     for (const [id, a] of Object.entries(axles)) {
       const off = a.x * k;

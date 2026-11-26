@@ -82,7 +82,7 @@ export class TrialScene extends BaseScene {
       x: CAR_X,
       y: GROUND_Y,
       // На асфальте машина не пачкается: грязная, только если такой приехала из гаража.
-      dirty: gameState.car.dirty || this.test.surface !== 'asphalt',
+      dirty: this.test.surface === 'asphalt' ? gameState.car.dirty && 'dust' : true,
     });
     this.cover = this.#drawMudCover(); // грязь поверх колёс в глубоких участках
     this.mud = this.#makeMud();
@@ -97,6 +97,7 @@ export class TrialScene extends BaseScene {
     this.startBox = this.add.container(CAR_X, SHIFT);
     this.light = new ScreenLight(this);
     if (this.test.practice) {
+      if (!gameState.car.dirty && this.run.x > 20) gameState.car.dirty = 'dust';
       this.ui.append(
         el(
           'button',
@@ -499,6 +500,7 @@ export class TrialScene extends BaseScene {
     // Асфальт: шины дымят и чернят дорогу; грунт: из-под колёс летит грязь.
     const asphalt = (this.test.surfaces?.[seg.type]?.grip ?? this.test.surface) === 'asphalt';
     this.#tireFx(dt, asphalt);
+    if (asphalt && prevX <= 20 && run.x > 20) this.car.setRoadDirt('dust');
     const splash = !asphalt && (run.slip > 0.25 || (seg.type === 'deep' && run.v > 1));
     this.mud.setPosition(CAR_X - 80, GROUND_Y - 6);
     if (splash && !this.mud.emitting) this.mud.start();
@@ -546,8 +548,9 @@ export class TrialScene extends BaseScene {
       return;
     }
     if (run.sink > 0.25) return this.hud.say('sinking', 'warn');
+    if (run.slip > 0.5 && run.rearLocked) return this.hud.quiet();
     if (run.slip > 0.5) return this.hud.say('spin', 'warn');
-    if (!run.auto && run.limiter && seg.type !== 'ruts')
+    if (!run.auto && run.limiter && run.drive > 0 && !run.rearLocked && seg.type !== 'ruts')
       return this.hud.say(run.gear >= run.stats.ratios.length ? 'limiterTop' : 'limiter', 'warn');
     if (seg.type === 'deep') return this.hud.say('deepIn');
     if (seg.type === 'ruts') {
@@ -610,6 +613,7 @@ export class TrialScene extends BaseScene {
 
     // Объездная — практика: не засчитывается, только рекорд дистанции.
     if (this.test.practice) {
+      if (!gameState.car.dirty && this.run.x > 20) gameState.car.dirty = 'dust';
       const m = Math.round(this.run.x);
       gameState.flags.freeBest = Math.max(gameState.flags.freeBest ?? 0, m);
       gameState.flags.freeTopSpeed = Math.max(

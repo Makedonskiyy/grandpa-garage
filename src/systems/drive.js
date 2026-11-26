@@ -202,7 +202,7 @@ function freeRevRpm(run, gas, h) {
  */
 export function stepRun(run, input = {}, dt = STEP) {
   const handbrake = input.handbrake === true;
-  const gas = handbrake && run.started ? 0 : clamp(input.gas ?? 0, 0, 1);
+  const gas = clamp(input.gas ?? 0, 0, 1);
   const brake = clamp(input.brake ?? 0, 0, 1);
   let left = Math.min(dt, 0.1);
   while (left > 1e-9 && !run.done) {
@@ -242,11 +242,19 @@ function tick(run, gas, brake, handbrake, h) {
 
   // Обороты мотора: от колёс (с пробуксовкой), на старте не ниже оборотов сцепления.
   const neutral = run.gear === 0;
+  const burnout =
+    handbrake &&
+    modeOf(run) !== 'drag' &&
+    surfaceOf(run) === 'asphalt' &&
+    run.gear === 1 &&
+    v === 0;
+  const throttle = handbrake && !burnout ? 0 : gas;
   const fromWheels = neutral ? 0 : wheelRpm(run, v) * (1 + run.slip * ph.slip.rpmFlare);
   // Сцепление на первой пробуксовывает и держит обороты старта, пока колёса их не догонят:
   // обороты задаёт газ (больше газа — ближе к оборотам, набранным перед стартом).
-  const clutchFloor = run.gear === 1 ? idleRpm + (run.launchRpm - idleRpm) * gas : idleRpm;
-  let rpm = neutral ? freeRevRpm(run, gas, h) : Math.max(fromWheels, clutchFloor, idleRpm);
+  const clutchFloor = run.gear === 1 ? idleRpm + (run.launchRpm - idleRpm) * throttle : idleRpm;
+  let rpm =
+    neutral || burnout ? freeRevRpm(run, throttle, h) : Math.max(fromWheels, clutchFloor, idleRpm);
 
   // Тяга мотора.
   let drive = 0;
@@ -256,16 +264,24 @@ function tick(run, gas, brake, handbrake, h) {
   if (shifting) run.shiftTimer = Math.max(0, run.shiftTimer - h);
   run.limiter = rpm >= (neutral ? redline * 0.995 : redline);
   if (run.limiter) run.log.limiter += h;
-  if (engaged && !run.limiter) drive = gas * wheelForce(run, rpm);
-  else if (engaged) drive = gas * wheelForce(run, rpm) * (1 - ph.engine.limiterCut);
+  if (engaged) {
+    const cut = clamp((rpm / redline - 0.985) / 0.015, 0, 1);
+    drive = throttle * wheelForce(run, Math.min(rpm, redline)) * (1 - ph.engine.limiterCut * cut);
+  }
   run.drive = drive;
 
   // Пробуксовка: лишняя тяга сверх предела шин срывает колёса.
-  const over = limit > 0 ? drive / limit - 1 : 0;
-  if (over > 0) run.slip = Math.min(1, run.slip + ph.slip.rise * over * h + 0.6 * h);
+  const drivenGrip = burnout ? limit * 0.5 : limit;
+  const over = drivenGrip > 0 ? drive / drivenGrip - 1 : 0;
+  if (burnout) {
+    // Задняя ось удерживает машину, передняя раскручивается даже при краткой отсечке тяги.
+    const spinTarget = throttle * clamp((rpm - idleRpm * 2) / (redline - idleRpm * 2), 0, 1);
+    run.slip += (spinTarget - run.slip) * Math.min(1, ph.slip.rise * h);
+    if (run.slip < 0.005) run.slip = 0;
+  } else if (over > 0) run.slip = Math.min(1, run.slip + ph.slip.rise * over * h + 0.6 * h);
   else run.slip = Math.max(0, run.slip - ph.slip.fall * h * (1 - over));
   if (run.slip > ph.slip.smokeAt) run.log.spin += h;
-  const traction = Math.min(drive, limit * (1 - (1 - ph.slip.kinetic) * run.slip));
+  const traction = Math.min(drive, drivenGrip * (1 - (1 - ph.slip.kinetic) * run.slip));
 
   // Сопротивление: воздух, качение, грязь трассы.
   const seg = segmentAt(run.test, run.x);
@@ -286,7 +302,8 @@ function tick(run, gas, brake, handbrake, h) {
   run.rearLocked = handbrake;
   // Тормоз у предела сцепления: шины начинают скользить, визжать и дымить (только для показа).
   run.lock = !handbrake && v > 1 && limit > 0 ? clamp((brakeDemand / limit - 0.9) / 0.25, 0, 1) : 0;
-  const resist = air + ground + brakeForce;
+  const engineBrake = engaged && v > 0 ? (1 - throttle) * run.mass * ph.g * 0.025 : 0;
+  const resist = air + ground + brakeForce + engineBrake;
 
   // Колёса и диски раскручиваются вместе с машиной: тяжёлые диски — больше инерции.
   const effMass = run.mass + stats.rimMass * ph.rimInertia;
@@ -297,11 +314,11 @@ function tick(run, gas, brake, handbrake, h) {
   run.accel = (run.v - v) / h;
   run.log.topSpeed = Math.max(run.log.topSpeed, run.v);
 
-  if (!neutral) {
+  if (!neutral && !burnout) {
     rpm = Math.max(wheelRpm(run, run.v) * (1 + run.slip * ph.slip.rpmFlare), clutchFloor, idleRpm);
     if (shifting) rpm = Math.max(idleRpm, run.rpm + (rpm - run.rpm) * Math.min(1, h * 14));
   }
-  run.rpm = Math.min(rpm, redline * 1.01);
+  run.rpm = Math.min(rpm, redline);
 
   if (modeOf(run) !== 'drag') trialHazards(run, seg, surf, gas, drive, limit, h);
   else if (run.x >= run.length) {
@@ -351,8 +368,9 @@ function trialHazards(run, seg, surf, gas, drive, limit, h) {
       run.damage += surf.impact * run.stats.impact * (vv / (d.refSpeed * d.refSpeed)) * h;
   }
   if (run.damage >= run.capacity) return finish(run, false, 'broken');
-  // Завяз: в глубокой грязи — когда засосало, в любом месте — если долго стоит на газу.
-  if (run.v < 0.25 && gas > 0.5) run.stuckTimer += h;
+  // Застрять можно только на грязевом испытании и на грунте.
+  if (modeOf(run) === 'mud' && surfaceOf(run) === 'clay' && run.v < 0.25 && gas > 0.5)
+    run.stuckTimer += h;
   else run.stuckTimer = 0;
   if (run.sink >= 1 || run.stuckTimer > 2.5) {
     const traction = run.log.deepTraction >= run.log.deepPower || run.slip > 0.3;
@@ -412,6 +430,7 @@ export function greenZone(run) {
     const best = bestLaunchRpm(run);
     return [Math.max(run.ph.clutch.launchMinRpm, best - 600), Math.min(redline * 0.95, best + 400)];
   }
+  if (run.slip > run.ph.slip.smokeAt || run.rearLocked || run.shiftTimer > 0) return null;
   const at = shiftPoint(run);
   return at === null ? null : [Math.max(at - 350, run.ph.engine.idleRpm), redline];
 }

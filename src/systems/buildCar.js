@@ -12,7 +12,7 @@ import { buildMarkII } from './markII.js';
  * @param {Phaser.Scene} scene
  * @param {object} build сборка из gameState
  * @param {object} looks косметика из gameState
- * @param {{ x?: number, y?: number, scale?: number, night?: boolean, dirty?: boolean }} [opts]
+ * @param {{ x?: number, y?: number, scale?: number, night?: boolean, dirty?: boolean | 'dust' }} [opts]
  * @returns {CarRig}
  */
 export function buildCar(scene, build, looks, opts = {}) {

@@ -80,7 +80,7 @@ export class RaceScene extends BaseScene {
       y: cfg.playerLaneY,
       scale: cfg.carScale,
       night: true,
-      dirty: gameState.car.dirty,
+      dirty: gameState.car.dirty && 'dust',
     });
     this.player.front = cfg.playerFront * cfg.carScale;
     this.player.plateOffset = 92 * cfg.carScale;
@@ -291,6 +291,7 @@ export class RaceScene extends BaseScene {
 
     const prevX = run.x;
     stepRun(run, input, dt);
+    if (prevX <= 20 && run.x > 20) this.player.setRoadDirt('dust');
     this.#hints(run);
 
     // Город, разметка и финиш едут навстречу; машина игрока стоит на месте.
@@ -376,7 +377,7 @@ export class RaceScene extends BaseScene {
     if (!run.started)
       return run.t > 1.2 ? this.hud.say(run.auto ? 'goAuto' : 'goManual', 'warn') : null;
     if (run.slip > 0.5) return this.hud.say('spin', 'warn');
-    if (!run.auto && run.limiter)
+    if (!run.auto && run.limiter && run.drive > 0)
       return this.hud.say(run.gear >= run.stats.ratios.length ? 'limiterTop' : 'limiter', 'warn');
     if (!run.auto && this.hud.inZone) return this.hud.say('shift');
     this.hud.quiet();
