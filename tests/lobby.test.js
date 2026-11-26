@@ -126,10 +126,47 @@ describe('test multiplayer lobby', () => {
     const a = await send({ action: 'join', nick: 'Racer_one' });
     const b = await send({ action: 'join', nick: 'Racer_two' });
     const id = await invite(a, b);
-    await send({ action: 'accept', id }, b);
+    const { race } = await send({ action: 'accept', id }, b);
+    await send({ action: 'ready', id: race.id }, a);
+    const ready = await send({ action: 'ready', id: race.id }, b);
+    now = ready.race.startAt;
     await send({ action: 'leave' }, a);
     const outcome = await send({ action: 'poll' }, b);
     expect(outcome.players).toHaveLength(1);
     expect(outcome.race.result).toEqual({ winner: b.id, reason: 'left' });
+  });
+
+  it('cancels without a winner when a player leaves during the countdown', async () => {
+    const a = await send({ action: 'join', nick: 'Racer_one' });
+    const b = await send({ action: 'join', nick: 'Racer_two' });
+    const invitation = await invite(a, b);
+    const { race } = await send({ action: 'accept', id: invitation }, b);
+    await send({ action: 'ready', id: race.id }, a);
+    await send({ action: 'ready', id: race.id }, b);
+    await send({ action: 'leave' }, a);
+    expect((await send({ action: 'poll' }, b)).race.result).toEqual({
+      winner: null,
+      reason: 'left',
+    });
+  });
+
+  it('allows brief reconnects and ends the duel after the heartbeat expires', async () => {
+    const a = await send({ action: 'join', nick: 'Racer_one' });
+    const b = await send({ action: 'join', nick: 'Racer_two' });
+    const invitation = await invite(a, b);
+    const { race } = await send({ action: 'accept', id: invitation }, b);
+    await send({ action: 'ready', id: race.id }, a);
+    now = (await send({ action: 'ready', id: race.id }, b)).race.startAt;
+    now += 5000;
+    expect((await send({ action: 'poll' }, a)).race.result).toBeNull();
+    await send({ action: 'poll' }, b);
+    now += 3000;
+    expect((await send({ action: 'poll' }, b)).race.result).toBeNull();
+    now += 9001;
+    expect((await send({ action: 'poll' }, b)).race.result).toEqual({
+      winner: b.id,
+      reason: 'left',
+    });
+    expect((await send({ action: 'poll' }, a)).status).toBe(401);
   });
 });

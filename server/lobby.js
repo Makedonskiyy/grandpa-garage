@@ -7,7 +7,7 @@ export function createLobby({ origin = '', now = Date.now } = {}) {
   const invites = new Map();
   const races = new Map();
 
-  function leave(player) {
+  function leave(player, time) {
     players.delete(player.token);
     for (const [id, invite] of invites) {
       if (invite.from === player || invite.to === player) invites.delete(id);
@@ -15,13 +15,16 @@ export function createLobby({ origin = '', now = Date.now } = {}) {
     const race = player.race;
     if (race && !race.result) {
       const other = race.players.find((entry) => entry !== player);
-      race.result = { winner: other.id, reason: 'left' };
+      race.result = {
+        winner: race.startAt !== null && time >= race.startAt ? other.id : null,
+        reason: 'left',
+      };
     }
   }
 
   function clean(time) {
     for (const player of players.values()) {
-      if (time - player.seen > 12000) leave(player);
+      if (time - player.seen > 12000) leave(player, time);
     }
     for (const [id, invite] of invites) {
       if (invite.until <= time) invites.delete(id);
@@ -83,7 +86,7 @@ export function createLobby({ origin = '', now = Date.now } = {}) {
 
   function act(player, body, time) {
     const { action, id } = body;
-    if (action === 'leave') return leave(player);
+    if (action === 'leave') return leave(player, time);
     if (action === 'invite') {
       const target = [...players.values()].find((entry) => entry.id === id);
       if (!target || target === player || player.race || target.race) return 'Игрок недоступен';

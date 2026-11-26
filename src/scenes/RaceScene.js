@@ -142,7 +142,12 @@ export class RaceScene extends BaseScene {
     this.hud.say(this.run.auto ? 'launchAuto' : 'launch');
     if (this.duel) {
       const { token } = this.duel;
-      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => leaveLobby(token));
+      const disconnect = () => leaveLobby(token);
+      window.addEventListener('pagehide', disconnect, { once: true });
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+        window.removeEventListener('pagehide', disconnect);
+        disconnect();
+      });
       this.duel.lastContact = performance.now();
       this.duel.nextPoll = 0;
       this.duel.sequence = 0;
