@@ -23,6 +23,7 @@ export function drawGarageRoom(scene, { lampX, groundY }) {
 
   // Приглушение: по бокам темнее, под потолком чуть темнее (но не лампа) — взгляд к машине.
   const shade = scene.add.graphics();
+  shade.fillStyle(0x17110e, 0.2).fillRect(0, 0, width, height);
   shade.fillGradientStyle(0x000000, 0x000000, 0x000000, 0x000000, 0.3, 0.3, 0, 0);
   shade.fillRect(0, TUBE.y + 4, width, wallY * 0.45);
   const edge = 150;
@@ -43,9 +44,9 @@ export function drawGarageRoom(scene, { lampX, groundY }) {
       .fillRect(TUBE.x0 - pad, TUBE.y - 6 - pad / 2, TUBE.x1 - TUBE.x0 + pad * 2, 6 + pad);
   // Свет от лампы вниз на машину — ступенчатые трапеции, шире к полу.
   for (const [w, a] of [
-    [230, 0.025],
-    [180, 0.03],
-    [130, 0.035],
+    [188, 0.02],
+    [148, 0.025],
+    [110, 0.03],
   ])
     light.fillStyle(LIGHT, a).fillPoints(
       [

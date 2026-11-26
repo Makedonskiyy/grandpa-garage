@@ -77,6 +77,7 @@ export async function setFullscreen(on) {
 export function initScale(game, stage = document.getElementById('stage')) {
   stage.style.height = `${UI_HEIGHT}px`;
   let frame = 0;
+  let layout;
 
   const apply = () => {
     frame = 0;
@@ -88,9 +89,13 @@ export function initScale(game, stage = document.getElementById('stage')) {
     const canvasZoom = computeCanvasZoom(scale, width, zoom);
     const canvasScale = canvasZoom / zoom;
     const dpr = window.devicePixelRatio || 1;
+    const nextLayout = `${zoom}:${canvasZoom}:${dpr}`;
+    if (layout === nextLayout) return;
+    layout = nextLayout;
     stage.style.setProperty('--ui-scale', String(zoom / UI_PER_WORLD));
     stage.style.setProperty('--stage-width', `${UI_WIDTH * canvasScale}px`);
     stage.style.setProperty('--canvas-height', `${UI_HEIGHT * canvasScale}px`);
+    stage.style.setProperty('--scene-bleed', `${(UI_WIDTH * (1 - canvasScale)) / 2}px`);
 
     // Холст — в физических пикселях окна, камера увеличивает мир под него.
     renderZoom = canvasZoom * dpr;
@@ -111,6 +116,8 @@ export function initScale(game, stage = document.getElementById('stage')) {
     if (!frame) frame = requestAnimationFrame(apply);
   };
   window.addEventListener('resize', schedule);
+  const viewportObserver = new ResizeObserver(schedule);
+  viewportObserver.observe(document.documentElement);
   window.visualViewport?.addEventListener('resize', schedule);
   document.addEventListener('fullscreenchange', schedule);
   const unsubscribe = onSettingsChange((s, prev) => {
@@ -123,6 +130,7 @@ export function initScale(game, stage = document.getElementById('stage')) {
   });
   game.events.once('destroy', () => {
     cancelAnimationFrame(frame);
+    viewportObserver.disconnect();
     window.removeEventListener('resize', schedule);
     window.visualViewport?.removeEventListener('resize', schedule);
     document.removeEventListener('fullscreenchange', schedule);
