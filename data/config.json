@@ -77,9 +77,9 @@
     "finishHoldMs": 1500
   },
   "garage": {
-    "carX": 316,
+    "carX": 320,
     "groundY": 248,
-    "carScale": 1.05,
+    "carScale": 1.16,
     "wallY": 216
   }
 }
