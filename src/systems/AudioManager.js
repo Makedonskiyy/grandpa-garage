@@ -106,7 +106,8 @@ class AudioManager {
     return true;
   }
 
-  startEngine(build) {
+  startEngine(build, run) {
+    this.playSfx(SFX.CAR_START);
     const sound = this.game?.sound;
     if (!sound?.context || !sound.destination) return null;
     const output = sound.context.createGain();
@@ -116,6 +117,7 @@ class AudioManager {
     applyLevel();
     output.connect(sound.destination);
     let voice = createEngineVoice(sound.context, output, build);
+    voice.update(run);
     const unsubscribe = onSettingsChange(applyLevel);
     return {
       update: (run, input) => voice?.update(run, input),

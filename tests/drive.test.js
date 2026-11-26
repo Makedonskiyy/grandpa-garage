@@ -213,6 +213,17 @@ describe('езда игрока', () => {
     expect(handbrake.drive).toBeGreaterThan(0);
   });
 
+  it.each(['trial_free', 'trial_track', 'race'])('первая трогается с отсечки на %s', (id) => {
+    const run = createRun(id, BASE);
+    greenLight(run);
+    for (let i = 0; i < 480; i++) stepRun(run, { gas: 1 });
+    expect(run.rpm).toBe(run.stats.redline);
+    expect(shiftUp(run)).toBe(true);
+    for (let i = 0; i < 240; i++) stepRun(run, { gas: 1 });
+    expect(run.v).toBeGreaterThan(1);
+    expect(run.done).toBe(false);
+  });
+
   it.each(['trial_free', 'trial_track'])('бернаут на асфальте не завершает %s', (id) => {
     const run = createRun(id, { ...BASE, engine: 'engine_turbo' });
     greenLight(run);
@@ -222,6 +233,9 @@ describe('езда игрока', () => {
     expect(run.v).toBe(0);
     expect(run.slip).toBeGreaterThan(run.ph.slip.smokeAt);
     expect(run.rpm).toBe(run.stats.redline);
+    const released = structuredClone(run);
+    for (let i = 0; i < 240; i++) stepRun(released, { gas: 1 });
+    expect(released.v).toBeGreaterThan(1);
     for (let i = 0; i < 240; i++) stepRun(run, { handbrake: true });
     expect(run.rpm).toBeLessThan(run.stats.redline);
     expect(run.slip).toBe(0);

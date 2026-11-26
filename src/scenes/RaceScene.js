@@ -97,8 +97,7 @@ export class RaceScene extends BaseScene {
     // Светофор — на экране сверху; после зелёного уходит, на его место встаёт секундомер.
     this.light = new ScreenLight(this);
     this.light.setVisible(false);
-    audio.playSfx(SFX.CAR_START);
-    this.engine = audio.startEngine(gameState.build);
+    this.engine = audio.startEngine(gameState.build, this.run);
     this.sounds = new DriveSounds(this, gameState.build.tires);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.engine?.stop());
 
@@ -401,6 +400,7 @@ export class RaceScene extends BaseScene {
       this.run.reasonKey = 'slow';
     }
     this.result = summarize(this.run, this.best);
+    if (this.run.reasonKey === 'broken') audio.playSfx(SFX.BREAK);
     this.$time.textContent = formatSeconds(this.run.t);
     if (this.result.ok) this.#taunt('lost');
     audio.playSfx(this.result.ok ? SFX.SUCCESS : SFX.FAIL);
