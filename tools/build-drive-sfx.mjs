@@ -1,5 +1,6 @@
 /** Синтез коротких звуков машины. Запуск: node tools/build-drive-sfx.mjs (нужен FFmpeg). */
 import { spawnSync } from 'node:child_process';
+import { mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const RATE = 44100;
@@ -23,10 +24,39 @@ const crash = (t, noise) =>
   0.09 * pulse(t, 0.23, 123, 21) +
   noise * (0.55 * Math.exp(-t * 18) + 0.12 * Math.exp(-t * 5));
 
-for (const [name, duration, render] of [
-  ['car_start', 0.63, motorStart],
-  ['car_bump', 0.25, pothole],
-  ['car_break', 1.05, crash],
+const click = (hz) => (t, noise) =>
+  0.35 * pulse(t, 0, hz, 95) +
+  0.17 * pulse(t, 0.018, hz * 1.4, 125) +
+  0.16 * noise * Math.exp(-t * 170);
+const install = (t, noise) =>
+  0.45 * pulse(t, 0, 102, 25) +
+  0.22 * pulse(t, 0.09, 508, 31) +
+  0.16 * pulse(t, 0.17, 660, 40) +
+  0.35 * pulse(t, 0.26, 155, 23) +
+  noise * Math.exp(-t * 28) * 0.28;
+const remove = (t, noise) =>
+  0.24 * pulse(t, 0, 480, 32) +
+  0.18 * pulse(t, 0.08, 395, 36) +
+  0.42 * pulse(t, 0.25, 96, 20) +
+  0.26 * noise * Math.exp(-t * 26);
+const wheel = (t, noise) => {
+  const tool = t < 0.33 ? Math.max(0, Math.sin(t * Math.PI * 66)) * Math.min(1, t * 80) : 0;
+  return (
+    0.35 * tool * (noise + Math.sin(t * 2 * Math.PI * 160)) +
+    0.37 * pulse(t, 0.34, 112, 27) +
+    0.19 * pulse(t, 0.35, 430, 34)
+  );
+};
+
+for (const [group, name, duration, render] of [
+  ['car', 'car_start', 0.63, motorStart],
+  ['car', 'car_bump', 0.25, pothole],
+  ['car', 'car_break', 1.05, crash],
+  ['ui', 'ui_click_2', 0.12, click(510)],
+  ['ui', 'ui_click_3', 0.12, click(670)],
+  ['garage', 'tune_install', 0.55, install],
+  ['garage', 'tune_remove', 0.55, remove],
+  ['garage', 'tune_wheel', 0.62, wheel],
 ]) {
   const samples = Buffer.alloc(Math.round(duration * RATE) * 4);
   let seed = 51;
@@ -38,7 +68,9 @@ for (const [name, duration, render] of [
     const edge = Math.min(1, t * 550, (duration - t) * 70);
     samples.writeFloatLE(Math.tanh(render(t, filtered)) * edge, i * 4);
   }
-  const path = fileURLToPath(new URL(`../src/assets/audio/car/${name}.mp3`, import.meta.url));
+  const folder = new URL(`../src/assets/audio/${group}/`, import.meta.url);
+  mkdirSync(folder, { recursive: true });
+  const path = fileURLToPath(new URL(`${name}.mp3`, folder));
   const result = spawnSync(
     'ffmpeg',
     [

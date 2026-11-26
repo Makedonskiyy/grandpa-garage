@@ -110,6 +110,22 @@
       "what": "Обычное нажатие: мягкий щелчок тумблера"
     },
     {
+      "key": "ui_click_2",
+      "group": "ui",
+      "duration": "0.12",
+      "loop": false,
+      "volume": 0.6,
+      "what": "Второй вариант короткого щелчка кнопки"
+    },
+    {
+      "key": "ui_click_3",
+      "group": "ui",
+      "duration": "0.12",
+      "loop": false,
+      "volume": 0.6,
+      "what": "Третий вариант короткого щелчка кнопки"
+    },
+    {
       "key": "ui_confirm",
       "group": "ui",
       "duration": "0.2–0.4",

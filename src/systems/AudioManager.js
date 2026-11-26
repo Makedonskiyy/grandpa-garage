@@ -11,6 +11,7 @@ import catalog from '../../data/sounds.json';
 
 /** Громкость каждого звука из каталога (data/sounds.json). */
 const BASE = Object.fromEntries(catalog.sounds.map((x) => [x.key, x.volume ?? 1]));
+const BUTTON_CLICKS = [SFX.CLICK, 'ui_click_2', 'ui_click_3'];
 
 /**
  * Файлы звуков: src/assets/audio/<группа>/<ключ>.mp3. Vite кладёт в сборку только те,
@@ -39,14 +40,18 @@ class AudioManager {
     this.ambKey = null;
     this.fades = new Set();
     this.warned = new Set();
+    this.lastClick = -1;
   }
 
   init(game) {
     this.game = game;
     const click = (event) => {
       const button = event.target.closest?.('button, [role="button"]');
-      if (button && !button.matches(':disabled, [aria-disabled="true"], .pedal, .shift'))
-        this.playSfx(SFX.CLICK);
+      if (button && !button.matches(':disabled, [aria-disabled="true"], .pedal, .shift, .gcard')) {
+        const offset = 1 + Math.floor(Math.random() * (BUTTON_CLICKS.length - 1));
+        this.lastClick = (this.lastClick + offset) % BUTTON_CLICKS.length;
+        this.playSfx(BUTTON_CLICKS[this.lastClick]);
+      }
     };
     document.addEventListener('click', click, true);
     game.events.once('destroy', () => document.removeEventListener('click', click, true));
