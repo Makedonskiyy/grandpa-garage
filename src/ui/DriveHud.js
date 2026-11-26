@@ -47,7 +47,7 @@ export class DriveHud {
       },
     });
     const redline = run.stats.redline;
-    const tachoMax = Math.ceil(redline / 1000) * 1000 + 1000;
+    const tachoMax = Math.ceil(redline / 1000) * 1000;
     this.tacho = createGauge({
       className: 'gauge--tacho',
       max: tachoMax,

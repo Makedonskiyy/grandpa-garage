@@ -52,6 +52,7 @@ const IMAGES = [
   'car_headlight',
   'car_brake',
   'car_dirt',
+  'car_dust',
   'car_bricks',
   ...CALIPERS,
   ...Object.values(car.overlays).map((k) => `car_overlay_${k}`),
@@ -253,7 +254,7 @@ export class CarRig extends Phaser.GameObjects.Container {
    * @param {Phaser.Scene} scene
    * @param {number} x
    * @param {number} y земля
-   * @param {{ build: object, looks: object, dirty?: boolean, night?: boolean, scale?: number }} opts
+   * @param {{ build: object, looks: object, dirty?: boolean | 'dust', night?: boolean, scale?: number }} opts
    */
   constructor(scene, x, y, opts) {
     super(scene, x, y);
@@ -363,6 +364,13 @@ export class CarRig extends Phaser.GameObjects.Container {
     this.apply(opts.build, opts.looks, opts.dirty);
   }
 
+  /** true — брызги грязи, dust — сухая дорожная пыль. */
+  setRoadDirt(dirty) {
+    this.layers.dirt
+      .setTexture(dirty === 'dust' ? 'car_dust' : 'car_dirt')
+      .setVisible(Boolean(dirty));
+  }
+
   /** Применяет сборку, внешний вид и грязь — без пересоздания объектов. */
   apply(build, looks, dirty = false) {
     const L = this.layers;
@@ -387,7 +395,7 @@ export class CarRig extends Phaser.GameObjects.Container {
     this.neon.setVisible(neon !== null);
     if (neon !== null) this.neon.setTint(neon);
 
-    L.dirt.setVisible(Boolean(dirty));
+    this.setRoadDirt(dirty);
 
     // Колёса: без шин в сборке — спущенное дедово сзади и кирпичи спереди.
     const keys = wheelKeys(build);

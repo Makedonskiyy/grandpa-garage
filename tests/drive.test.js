@@ -213,6 +213,20 @@ describe('езда игрока', () => {
     expect(handbrake.drive).toBeGreaterThan(0);
   });
 
+  it.each(['trial_free', 'trial_track'])('бернаут на асфальте не завершает %s', (id) => {
+    const run = createRun(id, { ...BASE, engine: 'engine_turbo' });
+    greenLight(run);
+    startRun(run);
+    for (let i = 0; i < 4 * 240; i++) stepRun(run, { gas: 1, handbrake: true });
+    expect(run.done).toBe(false);
+    expect(run.v).toBe(0);
+    expect(run.slip).toBeGreaterThan(run.ph.slip.smokeAt);
+    expect(run.rpm).toBe(run.stats.redline);
+    for (let i = 0; i < 240; i++) stepRun(run, { handbrake: true });
+    expect(run.rpm).toBeLessThan(run.stats.redline);
+    expect(run.slip).toBe(0);
+  });
+
   const fast = {
     ...BASE,
     tires: 'tires_slicks',

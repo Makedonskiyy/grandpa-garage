@@ -175,7 +175,10 @@ export function recordResult(testId, result) {
   const d = result.details;
   if (testId === 'trial' && d?.capacity > 0 && Number.isFinite(d.capacity)) {
     gameState.car.damage = Math.min(1, Math.max(gameState.car.damage, d.damage / d.capacity));
-    gameState.car.dirty = true;
+    if (!result.map || result.map === 'trial') gameState.car.dirty = true;
+  }
+  if (!gameState.car.dirty && d?.distance > 20) {
+    gameState.car.dirty = 'dust';
   }
   if (result.ok) {
     gameState.passed[testId] = true;
