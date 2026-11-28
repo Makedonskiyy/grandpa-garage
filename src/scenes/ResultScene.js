@@ -14,7 +14,7 @@ import { drawGarageRoom, placeGarageCar } from './garageBackdrop.js';
 const STAGE = { carX: 196, groundY: 248, scale: 1.1 };
 
 /** Провал из-за езды: сборка годится, нужно проехать иначе. */
-const DRIVING = ['driving', 'rough', 'jump', 'short'];
+const DRIVING = ['driving', 'rough', 'jump', 'short', 'tireBurst'];
 /** Какая часть сборки виновата: значок и название вкладки гаража. */
 const BUILD_FIX = {
   traction: { icon: 'tires', slot: 'wheels' },
@@ -117,7 +117,7 @@ export class ResultScene extends BaseScene {
         title: t(`result.fix.${r.reasonKey}`),
         text: r.hint,
       });
-      if (r.reasonKey !== 'jump')
+      if (!['jump', 'tireBurst'].includes(r.reasonKey))
         steps.push({
           icon: 'check',
           title: t('result.fix.buildOk'),

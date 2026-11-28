@@ -16,6 +16,33 @@ import {
 import parts from '../data/parts.json';
 
 const BASE = { ...parts.initialBuild, tires: 'tires_stock' };
+
+it.each(['trial', 'trial_track', 'trial_free', 'race'])(
+  'шина лопается при долгой блокировке на скорости в %s',
+  (testId) => {
+    const run = createRun(testId, BASE);
+    greenLight(run);
+    startRun(run);
+    if (testId === 'trial_track') run.x = 120; // участок после ям и ограничения.
+    run.v = 65;
+    run.gear = 4;
+    stepRun(run, { brake: 0.5 }, 0.1);
+    expect(run.done).toBe(false);
+    while (!run.done && run.t < 2) stepRun(run, { handbrake: true }, STEP);
+    expect(run.reasonKey).toBe('tireBurst');
+    expect(summarize(run, { ok: true }).reasonKey).toBe('tireBurst');
+  },
+);
+
+it('затяжное торможение педалью с блокировкой тоже может порвать шину', () => {
+  const run = createRun('trial_free', BASE);
+  greenLight(run);
+  startRun(run);
+  run.gear = 5;
+  run.v = 75;
+  while (!run.done && run.t < 4) stepRun(run, { brake: 1 }, STEP);
+  expect(run.reasonKey).toBe('tireBurst');
+});
 const ids = (slot) => getPartsBySlot(slot).map((p) => p.id);
 
 /** Шины × моторы × кузова — основные сборки; остальное штатное. */
