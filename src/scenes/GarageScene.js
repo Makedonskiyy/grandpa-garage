@@ -203,7 +203,7 @@ export class GarageScene extends BaseScene {
         tip,
       );
     this.$side = el('aside', { class: 'ui-abs gside' });
-    this.$detail = el('section', { class: 'ui-abs gdetail', hidden: true });
+    this.$detail = el('section', { class: 'ui-abs gdetail', tabindex: '0', hidden: true });
     this.$tiles = el('nav', { class: 'ui-abs gtiles', 'aria-label': 'Разделы' });
     this.$launch = webButton(t('garage.launchMap'), () => this.#launch(), {
       variant: 'primary',
@@ -311,6 +311,7 @@ export class GarageScene extends BaseScene {
     const horizontal = ['ArrowLeft', 'ArrowRight', 'KeyA', 'KeyD'].includes(event.code);
     const vertical = ['ArrowUp', 'ArrowDown', 'KeyW', 'KeyS'].includes(event.code);
     if (!horizontal && !vertical) return;
+    if (this.$detail.contains(active)) return;
     if (active !== document.body && !this.ui.contains(active)) return;
     const backward = ['ArrowLeft', 'ArrowUp', 'KeyA', 'KeyW'].includes(event.code);
     const move = (items) => {
@@ -615,9 +616,7 @@ export class GarageScene extends BaseScene {
         'aria-pressed': String(selected),
         onclick: () => this.#install(slot, part, card),
         onpointerenter: () => this.#hoverPart(slot, id),
-        onpointerleave: () => this.#hoverPart(null),
         onfocus: () => this.#hoverPart(slot, id),
-        onblur: () => this.#hoverPart(null),
       },
       [
         el('span', { class: 'gcard__thumb' }, [this.#thumb(slot, part)]),
@@ -683,10 +682,11 @@ export class GarageScene extends BaseScene {
   }
 
   #hoverPart(slot, id = null) {
-    this.hover = slot ? { slot: slot.id, id } : null;
+    if (this.hover?.slot === slot.id && this.hover.id === id) return;
+    this.hover = { slot: slot.id, id };
     this.#renderDetail();
-    const preview = this.hover ? { ...gameState.build, [slot.id]: id } : null;
-    this.#renderPlaques(preview);
+    this.$detail.scrollTop = 0;
+    this.#renderPlaques({ ...gameState.build, [slot.id]: id });
   }
 
   /** Поставить деталь: анимация карточки, машина «садится», пыль из-под колёс. */
@@ -764,7 +764,7 @@ export class GarageScene extends BaseScene {
       el('h2', { class: 'gdetail__title', text: part?.name ?? (slot.none ?? empty).name }),
       el('p', {
         class: 'gdetail__text',
-        text: part?.description ?? (slot.none ?? empty).description,
+        text: (installed ? part?.description : part?.short) ?? (slot.none ?? empty).description,
       }),
       el('div', { class: 'gdetail__facts' }, this.#facts(slot, part)),
       installed ? null : el('h3', { class: 'gdetail__section', text: t('garage.ifInstall') }),
