@@ -770,7 +770,7 @@ export class CityWorld {
     this.scene = scene;
     this.seed = seed >>> 0;
     this.ppm = ppm;
-    this.res = Phaser.Math.Clamp(Math.round(getRenderZoom() * 2) / 2, 1, 4);
+    this.res = Phaser.Math.Clamp(Math.round(getRenderZoom() * 2) / 2, 1, 2);
     this.id = `cw${Math.floor(Math.random() * 1e9)}`;
     const skyKey = `${this.id}_sky`;
     const c = document.createElement('canvas');
@@ -875,13 +875,18 @@ export class CityWorld {
         if ((ci <= last && ci >= first) || now) this.#step(job, Infinity);
         else pending.push(job);
       }
+      for (const ci of layer.objects.keys()) {
+        if (ci < first - 2 || ci > last + 2) layer.objects.delete(ci);
+      }
+      for (const ci of layer.jobs.keys()) {
+        if (ci < first - 1 || ci > last + 1) layer.jobs.delete(ci);
+      }
       for (const [ci, img] of layer.chunks) {
-        if (ci >= first - 1) continue;
+        if (ci >= first - 1 && ci <= last + 1) continue;
         const key = img.texture.key;
         img.destroy();
         this.scene.textures.remove(key);
         layer.chunks.delete(ci);
-        layer.objects.delete(ci - 2);
       }
     }
     const deadline = performance.now() + 5;

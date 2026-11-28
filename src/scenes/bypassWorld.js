@@ -1490,10 +1490,8 @@ export class BypassWorld {
     // сколько их на экране, — листва, трава и кора остаются мелкими и чёткими.
     // Размеры холстов чётные. Полушаг сохраняет целое число пикселей на всех
     // слоях: округление размеров браузером иначе оставляет щель на стыке.
-    this.res = Phaser.Math.Clamp(Math.round(getRenderZoom() * 2) / 2, 1, 4);
+    this.res = Phaser.Math.Clamp(Math.round(getRenderZoom() * 2) / 2, 1, 2);
     this.id = `bw${Math.floor(Math.random() * 1e9)}`;
-
-    this.queue = [];
 
     const skyKey = `${this.id}_sky`;
     const c = document.createElement('canvas');
