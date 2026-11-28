@@ -24,7 +24,7 @@
       "title": "Верстак деда",
       "lines": [3, 4, 5, 6, 7],
       "fallback": "workbench",
-      "description": "Вид от первого лица на деревянную столешницу. Сложенная записка и руки отрисованы отдельно.",
+      "description": "Вид от первого лица на деревянную столешницу. Сложенная записка лежит на верстаке.",
       "prompt": "overhead view of a plain wooden workbench top, warm desaturated wood, unobstructed surface",
       "sound": "amb_garage_inside"
     },

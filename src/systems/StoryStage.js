@@ -36,8 +36,8 @@ const FRAME = Object.fromEntries(characters.frames.map((f, i) => [f, i]));
 const MOUTH_MS = 110;
 const BG_FADE_MS = 800;
 const KEN_BURNS_MS = 18000;
-const NOTE_OPEN_MS = 1080;
-const NOTE_CLOSE_MS = 560;
+const NOTE_OPEN_MS = 640;
+const NOTE_CLOSE_MS = 360;
 
 export function getSequenceStart(name) {
   const id = story.sequences[name];
@@ -300,21 +300,12 @@ export class StoryStage {
       n.phase = 'opening';
       this.$note.className = 'ui-abs story-note is-open is-interactive';
       this.$paper = el('div', { class: 'story-note__paper' });
-      const hands = ['left', 'right'].map((side) =>
-        el('img', {
-          class: `story-note__hand story-note__hand--${side}`,
-          src: 'assets/images/story/note_hand.png',
-          alt: '',
-          draggable: 'false',
-        }),
-      );
       clear(this.$note).append(
         el('div', { class: 'story-note__reading' }, [
           this.$paper,
           el('div', { class: 'story-note__lift', 'aria-hidden': 'true' }, [
             el('span', { class: 'story-note__seal', text: t('story.noteFrom') }),
           ]),
-          ...hands,
         ]),
         el('div', { class: 'story-note__hint', text: t('story.noteNext') }),
       );
@@ -325,7 +316,7 @@ export class StoryStage {
         this.#noteLine();
       });
       if (n.reducedMotion) unfold();
-      else this.holdTimer = this.scene.time.delayedCall(NOTE_OPEN_MS * 0.55, unfold);
+      else this.holdTimer = this.scene.time.delayedCall(NOTE_OPEN_MS * 0.27, unfold);
       return;
     }
     if (n.phase === 'open' && n.shown < n.lines.length) return this.#noteLine();

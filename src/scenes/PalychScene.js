@@ -7,12 +7,13 @@ import { audio } from '../systems/AudioManager.js';
 import { gameState } from '../gameState.js';
 
 const YARD = 'palych_arrival';
-const GROUND = 267;
-const SKYLINE_SCALE = 0.78;
+const GROUND = 275;
+const SKYLINE_SCALE = 1.02;
 // Замер от бампера до бампера у непрозрачной части car_base, без полей текстуры.
 const SKYLINE_VISIBLE_LENGTH = 273.33;
 const WORLD_PER_MM = (SKYLINE_VISIBLE_LENGTH * SKYLINE_SCALE) / 4600;
 const MARK2_SCALE = (MARK2.lengthMm * WORLD_PER_MM) / MARK2.visibleLength;
+const MARK2_HALF_WIDTH = (MARK2.visibleLength * MARK2_SCALE) / 2;
 
 /**
  * Сцена знакомства с Палычем у ворот гаража №7.
@@ -30,13 +31,13 @@ export class PalychScene extends BaseScene {
     this.add.image(0, 0, `story_${YARD}`).setOrigin(0);
 
     this.player = buildCar(this, gameState.build, gameState.cosmetics, {
-      x: 168,
+      x: 155,
       y: GROUND,
       scale: SKYLINE_SCALE,
       dirty: gameState.car.dirty,
     });
     const rival = buildMarkII(this, {
-      x: WORLD.width + 120,
+      x: WORLD.width + MARK2_HALF_WIDTH + 8,
       y: GROUND,
       scale: MARK2_SCALE,
     });
@@ -45,7 +46,7 @@ export class PalychScene extends BaseScene {
     await new Promise((resolve) =>
       this.tweens.add({
         targets: rival,
-        x: 436,
+        x: 469,
         duration: 2200,
         ease: 'Cubic.easeOut',
         onUpdate: () => {

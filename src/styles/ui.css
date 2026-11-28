@@ -1171,9 +1171,7 @@ kbd {
   }
 }
 
-/* ---------- Записка деда на верстаке ----------
- * Вид от первого лица: руки поднимают сложенный листок и раскрывают над столешницей.
- */
+/* ---------- Записка деда на верстаке ---------- */
 .story-note[hidden] {
   display: none;
 }
@@ -1262,13 +1260,13 @@ kbd {
 
 @keyframes note-unfold {
   0%,
-  52% {
+  22% {
     opacity: 0;
-    transform: translateY(-38px) scale(0.316, 0.35) rotate(-5deg);
+    transform: translateY(-18px) scale(0.316, 0.35) rotate(-5deg);
   }
-  58% {
+  32% {
     opacity: 1;
-    transform: translateY(-38px) scale(0.316, 0.35) rotate(-5deg);
+    transform: translateY(-18px) scale(0.316, 0.35) rotate(-5deg);
   }
 }
 
@@ -1281,62 +1279,18 @@ kbd {
 }
 
 @keyframes note-lift {
-  0%,
-  41% {
+  0% {
     opacity: 1;
     transform: translate(-50%, -50%) rotate(-8deg);
   }
-  52% {
+  22% {
     opacity: 1;
-    transform: translate(-50%, calc(-50% - 38px)) rotate(-5deg);
+    transform: translate(-50%, calc(-50% - 18px)) rotate(-5deg);
   }
-  58%,
+  32%,
   100% {
     opacity: 0;
-    transform: translate(-50%, calc(-50% - 38px)) rotate(-5deg);
-  }
-}
-
-.story-note__hand {
-  position: absolute;
-  bottom: -448px;
-  width: 260px;
-  image-rendering: pixelated;
-  pointer-events: none;
-  transform-origin: 50% 22%;
-  filter: drop-shadow(4px 10px 8px rgb(52 28 14 / 0.4));
-  animation: note-grab var(--note-open-time) ease-in-out both;
-}
-
-.story-note__hand--left {
-  left: -195px;
-  --reach: 306px;
-  --mirror: 1;
-  --tilt: -11deg;
-}
-
-.story-note__hand--right {
-  right: -195px;
-  --reach: -306px;
-  --mirror: -1;
-  --tilt: 11deg;
-}
-
-@keyframes note-grab {
-  0% {
-    transform: translate(calc(var(--reach) * 0.66), 440px) rotate(calc(var(--tilt) * 1.7))
-      scaleX(var(--mirror));
-    animation-timing-function: cubic-bezier(0.18, 0.57, 0.44, 1);
-  }
-  41% {
-    transform: translate(var(--reach), -65px) rotate(var(--tilt)) scaleX(var(--mirror));
-  }
-  52%,
-  58% {
-    transform: translate(var(--reach), -121px) rotate(var(--tilt)) scaleX(var(--mirror));
-  }
-  100% {
-    transform: translate(0, 0) rotate(0) scaleX(var(--mirror));
+    transform: translate(-50%, calc(-50% - 18px)) rotate(-5deg);
   }
 }
 
@@ -1345,30 +1299,13 @@ kbd {
 }
 
 @keyframes note-fold {
-  65% {
+  78% {
     opacity: 1;
-    transform: translateY(-30px) scale(0.34, 0.36) rotate(-5deg);
+    transform: scale(0.316, 0.35) rotate(-8deg);
   }
   to {
     opacity: 0;
-    transform: translateY(70px) scale(0.32, 0.34) rotate(-8deg);
-  }
-}
-
-.story-note.is-closing .story-note__hand {
-  animation: note-release var(--note-close-time) ease-in-out both;
-}
-
-@keyframes note-release {
-  from {
-    transform: translate(0, 0) rotate(0) scaleX(var(--mirror));
-  }
-  65% {
-    transform: translate(var(--reach), -100px) rotate(var(--tilt)) scaleX(var(--mirror));
-  }
-  to {
-    transform: translate(calc(var(--reach) * 0.66), 440px) rotate(calc(var(--tilt) * 1.7))
-      scaleX(var(--mirror));
+    transform: scale(0.316, 0.35) rotate(-8deg);
   }
 }
 
@@ -1398,9 +1335,7 @@ kbd {
 @media (prefers-reduced-motion: reduce) {
   .story-note__paper,
   .story-note__lift,
-  .story-note__hand,
   .story-note.is-closing .story-note__paper,
-  .story-note.is-closing .story-note__hand,
   .story-note__line {
     animation-duration: 1ms;
   }
