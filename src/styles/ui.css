@@ -924,39 +924,12 @@ kbd {
   overflow: hidden;
 }
 
-.story__workbench {
-  display: none;
+.story-layer.has-workbench .story__actors {
+  visibility: hidden;
 }
 
-.story-layer.has-workbench .story__workbench {
-  display: block;
-  inset: auto var(--scene-bleed) 0;
-  height: 302px;
-  border-top: 4px solid #a97646;
-  background:
-    linear-gradient(90deg, #21140ccc, transparent 35% 73%, #21140caa),
-    linear-gradient(transparent 47%, #29170e 47% 50%, #50321e 50% 53%, #352419 53%),
-    repeating-linear-gradient(0deg, #775030 0 3px, #694528 3px 5px, #805636 5px 17px);
-  box-shadow: 0 -5px 16px #1c110963;
-}
-
-.story-layer.has-workbench .story-note__folded {
-  left: 58%;
-  bottom: 190px;
-  width: 248px;
-  height: 140px;
-  margin-left: -124px;
-  transform: rotate(-7deg) skewX(-8deg);
-  animation: none;
-}
-
-.story-layer.has-workbench .story-note__folded:hover {
-  transform: rotate(-7deg) skewX(-8deg) translateY(-6px);
-}
-
-.story-layer.has-workbench .story-note.is-folded .story-note__hint {
-  left: 58%;
-  bottom: 54px;
+.story-layer.has-workbench .story__shade {
+  background: radial-gradient(ellipse at 50% 46%, transparent 25%, rgb(21 13 8 / 0.58) 100%);
 }
 
 /* Персонаж: корень — выход на сцену, тело — фокус (кто говорит), спрайт — дыхание. */
@@ -1199,8 +1172,7 @@ kbd {
 }
 
 /* ---------- Записка деда на верстаке ----------
- * Сначала — сложенный листок на столе (покачивается, зовёт кликнуть), по клику —
- * разворачивается в лист в линейку, строки дописываются почерком по одной.
+ * Вид от первого лица: руки поднимают сложенный листок и раскрывают над столешницей.
  */
 .story-note[hidden] {
   display: none;
@@ -1210,39 +1182,39 @@ kbd {
   inset: 0;
   display: grid;
   place-items: center;
+}
+
+.story-note.is-interactive {
+  pointer-events: auto;
   cursor: pointer;
 }
 
-.story-note__folded {
-  position: absolute;
-  left: 50%;
-  bottom: 220px;
-  width: 260px;
-  height: 180px;
-  margin-left: -130px;
+.story-note__folded,
+.story-note__lift {
+  width: 316px;
+  height: 196px;
+  padding: 0;
+  border: 0;
   display: grid;
   place-items: center;
-  border-radius: 6px;
+  border-radius: 3px;
   background:
     linear-gradient(135deg, rgb(0 0 0 / 0.08) 50%, transparent 50%) no-repeat right top / 56px 56px,
     linear-gradient(90deg, transparent 49.6%, rgb(120 100 70 / 0.35) 50%, transparent 50.4%),
     #efe4cc;
   box-shadow:
-    0 18px 30px rgb(0 0 0 / 0.55),
-    0 2px 0 rgb(0 0 0 / 0.2);
-  transform: rotate(-7deg);
-  animation: note-wait 1.6s ease-in-out infinite alternate;
+    2px 8px 12px rgb(32 20 10 / 0.56),
+    0 4px 0 #c2ad87;
 }
 
-.story-note__folded:hover {
-  animation-play-state: paused;
-  transform: rotate(-7deg) translateY(-8px) scale(1.04);
+.story-note__folded {
+  transform: translateY(-34px) rotate(-8deg);
+  cursor: inherit;
 }
 
-@keyframes note-wait {
-  to {
-    transform: rotate(-5deg) translateY(-6px);
-  }
+.story-note__folded:focus-visible {
+  outline: 3px solid var(--ui-accent);
+  outline-offset: 8px;
 }
 
 .story-note__seal {
@@ -1255,7 +1227,7 @@ kbd {
 .story-note__hint {
   position: absolute;
   left: 50%;
-  bottom: 96px;
+  bottom: 42px;
   transform: translateX(-50%);
   padding: 14px 24px;
   border-radius: 999px;
@@ -1266,33 +1238,101 @@ kbd {
   white-space: nowrap;
 }
 
+.story-note__reading {
+  position: relative;
+  width: 1000px;
+  margin-top: -68px;
+}
+
 .story-note__paper {
-  width: 1040px;
-  min-height: 600px;
-  padding: 72px 96px 80px;
+  min-height: 560px;
+  padding: 56px 84px 45px;
   background:
-    repeating-linear-gradient(to bottom, transparent 0 63px, rgb(70 96 140 / 0.25) 63px 65px),
+    repeating-linear-gradient(to bottom, transparent 0 59px, rgb(70 96 140 / 0.21) 59px 61px),
     linear-gradient(90deg, transparent 72px, rgb(190 70 70 / 0.35) 72px 74px, transparent 74px),
     #f3ead7;
   background-position:
-    0 56px,
+    0 41px,
     0 0,
     0 0;
   color: #2a3348;
-  box-shadow: 0 30px 80px rgb(0 0 0 / 0.6);
-  transform-origin: 50% 70%;
-  animation: note-unfold 520ms var(--ui-ease);
-  transform: rotate(-1deg);
+  box-shadow: 0 20px 48px rgb(32 20 10 / 0.55);
+  animation: note-unfold 760ms var(--ui-ease) both;
 }
 
 @keyframes note-unfold {
-  0% {
+  0%,
+  39% {
     opacity: 0;
-    transform: translateY(240px) scale(0.3, 0.12) rotate(-8deg);
+    transform: translateY(-38px) scale(0.316, 0.35) rotate(-5deg);
   }
-  60% {
+  46% {
     opacity: 1;
-    transform: translateY(0) scale(1, 0.5) rotate(-3deg);
+    transform: translateY(-38px) scale(0.316, 0.35) rotate(-5deg);
+  }
+}
+
+.story-note__lift {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-8deg);
+  animation: note-lift 760ms ease both;
+}
+
+@keyframes note-lift {
+  0%,
+  25% {
+    opacity: 1;
+  }
+  40% {
+    opacity: 1;
+    transform: translate(-50%, calc(-50% - 38px)) rotate(-5deg);
+  }
+  46%,
+  100% {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% - 38px)) rotate(-5deg);
+  }
+}
+
+.story-note__hand {
+  position: absolute;
+  bottom: -448px;
+  width: 260px;
+  image-rendering: pixelated;
+  pointer-events: none;
+  transform-origin: 50% 22%;
+  filter: drop-shadow(4px 10px 8px rgb(52 28 14 / 0.4));
+  animation: note-grab 760ms ease both;
+}
+
+.story-note__hand--left {
+  left: -195px;
+  --reach: 306px;
+  --mirror: 1;
+  --tilt: -11deg;
+}
+
+.story-note__hand--right {
+  right: -195px;
+  --reach: -306px;
+  --mirror: -1;
+  --tilt: 11deg;
+}
+
+@keyframes note-grab {
+  0% {
+    transform: translate(var(--reach), 440px) rotate(var(--tilt)) scaleX(var(--mirror));
+  }
+  28% {
+    transform: translate(var(--reach), -65px) rotate(var(--tilt)) scaleX(var(--mirror));
+  }
+  44% {
+    transform: translate(var(--reach), -121px) rotate(var(--tilt)) scaleX(var(--mirror));
+  }
+  100% {
+    transform: scaleX(var(--mirror));
   }
 }
 
@@ -1303,15 +1343,28 @@ kbd {
 @keyframes note-fold {
   to {
     opacity: 0;
-    transform: translateY(260px) scale(0.3, 0.12) rotate(-8deg);
+    transform: translateY(125px) scale(0.32, 0.34) rotate(-8deg);
+  }
+}
+
+.story-note.is-closing .story-note__hand {
+  animation: note-release 420ms ease-in both;
+}
+
+@keyframes note-release {
+  from {
+    transform: scaleX(var(--mirror));
+  }
+  to {
+    transform: translate(var(--reach), 320px) scaleX(var(--mirror));
   }
 }
 
 .story-note__line {
   margin: 0;
   font-family: 'Caveat Variable', 'Caveat', cursive;
-  font-size: 52px;
-  line-height: 65px;
+  font-size: 48px;
+  line-height: 61px;
   animation: note-write 700ms ease-out;
 }
 
@@ -1325,8 +1378,20 @@ kbd {
   }
 }
 
-.story-note.is-open .story-note__hint {
-  bottom: 40px;
+.story-note.is-open:not(.is-reading) .story-note__hint,
+.story-note.is-closing .story-note__hint {
+  visibility: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .story-note__paper,
+  .story-note__lift,
+  .story-note__hand,
+  .story-note.is-closing .story-note__paper,
+  .story-note.is-closing .story-note__hand,
+  .story-note__line {
+    animation-duration: 1ms;
+  }
 }
 
 /* Дата и надписи — по центру, без окна. */

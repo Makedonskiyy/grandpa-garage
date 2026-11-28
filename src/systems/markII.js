@@ -210,13 +210,6 @@ function bodyTexture(scene) {
   ctx.ellipse(16, 79, 3, 1.6, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Наклейки на двери, как на фото: светлые полосы-логотипы.
-  ctx.fillStyle = 'rgba(240,236,228,0.75)';
-  ctx.font = `italic 700 6px "Onest Variable", Onest, sans-serif`;
-  ctx.fillText('REAL DREAM', 150, 58);
-  ctx.font = `700 4px "Onest Variable", Onest, sans-serif`;
-  ctx.fillText('ДРИФТ · ПАЛЫЧ', 100, 64);
-
   ctx.restore();
   // Арки: тёмная глубина ниш колёс.
   for (const ax of AXLES) {
