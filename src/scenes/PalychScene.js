@@ -1,12 +1,22 @@
 import { BaseScene } from './BaseScene.js';
-import { SCENES, MUSIC, WORLD } from '../config/constants.js';
-import { buildCar, buildRivalCar } from '../systems/buildCar.js';
+import { SCENES, MUSIC, AMB, WORLD } from '../config/constants.js';
+import { buildCar } from '../systems/buildCar.js';
+import { buildMarkII, MARK2 } from '../systems/markII.js';
 import { StoryStage } from '../systems/StoryStage.js';
 import { audio } from '../systems/AudioManager.js';
 import { gameState } from '../gameState.js';
 
-// Земля выше диалогового окна: машины не прячутся за репликами.
-const GROUND = 226;
+const YARD = 'palych_arrival';
+const GROUND = 278;
+const SKYLINE_SCALE = 1.53;
+// Замер от бампера до бампера у непрозрачной части car_base, без полей текстуры.
+const SKYLINE_VISIBLE_LENGTH = 273.33;
+const SKYLINE_FRONT = 136;
+const WORLD_PER_MM = (SKYLINE_VISIBLE_LENGTH * SKYLINE_SCALE) / 4600;
+const MARK2_SCALE = (MARK2.lengthMm * WORLD_PER_MM) / MARK2.visibleLength;
+const MARK2_HALF_WIDTH = (MARK2.visibleLength * MARK2_SCALE) / 2;
+const CENTER_X = WORLD.width / 2;
+const BUMPER_GAP = 48;
 
 /**
  * Сцена знакомства с Палычем у ворот гаража №7.
@@ -19,63 +29,44 @@ export class PalychScene extends BaseScene {
   async create() {
     this.enter();
     audio.playMusic(MUSIC.GARAGE);
-    this.#drawRow();
+    this.ambience = AMB.COOP;
+    audio.playAmbience(this.ambience);
+    this.add.image(0, 0, `story_${YARD}`).setOrigin(0);
 
     this.player = buildCar(this, gameState.build, gameState.cosmetics, {
-      x: 196,
+      x: CENTER_X - BUMPER_GAP / 2 - SKYLINE_FRONT * SKYLINE_SCALE,
       y: GROUND,
-      scale: 0.9,
+      scale: SKYLINE_SCALE,
       dirty: gameState.car.dirty,
     });
-    const rival = buildRivalCar(this, {
-      x: WORLD.width + 120,
+    const rival = buildMarkII(this, {
+      x: WORLD.width + MARK2_HALF_WIDTH + 8,
       y: GROUND,
-      scale: this.player.scaleX,
+      scale: MARK2_SCALE,
     });
+    rival.scaleX = -MARK2_SCALE;
+    let previousX = rival.x;
     await new Promise((resolve) =>
       this.tweens.add({
         targets: rival,
-        x: 486,
-        duration: 1800,
+        x: CENTER_X + BUMPER_GAP / 2 + MARK2_HALF_WIDTH,
+        duration: 2200,
         ease: 'Cubic.easeOut',
+        onUpdate: () => {
+          const rotation = (previousX - rival.x) / (MARK2_SCALE * rival.wheelR);
+          for (const wheel of rival.wheels) wheel.rotation += rotation;
+          previousX = rival.x;
+        },
         onComplete: resolve,
       }),
     );
 
-    await new StoryStage(this).play('palych');
+    await new StoryStage(this, { sceneBackground: YARD }).play('palych');
     gameState.flags.palychMet = true;
     this.goTo(SCENES.GARAGE);
   }
 
   update(_time, delta) {
     this.player?.step(delta / 1000);
-  }
-
-  /** Пасмурное небо, ряд кирпичных гаражей с крашеными воротами, снег, раскисшая земля. */
-  #drawRow() {
-    const { width, height } = WORLD;
-    const g = this.add.graphics();
-    [0xaeb7c1, 0xb7bfc8, 0xc0c7ce].forEach((c, i) => g.fillStyle(c).fillRect(0, i * 20, width, 21));
-    const gates = [0x4f5d52, 0x5b5f66, 0x6b5a48, 0x4b5866];
-    for (let x = -40, i = 0; x < width; x += 140, i++) {
-      g.fillStyle(0x7a6f66).fillRect(x, 60, 140, GROUND - 60);
-      for (let by = 64; by < GROUND; by += 6) g.fillStyle(0x6e645c).fillRect(x, by, 140, 1);
-      g.fillStyle(0x5d544d).fillRect(x, 60, 3, GROUND - 60);
-      g.fillStyle(gates[i % gates.length]).fillRect(x + 22, 96, 96, GROUND - 96);
-      g.fillStyle(0x000000, 0.22).fillRect(x + 69, 96, 2, GROUND - 96);
-      g.fillStyle(0xffffff, 0.08).fillRect(x + 22, 96, 96, 2);
-      // Номер мелом на воротах.
-      g.fillStyle(0xe8e3d6).fillRect(x + 30, 104, 10, 6);
-      // Крыша со снегом.
-      g.fillStyle(0x3d3833).fillRect(x - 4, 54, 148, 8);
-      g.fillStyle(0xeef1f3).fillRect(x - 4, 50, 148, 6);
-    }
-    // Земля: снег у стены, грязь, колея.
-    g.fillStyle(0xdfe4e7).fillRect(0, GROUND, width, 4);
-    [0x5f4a35, 0x584430, 0x513e2b].forEach((c, i) =>
-      g.fillStyle(c).fillRect(0, GROUND + 4 + i * 44, width, 45),
-    );
-    for (let x = 0; x < width; x += 6) g.fillStyle(0x3b2d1f).fillRect(x, GROUND + 22, 4, 2);
-    g.fillStyle(0x000000, 0.2).fillRect(0, height - 20, width, 20);
   }
 }

@@ -24,11 +24,12 @@
   },
   "story": {
     "workbench": {
-      "warm": 0.1
-    },
-    "note_closeup": {
-      "warm": 0.12,
-      "brightness": 0.9
+      "source": "art/source/story/workbench-reference.jpg",
+      "colors": 40,
+      "warm": 0.04,
+      "denoise": 3,
+      "sharpen": 0.75,
+      "brightness": 0.94
     },
     "garage7_cover": {
       "brightness": 1.05
@@ -40,7 +41,12 @@
       "brightness": 0.85
     },
     "palych_arrival": {
-      "brightness": 0.85
+      "source": "art/source/story/palych_arrival-reference.jpg",
+      "colors": 54,
+      "brightness": 1.08,
+      "denoise": 3,
+      "sharpen": 1,
+      "saturation": 1.08
     }
   }
 }

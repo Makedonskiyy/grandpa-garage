@@ -138,7 +138,7 @@ describe('story.json: постановка сцен', () => {
       while (id !== null) {
         const l = byId.get(id);
         Object.assign(cast, l.cast ?? {});
-        if (l.kind === 'speech' || l.kind === 'note') {
+        if (l.kind === 'speech') {
           expect(Object.values(cast), `реплика ${l.id}`).toContain(l.who);
         }
         id = l.next;

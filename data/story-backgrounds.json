@@ -22,20 +22,10 @@
     },
     "workbench": {
       "title": "Верстак деда",
-      "lines": [3],
+      "lines": [3, 4, 5, 6, 7],
       "fallback": "workbench",
-      "ambience": "dust",
-      "description": "Деревянный верстак у стены: тиски, гаечные ключи на щите с инструментами, переноска с жёлтым светом, на верстаке листок бумаги, прижатый ключом.",
-      "prompt": "old wooden workbench in a Russian garage, vise, wrenches hanging on a tool board, yellow work lamp, a folded handwritten note on the bench held down by a wrench, warm lamp light, cozy and nostalgic, 2004, no people, no readable text",
-      "sound": "amb_garage_inside"
-    },
-    "note_closeup": {
-      "title": "Записка и старая фотография",
-      "lines": [4, 5, 6, 7],
-      "fallback": "workbench",
-      "ambience": "dust",
-      "description": "Ближе к верстаку: исписанный листок, карандаш, рядом старая выцветшая фотография двух мужчин у машин (лица мелко, без деталей), настенный календарь с обведённой датой. Тёплый свет лампы.",
-      "prompt": "close-up of a garage workbench, handwritten note on lined paper, pencil, an old faded photo of two men standing by their cars (small, faces not detailed), wall calendar with a circled date, warm lamp light, nostalgic mood, no readable text",
+      "description": "Вид от первого лица на деревянную столешницу. Сложенная записка лежит на верстаке.",
+      "prompt": "overhead view of a plain wooden workbench top, warm desaturated wood, unobstructed surface",
       "sound": "amb_garage_inside"
     },
     "back_road": {
@@ -53,8 +43,8 @@
       "lines": [11, 12, 13, 14],
       "fallback": null,
       "ambience": "snow",
-      "description": "Проезд кооператива днём у ворот гаража №7. У соседних ворот стоит вишнёвый хэтчбек 90-х (без марки и значков), из выхлопа пар. Снег на крышах гаражей.",
-      "prompt": "alley between rows of brick garages in a Russian garage cooperative, daytime, a cherry-red 1990s hatchback parked near a garage gate, no logos, exhaust steam, snow on garage roofs, slush on the ground, overcast, 2004, no people",
+      "description": "Двор кооператива с рядом железных ворот, панельными домами и мокрой колеёй. Машины и персонажи отрисованы отдельно.",
+      "prompt": "side view of a Russian garage cooperative, worn painted metal doors, distant apartment blocks, muddy courtyard, overcast November daylight, no vehicles or people",
       "sound": "amb_coop_day"
     },
     "wasteland_night": {

@@ -12,10 +12,6 @@
       "path": "assets/images/story/garage7_cover.png"
     },
     { "key": "story_workbench", "path": "assets/images/story/workbench.png" },
-    {
-      "key": "story_note_closeup",
-      "path": "assets/images/story/note_closeup.png"
-    },
     { "key": "story_back_road", "path": "assets/images/story/back_road.png" },
     {
       "key": "story_palych_arrival",

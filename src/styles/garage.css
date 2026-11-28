@@ -633,6 +633,7 @@
 
 .cpick {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
 }
 
@@ -699,6 +700,7 @@
 
 .cpick__hex {
   flex: 1;
+  min-width: 0;
   height: 44px;
   padding: 0 14px;
   border: 0;

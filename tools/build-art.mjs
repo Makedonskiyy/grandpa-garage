@@ -42,14 +42,15 @@ const missing = [];
 for (const key of Object.keys(backgrounds)) {
   const output = `public/assets/images/story/${key}.png`;
   if (filter && !output.includes(filter)) continue;
-  const source = EXT.map((e) => `art/source/story/${key}.${e}`).find((p) =>
-    existsSync(`${root}${p}`),
-  );
-  if (!source) {
-    missing.push(key);
+  const { source: customSource, ...args } = art.story?.[key] ?? {};
+  const source =
+    customSource ??
+    EXT.map((e) => `art/source/story/${key}.${e}`).find((p) => existsSync(`${root}${p}`));
+  if (!source || !existsSync(`${root}${source}`)) {
+    missing.push(customSource ?? `art/source/story/${key}.jpg`);
     continue;
   }
-  run(source, output, { ...art.storyDefaults, ...(art.story?.[key] ?? {}) });
+  run(source, output, { ...art.storyDefaults, ...args });
 }
 
 // Манифест загрузки: фоны истории, у которых есть готовый файл.
@@ -65,6 +66,5 @@ writeFileSync(
 );
 
 if (missing.length) {
-  console.log(`\nФоны истории без исходника (пока временные): ${missing.join(', ')}`);
-  console.log('Положите art/source/story/<ключ>.jpg и запустите npm run art ещё раз.');
+  console.log(`\nИсходники, которых нет для пересборки: ${missing.join(', ')}`);
 }

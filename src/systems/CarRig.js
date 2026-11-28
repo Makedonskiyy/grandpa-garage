@@ -4,7 +4,7 @@
  *
  * Порядок слоёв снизу вверх:
  *   тень → неон → ниши колёс → колёса (шина + диск) / кирпичи → стойки крыла →
- *   основа → краска → оттенки (холодный свет, тёплые тени — поверх любого цвета) →
+ *   основа → тонировка и отражения → краска → оттенки →
  *   накладка кузова → спойлер → фара → грязь → свет фар (ночь).
  * Кузов (всё, кроме тени и колёс) качается на подвеске; колёса стоят на земле и крутятся.
  *
@@ -12,6 +12,7 @@
  */
 import Phaser from 'phaser';
 import car from '../../data/car.json';
+import cosmetics from '../../data/cosmetics.json';
 import {
   createSuspension,
   stepSuspension,
@@ -22,6 +23,7 @@ import {
 } from './carPhysics.js';
 import { getPart } from './simulate.js';
 import { cosmeticHex } from '../gameState.js';
+import { groundShadow } from './groundShadow.js';
 
 const PATH = 'assets/images/car/';
 const AX = car.anchor.x;
@@ -44,9 +46,10 @@ const DENSITY = car.density ?? 1;
 const TEX = 1 / DENSITY;
 
 const IMAGES = [
-  'car_shadow',
   'car_wells',
   'car_base',
+  'car_glass_tint',
+  'car_glass_reflection',
   'car_paint',
   'car_tone',
   'car_headlight',
@@ -276,14 +279,16 @@ export class CarRig extends Phaser.GameObjects.Container {
     this.night = Boolean(opts.night);
     this.suspension = createSuspension();
 
-    const img = (key) =>
+    const img = (key, { x = 0, y = 0 } = {}) =>
       scene.add
-        .image(-AX, -AY - PIVOT_Y, key)
+        .image(x - AX, y - AY - PIVOT_Y, key)
         .setOrigin(0)
         .setScale(TEX);
 
-    // Тень на земле — пиксельный слой (car.shadow.above — сколько его лежит выше земли).
-    this.shadow = scene.add.image(-AX, -car.shadow.above, 'car_shadow').setOrigin(0).setScale(TEX);
+    this.shadow = groundShadow(scene, car.size.width, [
+      car.wheels.rear.x - AX,
+      car.wheels.front.x - AX,
+    ]);
 
     // Неон: трубка под порогом с размытым ореолом и пятном света на земле, медленно дышит.
     this.neon = scene.add
@@ -305,6 +310,8 @@ export class CarRig extends Phaser.GameObjects.Container {
     this.layers = {
       wingBase: img('car_spoiler_wing_base'),
       base: img('car_base'),
+      windowTint: img('car_glass_tint', car.windows),
+      windowReflection: img('car_glass_reflection', car.windows),
       paint: img('car_paint'),
       tone: img('car_tone'),
       overlay: img('car_overlay_rust'),
@@ -391,12 +398,44 @@ export class CarRig extends Phaser.GameObjects.Container {
       .setVisible(Boolean(dirty));
   }
 
+  setWindowTint(looks) {
+    const strength = looks.windowTintStrength ?? cosmetics.defaultWindowTintStrength;
+    const color = colorOf('windowTint', looks.windowTint);
+    this.layers.windowTint.setAlpha(strength / 100);
+    if (this.scene.game.renderer.type === Phaser.CANVAS) this.#tintCanvasGlass(color);
+    else this.layers.windowTint.setTint(color);
+  }
+
+  #tintCanvasGlass(color) {
+    if (this.windowTintColor === color) return;
+    this.windowTintColor = color;
+    const { textures } = this.scene;
+    const source = textures.get('car_glass_tint').getSourceImage();
+    if (!this.windowTintCanvas) {
+      const key = `window_tint_${Phaser.Utils.String.UUID()}`;
+      this.windowTintCanvas = textures.createCanvas(key, source.width, source.height);
+      this.layers.windowTint.setTexture(key);
+      this.once(Phaser.GameObjects.Events.DESTROY, () => textures.remove(key));
+    }
+    const ctx = this.windowTintCanvas.getContext();
+    ctx.clearRect(0, 0, source.width, source.height);
+    ctx.drawImage(source, 0, 0);
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-atop';
+    const { r, g, b } = Phaser.Display.Color.IntegerToRGB(color);
+    const rgb = [r, g, b].map((channel) => Math.round((channel * 119) / 255));
+    ctx.fillStyle = `rgb(${rgb.join(',')})`;
+    ctx.fillRect(0, 0, source.width, source.height);
+    ctx.restore();
+  }
+
   /** Применяет сборку, внешний вид и грязь — без пересоздания объектов. */
   apply(build, looks, dirty = false) {
     const L = this.layers;
     const paint = colorOf('paint', looks.paint);
 
     L.paint.setTint(paint);
+    this.setWindowTint(looks);
 
     const overlayKind = car.overlays[build.body];
     L.overlay.setVisible(Boolean(overlayKind));

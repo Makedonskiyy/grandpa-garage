@@ -36,6 +36,8 @@ const FRAME = Object.fromEntries(characters.frames.map((f, i) => [f, i]));
 const MOUTH_MS = 110;
 const BG_FADE_MS = 800;
 const KEN_BURNS_MS = 18000;
+const NOTE_OPEN_MS = 640;
+const NOTE_CLOSE_MS = 360;
 
 export function getSequenceStart(name) {
   const id = story.sequences[name];
@@ -116,8 +118,9 @@ const AMBIENCE = {
 
 export class StoryStage {
   /** @param {Phaser.Scene} scene */
-  constructor(scene) {
+  constructor(scene, { sceneBackground } = {}) {
     this.scene = scene;
+    this.sceneBackground = sceneBackground;
     this.layer = createLayer(scene);
     this.layer.classList.add('story-layer');
     this.line = null;
@@ -135,15 +138,14 @@ export class StoryStage {
     this.$controls = el('div', { class: 'ui-abs story__controls' });
     // Записка деда: сложенный листок на верстаке — игрок сам его разворачивает.
     this.$note = el('div', { class: 'ui-abs story-note', hidden: true });
-    this.$note.addEventListener('pointerdown', (e) => {
-      e.stopPropagation();
-      this.advance();
-    });
+    this.$note.style.setProperty('--note-open-time', `${NOTE_OPEN_MS}ms`);
+    this.$note.style.setProperty('--note-close-time', `${NOTE_CLOSE_MS}ms`);
+    this.$note.addEventListener('pointerdown', (e) => e.stopPropagation());
+    this.$note.addEventListener('click', () => this.advance());
     this.note = null;
     this.layer.append(
       this.$shade,
       this.$actors,
-      el('div', { class: 'ui-abs story__workbench', 'aria-hidden': 'true' }),
       this.$box,
       this.$center,
       this.$note,
@@ -152,7 +154,8 @@ export class StoryStage {
 
     this.onPointer = () => this.advance();
     this.onKey = (e) => {
-      if (e.code === 'Space' || e.code === 'Enter' || e.code === 'NumpadEnter') {
+      if (this.$controls.contains(document.activeElement)) return;
+      if (!e.repeat && ['Space', 'Enter', 'NumpadEnter'].includes(e.code)) {
         e.preventDefault();
         this.advance();
       }
@@ -200,6 +203,7 @@ export class StoryStage {
     stopVoice();
     this.#stopTyping();
     this.holdTimer?.remove();
+    this.noteTimer?.remove();
     this.line = null;
     this.note = null;
     this.$note.hidden = true;
@@ -234,6 +238,8 @@ export class StoryStage {
     if (!line) throw new Error(`Нет реплики ${id}`);
     this.line = line;
     if (line.kind === 'note') return this.#openNoteGroup(line);
+    if (line.bg === 'workbench') this.#showFoldedNote(false);
+    else this.$note.hidden = true;
     audio.playSfx(SFX.DLG_NEXT, { volume: 0.6 });
     if (line.sfx) audio.playSfx(line.sfx);
     if (line.bg !== undefined) this.#setBackground(line.bg);
@@ -259,37 +265,58 @@ export class StoryStage {
   #openNoteGroup(first) {
     const lines = [];
     for (let l = first; l && l.kind === 'note'; l = byId.get(l.next)) lines.push(l);
-    this.note = { lines, shown: 0, phase: 'folded' };
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    this.note = { lines, shown: 0, phase: 'folded', reducedMotion };
     this.#stopTyping();
     clear(this.$box);
     this.$box.className = 'ui-abs story__box is-hidden';
     this.layer.dataset.kind = 'note';
     this.layer.classList.add('is-done');
-    this.$note.className = 'ui-abs story-note is-folded';
+    this.#showFoldedNote(true);
+    audio.playSfx(SFX.NOTE_APPEAR, { volume: 0.7 });
+  }
+
+  #showFoldedNote(interactive) {
+    this.$note.className = `ui-abs story-note is-folded${interactive ? ' is-interactive' : ''}`;
     this.$note.hidden = false;
     clear(this.$note).append(
-      el('div', { class: 'story-note__folded', 'aria-label': t('story.noteOpen') }, [
+      el(
+        interactive ? 'button' : 'div',
+        {
+          class: 'story-note__folded',
+          type: interactive ? 'button' : undefined,
+          'aria-label': interactive ? t('story.noteOpen') : undefined,
+        },
         el('span', { class: 'story-note__seal', text: t('story.noteFrom') }),
-      ]),
-      el('div', { class: 'story-note__hint', text: t('story.noteOpen') }),
+      ),
     );
-    audio.playSfx(SFX.NOTE_APPEAR, { volume: 0.7 });
+    if (interactive)
+      this.$note.append(el('div', { class: 'story-note__hint', text: t('story.noteOpen') }));
   }
 
   #advanceNote() {
     const n = this.note;
     if (n.phase === 'folded') {
-      n.phase = 'open';
-      this.$note.className = 'ui-abs story-note is-open';
-      const right = n.lines[0].cast?.right;
-      if (right) this.#setActor('right', right);
+      n.phase = 'opening';
+      this.$note.className = 'ui-abs story-note is-open is-interactive';
       this.$paper = el('div', { class: 'story-note__paper' });
       clear(this.$note).append(
-        this.$paper,
+        el('div', { class: 'story-note__reading' }, [
+          this.$paper,
+          el('div', { class: 'story-note__lift', 'aria-hidden': 'true' }, [
+            el('span', { class: 'story-note__seal', text: t('story.noteFrom') }),
+          ]),
+        ]),
         el('div', { class: 'story-note__hint', text: t('story.noteNext') }),
       );
-      audio.playSfx(SFX.NOTE_UNFOLD);
-      this.#noteLine();
+      const unfold = () => audio.playSfx(SFX.NOTE_UNFOLD);
+      this.noteTimer = this.scene.time.delayedCall(n.reducedMotion ? 0 : NOTE_OPEN_MS, () => {
+        n.phase = 'open';
+        this.$note.classList.add('is-reading');
+        this.#noteLine();
+      });
+      if (n.reducedMotion) unfold();
+      else this.holdTimer = this.scene.time.delayedCall(NOTE_OPEN_MS * 0.27, unfold);
       return;
     }
     if (n.phase === 'open' && n.shown < n.lines.length) return this.#noteLine();
@@ -299,7 +326,7 @@ export class StoryStage {
       this.$note.classList.add('is-closing');
       audio.playSfx(SFX.NOTE_FOLD);
       const next = n.lines[n.lines.length - 1].next;
-      this.scene.time.delayedCall(420, () => {
+      this.noteTimer = this.scene.time.delayedCall(n.reducedMotion ? 0 : NOTE_CLOSE_MS, () => {
         this.note = null;
         this.$note.hidden = true;
         if (next === null) this.finish();
@@ -318,7 +345,9 @@ export class StoryStage {
         if (side in line.cast) this.#setActor(side, line.cast[side]);
     this.$paper.append(el('p', { class: 'story-note__line', text: line.text }));
     void playVoice(`story-${line.id}`);
-    this.$note.classList.toggle('is-last', n.shown >= n.lines.length);
+    if (n.shown === n.lines.length) {
+      this.$note.querySelector('.story-note__hint').textContent = t('story.noteClose');
+    }
     audio.playSfx(SFX.NOTE_WRITE, { volume: 0.6 });
   }
 
@@ -373,11 +402,12 @@ export class StoryStage {
     const sound = storyBackgrounds.backgrounds[key]?.sound;
     if (sound) audio.playAmbience(sound);
     const old = this.bg;
-    const draw = this.#resolveBackground(key);
+    const staged = key !== null && key === this.sceneBackground;
+    const draw = staged ? null : this.#resolveBackground(key);
     if (draw === null) {
       // Без своего фона: разговор поверх сцены, сцена приглушена.
       this.bg = null;
-      this.$shade.classList.add('is-on');
+      this.$shade.classList.toggle('is-on', !staged);
     } else {
       this.$shade.classList.remove('is-on');
       const c = this.scene.add.container(0, 0).setDepth(900).setAlpha(0);
@@ -394,23 +424,7 @@ export class StoryStage {
       this.bg = c;
       this.scene.tweens.add({ targets: c, alpha: 1, duration: BG_FADE_MS, ease: 'Sine.easeOut' });
       // Камера медленно наезжает и едет вбок — каждый новый фон в другую сторону.
-      const dir = (this.panDir = -this.panDir);
-      const pan = { t: 0 };
-      const place = () => {
-        const scale = 1.08 - 0.05 * pan.t;
-        const drift = (pan.t - 0.5) * 0.04 * dir;
-        art.setScale(scale);
-        art.x = -((scale - 1) * WORLD.width) / 2 + drift * WORLD.width;
-        art.y = -((scale - 1) * WORLD.height) / 2;
-      };
-      place();
-      this.scene.tweens.add({
-        targets: pan,
-        t: 1,
-        duration: KEN_BURNS_MS,
-        ease: 'Sine.easeOut',
-        onUpdate: place,
-      });
+      if (key !== 'workbench') this.#panBackground(art);
     }
     if (old) {
       this.scene.tweens.add({
@@ -421,6 +435,26 @@ export class StoryStage {
         onComplete: () => old.destroy(),
       });
     }
+  }
+
+  #panBackground(art) {
+    const dir = (this.panDir = -this.panDir);
+    const pan = { t: 0 };
+    const place = () => {
+      const scale = 1.08 - 0.05 * pan.t;
+      const drift = (pan.t - 0.5) * 0.04 * dir;
+      art.setScale(scale);
+      art.x = -((scale - 1) * WORLD.width) / 2 + drift * WORLD.width;
+      art.y = -((scale - 1) * WORLD.height) / 2;
+    };
+    place();
+    this.scene.tweens.add({
+      targets: pan,
+      t: 1,
+      duration: KEN_BURNS_MS,
+      ease: 'Sine.easeOut',
+      onUpdate: place,
+    });
   }
 
   // ---------- Персонажи ----------

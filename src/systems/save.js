@@ -62,7 +62,11 @@ export function loadGame(store = storage()) {
     for (const [slot, id] of Object.entries(raw.build))
       if (id && !ids.has(id)) raw.build[slot] = null;
     for (const [group, value] of Object.entries(raw.cosmetics ?? {})) {
-      const known = cosmetics[group]?.some((c) => c.id === value) || /^#[0-9a-f]{6}$/i.test(value);
+      const known =
+        group === 'windowTintStrength'
+          ? Number.isInteger(value) && value >= 0 && value <= 100
+          : Array.isArray(cosmetics[group]) &&
+            (cosmetics[group].some((c) => c.id === value) || /^#[0-9a-f]{6}$/i.test(value));
       if (!known) delete raw.cosmetics[group];
     }
     return raw;

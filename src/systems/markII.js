@@ -8,15 +8,16 @@
  * земля под серединой машины, перед — вправо.
  */
 import Phaser from 'phaser';
+import { groundShadow } from './groundShadow.js';
 
 const RES = 3; // во сколько раз холст детальнее мира
 const L = 300;
 const H = 92;
 const GROUND = 90;
-const AXLES = [64, 240];
+const AXLES = [68, 236];
 const WHEEL_R = 20;
 const STRETCH = 1.24; // высота кузова над порогом относительно исходного контура
-export const MARK2 = Object.freeze({ length: L, front: L / 2, wheelR: WHEEL_R });
+export const MARK2 = Object.freeze({ visibleLength: 293, lengthMm: 4760 });
 
 const BODY = '#86685a';
 const BODY_HI = '#b5958a';
@@ -40,20 +41,20 @@ const PROFILE = [
   [298, 62],
   [296, 72],
   [288, 80],
-  [266, 80],
-  [262, 70],
-  [254, 60],
-  [240, 55],
-  [226, 60],
-  [218, 70],
-  [215, 80],
-  [87, 80],
-  [84, 70],
-  [76, 60],
-  [64, 55],
-  [50, 60],
-  [42, 70],
-  [40, 80],
+  [262, 80],
+  [258, 70],
+  [250, 60],
+  [236, 55],
+  [222, 60],
+  [214, 70],
+  [211, 80],
+  [91, 80],
+  [88, 70],
+  [80, 60],
+  [68, 55],
+  [54, 60],
+  [46, 70],
+  [44, 80],
   [12, 80],
   [5, 72],
 ];
@@ -210,13 +211,6 @@ function bodyTexture(scene) {
   ctx.ellipse(16, 79, 3, 1.6, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Наклейки на двери, как на фото: светлые полосы-логотипы.
-  ctx.fillStyle = 'rgba(240,236,228,0.75)';
-  ctx.font = `italic 700 6px "Onest Variable", Onest, sans-serif`;
-  ctx.fillText('REAL DREAM', 150, 58);
-  ctx.font = `700 4px "Onest Variable", Onest, sans-serif`;
-  ctx.fillText('ДРИФТ · ПАЛЫЧ', 100, 64);
-
   ctx.restore();
   // Арки: тёмная глубина ниш колёс.
   for (const ax of AXLES) {
@@ -298,6 +292,13 @@ function wheelTexture(scene) {
 export function buildMarkII(scene, opts = {}) {
   const car = scene.add.container(opts.x ?? 0, opts.y ?? 0);
   const left = -L / 2;
+  car.add(
+    groundShadow(
+      scene,
+      L,
+      AXLES.map((axle) => left + axle),
+    ),
+  );
   if (opts.night) {
     // Свет фар — мягкий конус вперёд, габариты сзади.
     const cone = scene.add.triangle(L / 2 - 6, -42, 0, 0, 200, -30, 200, 30, 0xffe8b0, 0.08);
@@ -307,7 +308,6 @@ export function buildMarkII(scene, opts = {}) {
       .setBlendMode(Phaser.BlendModes.ADD);
     car.add([cone, tail]);
   }
-  car.add(scene.add.ellipse(0, -1, L - 20, 9, 0x000000, 0.5));
   car.add(
     scene.add
       .image(left, -GROUND, bodyTexture(scene))

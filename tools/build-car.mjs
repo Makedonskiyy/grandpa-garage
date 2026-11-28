@@ -189,7 +189,7 @@ class Pix {
   }
 
   /** Линия Брезенхэма; filter(x, y) — где можно ставить точки. */
-  line(x0, y0, x1, y1, hex, filter = () => true) {
+  line(x0, y0, x1, y1, hex, filter = () => true, alpha = 255) {
     x0 = Math.round(x0);
     y0 = Math.round(y0);
     x1 = Math.round(x1);
@@ -200,7 +200,7 @@ class Pix {
     const sy = y0 < y1 ? 1 : -1;
     let err = dx + dy;
     for (;;) {
-      if (filter(x0, y0)) this.set(x0, y0, hex);
+      if (filter(x0, y0)) this.set(x0, y0, hex, alpha);
       if (x0 === x1 && y0 === y1) break;
       const e2 = 2 * err;
       if (e2 >= dy) {
@@ -214,10 +214,12 @@ class Pix {
     }
   }
 
-  png() {
-    return sharp(Buffer.from(this.d), { raw: { width: this.w, height: this.h, channels: 4 } })
-      .png()
-      .toBuffer();
+  png(region) {
+    const image = sharp(Buffer.from(this.d), {
+      raw: { width: this.w, height: this.h, channels: 4 },
+    });
+    if (region) image.extract(region);
+    return image.png().toBuffer();
   }
 }
 
@@ -595,11 +597,6 @@ function drawGlass(base, m) {
       if (m.rear.at(x, y)) base.set(x, y, m.rear.at(x, y - 2) ? C.glassMid : C.windTop);
     }
   const onDoor = (x, y) => m.door.at(x, y) && !m.door.edge(x, y);
-  const onQuarter = (x, y) => m.quarter.at(x, y) && !m.quarter.edge(x, y);
-  // Отражение неба — косые полосы.
-  for (let k = 0; k < 6; k++) base.line(428 + k, 54, 396 + k, 116, C.glassStreak, onDoor);
-  for (let k = 0; k < 2; k++) base.line(442 + k, 54, 410 + k, 116, C.glassStreak, onDoor);
-  for (let k = 0; k < 3; k++) base.line(292 + k, 60, 276 + k, 94, C.glassStreak, onQuarter);
   // Сиденье в салоне — тёмный силуэт по контуру с чертежа.
   for (let y = 68; y < 120; y++)
     for (let x = 368; x <= 398; x++) {
@@ -610,6 +607,41 @@ function drawGlass(base, m) {
   // Линии чертежа на стёклах (уплотнители) — тёмные.
   for (let y = 0; y < H; y++)
     for (let x = 0; x < W; x++) if (m.lines.at(x, y) && m.glass.at(x, y)) base.set(x, y, C.frame);
+}
+
+function windowLayers(m) {
+  const tint = new Pix();
+  const reflection = new Pix();
+  const inside = (pane, x, y) =>
+    pane.at(x, y) &&
+    !pane.edge(x, y) &&
+    !m.lines.at(x, y) &&
+    !m.dark.at(x, y) &&
+    !m.body.edge(x, y);
+  const onDoor = (x, y) => inside(m.door, x, y);
+  const onQuarter = (x, y) => inside(m.quarter, x, y);
+
+  let minX = W;
+  let minY = H;
+  let maxX = 0;
+  let maxY = 0;
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      if (!inside(m.glass, x, y)) continue;
+      tint.set(x, y, '#777777');
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+    }
+  }
+  const region = { left: minX, top: minY, width: maxX - minX + 1, height: maxY - minY + 1 };
+
+  for (let k = 0; k < 6; k++) reflection.line(428 + k, 54, 396 + k, 116, C.glassShine, onDoor, 98);
+  for (let k = 0; k < 2; k++) reflection.line(442 + k, 54, 410 + k, 116, C.glassShine, onDoor, 80);
+  for (let k = 0; k < 3; k++)
+    reflection.line(292 + k, 60, 276 + k, 94, C.glassStreak, onQuarter, 152);
+  return { tint, reflection, region };
 }
 
 function paintLens(p, mk, edge, fill, hi, lo) {
@@ -1190,9 +1222,12 @@ async function main() {
 
   const m = await bodyMasks();
   const { paint, base, tone } = drawBody(m);
+  const { tint: windowTint, reflection, region } = windowLayers(m);
   await save('car_shadow', await layerShadow(m).png());
   await save('car_wells', await layerWells(m).png());
   await save('car_base', await base.png());
+  await save('car_glass_tint', await windowTint.png(region));
+  await save('car_glass_reflection', await reflection.png(region));
   await save('car_paint', await paint.png());
   await save('car_tone', await tone.png());
   await save('car_headlight', await layerHeadlight(m).png());
@@ -1221,6 +1256,7 @@ async function main() {
     density: DENSITY,
     size: WORLD,
     anchor: { x: WORLD.width / 2, y: toWorldY(GROUND) },
+    windows: { x: region.left / DENSITY, y: region.top / DENSITY },
     wheels: {
       rear: { x: toWorldX(AXR), y: toWorldY(AXY) },
       front: { x: toWorldX(AXF), y: toWorldY(AXY) },
@@ -1245,11 +1281,11 @@ async function main() {
   };
   writeFileSync(`${ROOT}data/car.json`, await format(JSON.stringify(meta), { parser: 'json' }));
   console.log(`✓ ${Object.keys(files).length} файлов в public/assets/images/car, data/car.json`);
-  if (PREVIEW) await preview(files);
+  if (PREVIEW) await preview(files, region);
 }
 
 /** Превью вариантов и собранный PNG 864×288 с прозрачным фоном. */
-async function preview(files) {
+async function preview(files, windowRegion) {
   const tint = async (buf, hex) => {
     const { data, info } = await sharp(buf)
       .ensureAlpha()
@@ -1297,6 +1333,7 @@ async function preview(files) {
     }
     if (v.spoiler === 'wing') add(files.car_spoiler_wing_base);
     add(files.car_base);
+    add(files.car_glass_reflection, windowRegion.left, windowRegion.top);
     add(await tint(files.car_paint, v.paint));
     add(files.car_tone);
     if (v.overlay) add(files[`car_overlay_${v.overlay}`]);
