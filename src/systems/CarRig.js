@@ -22,6 +22,7 @@ import {
 } from './carPhysics.js';
 import { getPart } from './simulate.js';
 import { cosmeticHex } from '../gameState.js';
+import { groundShadow } from './groundShadow.js';
 
 const PATH = 'assets/images/car/';
 const AX = car.anchor.x;
@@ -44,7 +45,6 @@ const DENSITY = car.density ?? 1;
 const TEX = 1 / DENSITY;
 
 const IMAGES = [
-  'car_shadow',
   'car_wells',
   'car_base',
   'car_paint',
@@ -282,8 +282,10 @@ export class CarRig extends Phaser.GameObjects.Container {
         .setOrigin(0)
         .setScale(TEX);
 
-    // Тень на земле — пиксельный слой (car.shadow.above — сколько его лежит выше земли).
-    this.shadow = scene.add.image(-AX, -car.shadow.above, 'car_shadow').setOrigin(0).setScale(TEX);
+    this.shadow = groundShadow(scene, car.size.width, [
+      car.wheels.rear.x - AX,
+      car.wheels.front.x - AX,
+    ]);
 
     // Неон: трубка под порогом с размытым ореолом и пятном света на земле, медленно дышит.
     this.neon = scene.add

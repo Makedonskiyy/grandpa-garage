@@ -1257,16 +1257,16 @@ kbd {
     0 0;
   color: #2a3348;
   box-shadow: 0 20px 48px rgb(32 20 10 / 0.55);
-  animation: note-unfold 760ms var(--ui-ease) both;
+  animation: note-unfold var(--note-open-time) ease-in-out both;
 }
 
 @keyframes note-unfold {
   0%,
-  39% {
+  52% {
     opacity: 0;
     transform: translateY(-38px) scale(0.316, 0.35) rotate(-5deg);
   }
-  46% {
+  58% {
     opacity: 1;
     transform: translateY(-38px) scale(0.316, 0.35) rotate(-5deg);
   }
@@ -1277,19 +1277,20 @@ kbd {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%) rotate(-8deg);
-  animation: note-lift 760ms ease both;
+  animation: note-lift var(--note-open-time) ease-in-out both;
 }
 
 @keyframes note-lift {
   0%,
-  25% {
+  41% {
     opacity: 1;
+    transform: translate(-50%, -50%) rotate(-8deg);
   }
-  40% {
+  52% {
     opacity: 1;
     transform: translate(-50%, calc(-50% - 38px)) rotate(-5deg);
   }
-  46%,
+  58%,
   100% {
     opacity: 0;
     transform: translate(-50%, calc(-50% - 38px)) rotate(-5deg);
@@ -1304,7 +1305,7 @@ kbd {
   pointer-events: none;
   transform-origin: 50% 22%;
   filter: drop-shadow(4px 10px 8px rgb(52 28 14 / 0.4));
-  animation: note-grab 760ms ease both;
+  animation: note-grab var(--note-open-time) ease-in-out both;
 }
 
 .story-note__hand--left {
@@ -1323,40 +1324,51 @@ kbd {
 
 @keyframes note-grab {
   0% {
-    transform: translate(var(--reach), 440px) rotate(var(--tilt)) scaleX(var(--mirror));
+    transform: translate(calc(var(--reach) * 0.66), 440px) rotate(calc(var(--tilt) * 1.7))
+      scaleX(var(--mirror));
+    animation-timing-function: cubic-bezier(0.18, 0.57, 0.44, 1);
   }
-  28% {
+  41% {
     transform: translate(var(--reach), -65px) rotate(var(--tilt)) scaleX(var(--mirror));
   }
-  44% {
+  52%,
+  58% {
     transform: translate(var(--reach), -121px) rotate(var(--tilt)) scaleX(var(--mirror));
   }
   100% {
-    transform: scaleX(var(--mirror));
+    transform: translate(0, 0) rotate(0) scaleX(var(--mirror));
   }
 }
 
 .story-note.is-closing .story-note__paper {
-  animation: note-fold 420ms var(--ui-ease) forwards;
+  animation: note-fold var(--note-close-time) ease-in-out forwards;
 }
 
 @keyframes note-fold {
+  65% {
+    opacity: 1;
+    transform: translateY(-30px) scale(0.34, 0.36) rotate(-5deg);
+  }
   to {
     opacity: 0;
-    transform: translateY(125px) scale(0.32, 0.34) rotate(-8deg);
+    transform: translateY(70px) scale(0.32, 0.34) rotate(-8deg);
   }
 }
 
 .story-note.is-closing .story-note__hand {
-  animation: note-release 420ms ease-in both;
+  animation: note-release var(--note-close-time) ease-in-out both;
 }
 
 @keyframes note-release {
   from {
-    transform: scaleX(var(--mirror));
+    transform: translate(0, 0) rotate(0) scaleX(var(--mirror));
+  }
+  65% {
+    transform: translate(var(--reach), -100px) rotate(var(--tilt)) scaleX(var(--mirror));
   }
   to {
-    transform: translate(var(--reach), 320px) scaleX(var(--mirror));
+    transform: translate(calc(var(--reach) * 0.66), 440px) rotate(calc(var(--tilt) * 1.7))
+      scaleX(var(--mirror));
   }
 }
 

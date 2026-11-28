@@ -36,6 +36,8 @@ const FRAME = Object.fromEntries(characters.frames.map((f, i) => [f, i]));
 const MOUTH_MS = 110;
 const BG_FADE_MS = 800;
 const KEN_BURNS_MS = 18000;
+const NOTE_OPEN_MS = 1080;
+const NOTE_CLOSE_MS = 560;
 
 export function getSequenceStart(name) {
   const id = story.sequences[name];
@@ -136,6 +138,8 @@ export class StoryStage {
     this.$controls = el('div', { class: 'ui-abs story__controls' });
     // Записка деда: сложенный листок на верстаке — игрок сам его разворачивает.
     this.$note = el('div', { class: 'ui-abs story-note', hidden: true });
+    this.$note.style.setProperty('--note-open-time', `${NOTE_OPEN_MS}ms`);
+    this.$note.style.setProperty('--note-close-time', `${NOTE_CLOSE_MS}ms`);
     this.$note.addEventListener('pointerdown', (e) => e.stopPropagation());
     this.$note.addEventListener('click', () => this.advance());
     this.note = null;
@@ -261,7 +265,8 @@ export class StoryStage {
   #openNoteGroup(first) {
     const lines = [];
     for (let l = first; l && l.kind === 'note'; l = byId.get(l.next)) lines.push(l);
-    this.note = { lines, shown: 0, phase: 'folded' };
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    this.note = { lines, shown: 0, phase: 'folded', reducedMotion };
     this.#stopTyping();
     clear(this.$box);
     this.$box.className = 'ui-abs story__box is-hidden';
@@ -313,15 +318,14 @@ export class StoryStage {
         ]),
         el('div', { class: 'story-note__hint', text: t('story.noteNext') }),
       );
-      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       const unfold = () => audio.playSfx(SFX.NOTE_UNFOLD);
-      this.noteTimer = this.scene.time.delayedCall(reducedMotion ? 0 : 760, () => {
+      this.noteTimer = this.scene.time.delayedCall(n.reducedMotion ? 0 : NOTE_OPEN_MS, () => {
         n.phase = 'open';
         this.$note.classList.add('is-reading');
         this.#noteLine();
       });
-      if (reducedMotion) unfold();
-      else this.holdTimer = this.scene.time.delayedCall(220, unfold);
+      if (n.reducedMotion) unfold();
+      else this.holdTimer = this.scene.time.delayedCall(NOTE_OPEN_MS * 0.55, unfold);
       return;
     }
     if (n.phase === 'open' && n.shown < n.lines.length) return this.#noteLine();
@@ -331,7 +335,7 @@ export class StoryStage {
       this.$note.classList.add('is-closing');
       audio.playSfx(SFX.NOTE_FOLD);
       const next = n.lines[n.lines.length - 1].next;
-      this.noteTimer = this.scene.time.delayedCall(420, () => {
+      this.noteTimer = this.scene.time.delayedCall(n.reducedMotion ? 0 : NOTE_CLOSE_MS, () => {
         this.note = null;
         this.$note.hidden = true;
         if (next === null) this.finish();
