@@ -17,6 +17,50 @@ import parts from '../data/parts.json';
 
 const BASE = { ...parts.initialBuild, tires: 'tires_stock' };
 
+describe('повреждения от ямы', () => {
+  function hit(build, speed, axle = 'front') {
+    const run = createRun('trial_track', build);
+    greenLight(run);
+    startRun(run);
+    run.v = speed;
+    run.gear = 3;
+    run.x = axle === 'front' ? 30 : 32.665;
+    if (axle === 'rear') run.hits.add('30:0');
+    return stepRun(run, {}, STEP);
+  }
+
+  it('безопасный проезд не повреждает шину, мотор или бампер', () => {
+    const run = hit(BASE, 3);
+    expect(run.damageZones).toEqual({ wheel: null, engine: false, bumper: false });
+    expect(run.damage).toBe(0);
+  });
+
+  it('передний удар может сорвать бампер без остановки', () => {
+    const run = hit(BASE, 22);
+    expect(run.damageZones).toEqual({ wheel: null, engine: false, bumper: true });
+    expect(run.done).toBe(false);
+    expect(hit({ ...BASE, body: 'body_cage' }, 22).damageZones.bumper).toBe(false);
+  });
+
+  it('прокол относится к оси, которая получила удар', () => {
+    const build = { ...BASE, tires: 'tires_slicks' };
+    for (const axle of ['front', 'rear']) {
+      const run = hit(build, 23, axle);
+      expect(run.damageZones.wheel).toBe(axle);
+      expect(run.reasonKey).toBe('impactTire');
+    }
+  });
+
+  it('одинаковый передний удар опаснее для менее прочного двигателя', () => {
+    const build = { ...BASE, tires: 'tires_mud', body: 'body_cage' };
+    const fragile = hit({ ...build, engine: 'engine_turbo' }, 29);
+    const strong = hit(build, 29);
+    expect(fragile.reasonKey).toBe('engineImpact');
+    expect(fragile.damageZones.engine).toBe(true);
+    expect(strong.damageZones.engine).toBe(false);
+  });
+});
+
 it.each(['trial', 'trial_track', 'trial_free', 'race'])(
   'шина лопается при долгой блокировке на скорости в %s',
   (testId) => {

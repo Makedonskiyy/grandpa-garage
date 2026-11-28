@@ -59,6 +59,26 @@ function puffTextures(scene) {
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
 export class TireFx {
+  engineSmoke() {
+    const rig = this.rig;
+    this.scene.add
+      .particles(
+        rig.x + (car.headlight.x - car.anchor.x - 24) * rig.scaleX,
+        rig.y - 42 * rig.scaleY,
+        PUFF_KEYS[1],
+        {
+          speedX: { min: -25, max: 8 },
+          speedY: { min: -54, max: -30 },
+          scale: { start: 0.42, end: 1.6 },
+          alpha: { start: 0.95, end: 0 },
+          tint: [0x45464a, 0x646568, 0x7a7b7f],
+          lifespan: 1850,
+          frequency: 72,
+          maxAliveParticles: 28,
+        },
+      )
+      .setDepth(10);
+  }
   /**
    * @param {Phaser.Scene} scene
    * @param {import('./CarRig.js').CarRig} rig машина игрока: колёса, масштаб, слой

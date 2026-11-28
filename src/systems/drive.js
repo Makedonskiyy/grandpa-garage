@@ -78,6 +78,7 @@ export function createRun(testId, build, opts = {}, data = defaultData) {
     ok: false,
     reasonKey: null,
     damage: 0,
+    damageZones: { bumper: false, wheel: null, engine: false },
     capacity: stats.durability * (test.damage?.perDurability ?? Infinity),
     sink: 0,
     stuckTimer: 0,
@@ -324,7 +325,10 @@ function tick(run, gas, brake, handbrake, h) {
       v >= burst.minSpeed && locked > 0
         ? run.brakeSlide + v * locked * h
         : Math.max(0, run.brakeSlide - burst.recoveryPerSec * h);
-    if (run.brakeSlide >= burst.slideDistance) return finish(run, false, 'tireBurst');
+    if (run.brakeSlide >= burst.slideDistance) {
+      run.damageZones.wheel = handbrake ? 'rear' : 'front';
+      return finish(run, false, 'tireBurst');
+    }
   }
 
   if (!neutral && !burnout) {
@@ -369,8 +373,24 @@ function trialHazards(run, seg, surf, gas, drive, limit, h) {
         run.hits.add(id);
         // Ниже безопасной скорости подвеска гасит удар целиком.
         const sp = Math.max(0, run.v - (surf.safeSpeed ?? 0)) / test.damage.refSpeed;
-        run.damage += surf.hit * run.stats.impact * sp * sp;
-        run.events.push({ type: 'hit', v: run.v, surface: at.type });
+        const impact = surf.hit * run.stats.impact * sp * sp;
+        const axle = k === 0 ? 'front' : 'rear';
+        run.damage += impact;
+        run.events.push({ type: 'hit', v: run.v, surface: at.type, axle });
+        const { parts } = run.stats;
+        const perPoint = test.damage.perDurability;
+        if (axle === 'front') {
+          if (impact >= perPoint * (parts.body?.durability ?? 1) * 0.45)
+            run.damageZones.bumper = true;
+          if (impact >= perPoint * (parts.engine?.durability ?? 1) * 1.1) {
+            run.damageZones.engine = true;
+            return finish(run, false, 'engineImpact');
+          }
+        }
+        if (impact >= perPoint * (parts.tires?.durability ?? 1) * 0.85) {
+          run.damageZones.wheel = axle;
+          return finish(run, false, 'impactTire');
+        }
       }
     }
   }
@@ -587,7 +607,8 @@ export function summarize(run, best = null) {
   let reasonKey = run.ok ? null : run.reasonKey;
   // Сборка позволяла, а не вышло — значит, дело в езде.
   const buildCould = best?.ok;
-  if (!run.ok && buildCould && !['broken', 'jump', 'tireBurst'].includes(reasonKey))
+  const localized = ['tireBurst', 'impactTire', 'engineImpact'].includes(reasonKey);
+  if (!run.ok && buildCould && !localized && !['broken', 'jump'].includes(reasonKey))
     reasonKey = 'driving';
   if (!run.ok && buildCould && reasonKey === 'broken' && modeOf(run) !== 'drag')
     reasonKey = 'rough';
@@ -595,7 +616,10 @@ export function summarize(run, best = null) {
   let reason = null;
   if (reasonKey === 'broken')
     reason = format(test.reasons.broken, { part: stats.weakestPart?.name });
-  else if (reasonKey === 'tireBurst') reason = t('result.tireBurst.reason');
+  else if (localized)
+    reason = t(`result.${reasonKey}.reason`, {
+      axle: t(`result.impactTire.${run.damageZones.wheel ?? 'front'}`),
+    });
   else if (reasonKey === 'slow') {
     reason = test.reasons[raceWeakness(run, best)];
     if (stats.mass >= test.heavyMass) reason += test.reasons.heavySuffix;
@@ -626,7 +650,7 @@ export function summarize(run, best = null) {
     ? test.resultHints[reasonKey === 'slow' ? raceWeakness(run, best) : reasonKey]
     : null;
   if (reasonKey === 'driving' || reasonKey === 'rough') hint = drivingHint(run);
-  if (reasonKey === 'tireBurst') hint = t('result.tireBurst.hint');
+  if (localized) hint = t(`result.${reasonKey}.hint`);
   return { ok: run.ok, reasonKey, reason, hint, stats, details };
 }
 

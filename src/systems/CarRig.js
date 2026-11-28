@@ -418,6 +418,48 @@ export class CarRig extends Phaser.GameObjects.Container {
     return this;
   }
 
+  deflateTire(axle) {
+    const wheel = this.wheels[axle];
+    wheel.tire.setScale(TEX, TEX * 0.84);
+    for (const layer of WHEEL_LAYERS) wheel[layer].y += 2;
+  }
+
+  detachFrontBumper() {
+    if (this.frontBumperDetached) return;
+    this.frontBumperDetached = true;
+    const { scene } = this;
+    const x = 266;
+    const y = 65;
+    const width = car.size.width - x;
+    const height = car.size.height - y;
+    const debris = scene.add.container(x - AX, this.bodyFront.y + y - AY - PIVOT_Y);
+    for (const key of ['base', 'paint', 'tone', 'overlay', 'headlight', 'dirt']) {
+      const layer = this.layers[key];
+      const copy = (px, py) =>
+        scene.add
+          .image(px, py, layer.texture.key)
+          .setOrigin(0)
+          .setScale(TEX)
+          .setTint(layer.tintTopLeft)
+          .setAlpha(layer.alpha)
+          .setVisible(layer.visible);
+      const top = copy(layer.x, layer.y).setCrop(x / TEX, 0, width / TEX, y / TEX);
+      this.bodyFront.addAt(top, this.bodyFront.getIndex(layer) + 1);
+      debris.add(copy(-x, -y).setCrop(x / TEX, y / TEX, width / TEX, height / TEX));
+      layer.setCrop(0, 0, x / TEX, car.size.height / TEX);
+    }
+    this.add(debris);
+    scene.tweens.add({
+      targets: debris,
+      x: debris.x - 220,
+      y: debris.y + 27,
+      angle: 20,
+      alpha: 0,
+      duration: 950,
+      onComplete: () => debris.destroy(),
+    });
+  }
+
   /** Повторяет позу кузова и кадр колёс другой машины (отражение на полу гаража). */
   syncFrom(other) {
     this.bodyBack.y = other.bodyBack.y;
