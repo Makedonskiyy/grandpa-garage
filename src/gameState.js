@@ -13,7 +13,7 @@ import { loadGame, saveSoon, clearSave } from './systems/save.js';
 const listeners = new Set();
 const HEX = /^#[0-9a-f]{6}$/i;
 /** Группы внешнего вида, где можно выбрать свой цвет, а не только готовый. */
-export const CUSTOM_COLOR_GROUPS = Object.freeze(['paint', 'rim', 'caliper', 'neon']);
+export const CUSTOM_COLOR_GROUPS = Object.freeze(['paint', 'rim', 'caliper', 'headlight', 'neon']);
 
 export function createInitialState() {
   return {

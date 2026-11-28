@@ -86,12 +86,16 @@ describe('gameState', () => {
     expect(conditionScore().score).toBe(10);
   });
 
-  it('свой цвет краски, дисков и неона; фары — только готовые', () => {
+  it('сохраняет свой цвет кузова и фар и поддерживает готовые оттенки', () => {
     setCosmetic('paint', '#12AB34');
     expect(gameState.cosmetics.paint).toBe('#12ab34');
     expect(cosmeticHex('paint', gameState.cosmetics.paint)).toBe('#12ab34');
     expect(cosmeticHex('paint', 'cherry')).toBe('#8b1a2b');
-    expect(() => setCosmetic('headlight', '#ffffff')).toThrow();
+    setCosmetic('headlight', '#D470FF');
+    expect(gameState.cosmetics.headlight).toBe('#d470ff');
+    expect(cosmeticHex('headlight', gameState.cosmetics.headlight)).toBe('#d470ff');
+    setCosmetic('headlight', 'xenon');
+    expect(cosmeticHex('headlight', gameState.cosmetics.headlight)).toBe('#e6f0ff');
     expect(() => setCosmetic('paint', 'red')).toThrow();
   });
 
