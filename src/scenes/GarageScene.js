@@ -25,6 +25,7 @@ import {
   setPart,
   removePart,
   setCosmetic,
+  setWindowTintStrength,
   cosmeticHex,
   washCar,
   changeOil,
@@ -34,7 +35,7 @@ import {
   CUSTOM_COLOR_GROUPS,
 } from '../gameState.js';
 import { el, fill } from '../ui/dom.js';
-import { webButton } from '../ui/components.js';
+import { slider, webButton } from '../ui/components.js';
 import { icon } from '../ui/icons.js';
 import { withTip } from '../ui/tooltip.js';
 import { colorPicker } from '../ui/colorPicker.js';
@@ -49,7 +50,7 @@ import { saveGame } from '../systems/save.js';
 
 const cfg = config.garage;
 const TILES = [...partsData.groups.map((g) => g.id), 'looks', 'service'];
-const LOOK_GROUPS = ['paint', 'rim', 'caliper', 'headlight', 'neon'];
+const LOOK_GROUPS = Object.keys(cosmetics.defaults);
 const SERVICE = ['oil', 'repair', 'wash'];
 const SERVICE_MS = 900;
 /** Где на машине подсвечивать раздел (доли длины машины от заднего бампера). */
@@ -132,7 +133,6 @@ export class GarageScene extends BaseScene {
       scale: cfg.carScale,
     }));
     this.lastBuild = JSON.stringify(gameState.build);
-    this.lastLooks = JSON.stringify(gameState.cosmetics);
 
     this.alive = true;
     this.#buildUI();
@@ -270,12 +270,11 @@ export class GarageScene extends BaseScene {
       : -1;
     const sideView = this.$side.dataset.view;
     const buildKey = JSON.stringify(gameState.build);
-    const looksKey = JSON.stringify(gameState.cosmetics);
     this.car.apply(gameState.build, gameState.cosmetics, gameState.car.dirty);
     this.car.setHeadlightPreview(this.view.tile === 'looks' && this.view.look === 'headlight');
+    this.car.setDriverVisible(this.view.tile === 'looks' && this.view.look === 'windowTint');
     if (buildKey !== this.lastBuild) this.car.drop();
     this.lastBuild = buildKey;
-    this.lastLooks = looksKey;
 
     this.#renderPlaques();
     this.#renderTiles();
@@ -874,6 +873,20 @@ export class GarageScene extends BaseScene {
       el('h3', { class: 'gside__section', text: t('garage.looks.presets') }),
       el('div', { class: 'swatches' }, swatches),
     ];
+    if (group === 'windowTint') {
+      const label = t('garage.looks.windowTintStrength');
+      out.push(
+        el('h3', { class: 'gside__section', text: label }),
+        slider(
+          gameState.cosmetics.windowTintStrength,
+          (strength) => {
+            setWindowTintStrength(strength, { notify: false });
+            this.car.setWindowTint(gameState.cosmetics);
+          },
+          { label, suffix: '%' },
+        ),
+      );
+    }
     if (CUSTOM_COLOR_GROUPS.includes(group)) {
       const start = cosmeticHex(group, value) ?? '#2f7bff';
       const picker = colorPicker(start, (hex) => this.#paint(group, hex, false));
@@ -887,11 +900,13 @@ export class GarageScene extends BaseScene {
 
   /** Перекраска: блик по кузову; из пипетки — без перерисовки панели, чтобы не сбить перетаскивание. */
   #paint(group, value, rerender = true) {
-    clearTimeout(this.paintTimer);
     if (!rerender) {
-      gameState.cosmetics[group] = value; // тот же путь, что setCosmetic, без emit
-      this.car.apply(gameState.build, gameState.cosmetics, gameState.car.dirty);
-      this.paintTimer = setTimeout(() => setCosmetic(group, value), 250);
+      setCosmetic(group, value, { notify: false });
+      if (group === 'windowTint') this.car.setWindowTint(gameState.cosmetics);
+      else this.car.apply(gameState.build, gameState.cosmetics, gameState.car.dirty);
+      const preset = this.$side.querySelector('.swatch.is-selected');
+      preset?.classList.remove('is-selected');
+      preset?.setAttribute('aria-pressed', 'false');
       return;
     }
     setCosmetic(group, value);

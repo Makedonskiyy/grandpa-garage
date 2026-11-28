@@ -515,7 +515,7 @@ kbd {
 /* Ползунок: дорожка 8 px, пройденная часть — цветом ушанки, значение справа. */
 .slider {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 56px;
+  grid-template-columns: minmax(0, 1fr) minmax(56px, max-content);
   align-items: center;
   gap: 24px;
 }

@@ -82,6 +82,7 @@ export class TrialScene extends BaseScene {
     this.car = buildCar(this, gameState.build, gameState.cosmetics, {
       x: CAR_X,
       y: GROUND_Y,
+      driver: true,
       // На асфальте машина не пачкается: грязная, только если такой приехала из гаража.
       dirty: this.test.surface === 'asphalt' ? gameState.car.dirty && 'dust' : true,
     });

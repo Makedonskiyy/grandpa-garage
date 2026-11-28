@@ -13,14 +13,21 @@ import { loadGame, saveSoon, clearSave } from './systems/save.js';
 const listeners = new Set();
 const HEX = /^#[0-9a-f]{6}$/i;
 /** Группы внешнего вида, где можно выбрать свой цвет, а не только готовый. */
-export const CUSTOM_COLOR_GROUPS = Object.freeze(['paint', 'rim', 'caliper', 'headlight', 'neon']);
+export const CUSTOM_COLOR_GROUPS = Object.freeze([
+  'paint',
+  'rim',
+  'caliper',
+  'headlight',
+  'neon',
+  'windowTint',
+]);
 
 export function createInitialState() {
   return {
     build: Object.fromEntries(
       partsData.slots.map((s) => [s.id, partsData.initialBuild[s.id] ?? null]),
     ),
-    cosmetics: { ...cosmetics.defaults },
+    cosmetics: { ...cosmetics.defaults, windowTintStrength: cosmetics.defaultWindowTintStrength },
     /**
      * Состояние машины вне деталей (вкладка «Обслуживание»): дед оставил её грязной
      * и со старым маслом; удары на колее обкатки копят повреждения кузова (0–1).
@@ -46,9 +53,9 @@ export function createInitialState() {
 
 export const gameState = createInitialState();
 
-function emit() {
+function emit({ notify = true } = {}) {
   saveSoon(gameState);
-  for (const fn of listeners) fn(gameState);
+  if (notify) for (const fn of listeners) fn(gameState);
 }
 
 /** Подписка на изменения; возвращает функцию отписки. */
@@ -117,12 +124,19 @@ export function togglePart(partId) {
 }
 
 /** Готовый вариант по id или свой цвет #rrggbb (в группах CUSTOM_COLOR_GROUPS). */
-export function setCosmetic(group, value) {
+export function setCosmetic(group, value, options) {
   const known = cosmetics[group]?.some((c) => c.id === value);
   const custom = CUSTOM_COLOR_GROUPS.includes(group) && HEX.test(String(value));
   if (!known && !custom) throw new Error(`Нет варианта ${group}.${value}`);
   gameState.cosmetics[group] = custom ? String(value).toLowerCase() : value;
-  emit();
+  emit(options);
+}
+
+export function setWindowTintStrength(value, options) {
+  if (!Number.isInteger(value) || value < 0 || value > 100)
+    throw new RangeError('Тонировка должна быть от 0 до 100%');
+  gameState.cosmetics.windowTintStrength = value;
+  emit(options);
 }
 
 /** Цвет варианта внешнего вида: hex готового варианта или свой цвет; null — выключено. */

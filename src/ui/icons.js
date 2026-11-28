@@ -78,6 +78,8 @@ const caliper = line(
     '<path d="M58 74a96 96 0 0 1 70-42v52a44 44 0 0 0-32 20z" fill="currentColor"/>',
 );
 
+const windowTint = line('<path d="M32 192V96l32-32h75l85 88v40zM73 150l37-37m0 53 25-25"/>');
+
 const ICONS = {
   play,
   help: bookOpen,
@@ -112,6 +114,7 @@ const ICONS = {
   rim,
   caliper,
   headlight: headlights,
+  windowTint,
   neon: lightbulb,
   custom: eyedropper,
   // обслуживание

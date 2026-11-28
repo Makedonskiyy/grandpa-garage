@@ -82,8 +82,8 @@ export function toggle(checked, onChange, { label } = {}) {
 }
 
 /** Ползунок 0…100 со значением справа; пройденная часть — цветом ушанки. */
-export function slider(value, onChange, { label } = {}) {
-  const out = el('span', { class: 'slider__value', text: String(value) });
+export function slider(value, onChange, { label, suffix = '' } = {}) {
+  const out = el('span', { class: 'slider__value', text: `${value}${suffix}` });
   const input = el('input', {
     class: 'slider__input',
     type: 'range',
@@ -96,7 +96,7 @@ export function slider(value, onChange, { label } = {}) {
   const paint = () => input.style.setProperty('--fill', `${input.value}%`);
   paint();
   input.addEventListener('input', () => {
-    out.textContent = input.value;
+    out.textContent = `${input.value}${suffix}`;
     paint();
     onChange(Number(input.value));
   });

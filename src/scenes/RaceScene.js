@@ -82,6 +82,7 @@ export class RaceScene extends BaseScene {
       y: cfg.playerLaneY,
       scale: cfg.carScale,
       night: true,
+      driver: true,
       dirty: gameState.car.dirty && 'dust',
     });
     this.player.front = cfg.playerFront * cfg.carScale;

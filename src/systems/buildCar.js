@@ -11,7 +11,7 @@ import carArt from '../../data/car.json';
  * @param {Phaser.Scene} scene
  * @param {object} build сборка из gameState
  * @param {object} looks косметика из gameState
- * @param {{ x?: number, y?: number, scale?: number, night?: boolean, dirty?: boolean | 'dust' }} [opts]
+ * @param {{ x?: number, y?: number, scale?: number, night?: boolean, driver?: boolean, dirty?: boolean | 'dust' }} [opts]
  * @returns {CarRig}
  */
 export function buildCar(scene, build, looks, opts = {}) {
@@ -20,6 +20,7 @@ export function buildCar(scene, build, looks, opts = {}) {
     looks,
     dirty: opts.dirty,
     night: opts.night,
+    driver: opts.driver,
     scale: opts.scale,
   });
 }

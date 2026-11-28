@@ -4,8 +4,10 @@
     "rim": "silver",
     "caliper": "red",
     "headlight": "warm",
-    "neon": "off"
+    "neon": "off",
+    "windowTint": "smoke"
   },
+  "defaultWindowTintStrength": 20,
   "paint": [
     { "id": "cherry", "name": "Вишнёвый", "hex": "#8b1a2b" },
     { "id": "darkgreen", "name": "Тёмно-зелёный", "hex": "#1f4d2b" },
@@ -38,6 +40,13 @@
     { "id": "xenon", "name": "Ксенон", "hex": "#e6f0ff" },
     { "id": "lightblue", "name": "Голубой", "hex": "#8fc8ff" },
     { "id": "green", "name": "Зелёный", "hex": "#9fffb0" }
+  ],
+  "windowTint": [
+    { "id": "smoke", "name": "Дымчатая", "hex": "#39444f" },
+    { "id": "black", "name": "Графитовая", "hex": "#292a2f" },
+    { "id": "blue", "name": "Голубая", "hex": "#5688b0" },
+    { "id": "green", "name": "Зеленоватая", "hex": "#587b60" },
+    { "id": "bronze", "name": "Бронзовая", "hex": "#a17c54" }
   ],
   "neon": [
     { "id": "off", "name": "Выключена", "hex": null },
