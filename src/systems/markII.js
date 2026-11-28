@@ -8,7 +8,6 @@
  * земля под серединой машины, перед — вправо.
  */
 import Phaser from 'phaser';
-import drivers from '../../data/drivers.json';
 import { groundShadow } from './groundShadow.js';
 
 const RES = 3; // во сколько раз холст детальнее мира
@@ -136,18 +135,6 @@ function bodyTexture(scene) {
   ctx.save();
   path(ctx, glass);
   ctx.clip();
-  // Палыч за стеклом передней двери.
-  const { palette, pixels } = drivers.palych;
-  const [left, top, pixel] = [143, 24, 0.72];
-  for (const [row, line] of pixels.entries()) {
-    for (const [col, ink] of [...line].entries()) {
-      if (!palette[ink]) continue;
-      ctx.fillStyle = palette[ink];
-      ctx.fillRect(left + col * pixel, top + row * pixel, pixel, pixel);
-    }
-  }
-  ctx.fillStyle = 'rgba(16,24,31,0.28)';
-  ctx.fillRect(139, 23, 62, 18);
   ctx.fillStyle = 'rgba(190,205,220,0.16)';
   ctx.beginPath();
   ctx.moveTo(110, 23);

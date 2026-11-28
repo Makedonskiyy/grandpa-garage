@@ -272,7 +272,6 @@ export class GarageScene extends BaseScene {
     const buildKey = JSON.stringify(gameState.build);
     this.car.apply(gameState.build, gameState.cosmetics, gameState.car.dirty);
     this.car.setHeadlightPreview(this.view.tile === 'looks' && this.view.look === 'headlight');
-    this.car.setDriverVisible(this.view.tile === 'looks' && this.view.look === 'windowTint');
     if (buildKey !== this.lastBuild) this.car.drop();
     this.lastBuild = buildKey;
 

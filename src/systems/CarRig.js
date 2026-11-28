@@ -4,7 +4,7 @@
  *
  * Порядок слоёв снизу вверх:
  *   тень → неон → ниши колёс → колёса (шина + диск) / кирпичи → стойки крыла →
- *   основа → водитель → тонировка и отражения → краска → оттенки →
+ *   основа → тонировка и отражения → краска → оттенки →
  *   накладка кузова → спойлер → фара → грязь → свет фар (ночь).
  * Кузов (всё, кроме тени и колёс) качается на подвеске; колёса стоят на земле и крутятся.
  *
@@ -48,7 +48,6 @@ const TEX = 1 / DENSITY;
 const IMAGES = [
   'car_wells',
   'car_base',
-  'car_driver',
   'car_glass_tint',
   'car_glass_reflection',
   'car_paint',
@@ -272,7 +271,7 @@ export class CarRig extends Phaser.GameObjects.Container {
    * @param {Phaser.Scene} scene
    * @param {number} x
    * @param {number} y земля
-   * @param {{ build: object, looks: object, dirty?: boolean | 'dust', night?: boolean, driver?: boolean, scale?: number }} opts
+   * @param {{ build: object, looks: object, dirty?: boolean | 'dust', night?: boolean, scale?: number }} opts
    */
   constructor(scene, x, y, opts) {
     super(scene, x, y);
@@ -311,7 +310,6 @@ export class CarRig extends Phaser.GameObjects.Container {
     this.layers = {
       wingBase: img('car_spoiler_wing_base'),
       base: img('car_base'),
-      driver: img('car_driver', car.windows).setVisible(Boolean(opts.driver)),
       windowTint: img('car_glass_tint', car.windows),
       windowReflection: img('car_glass_reflection', car.windows),
       paint: img('car_paint'),
@@ -398,10 +396,6 @@ export class CarRig extends Phaser.GameObjects.Container {
     this.layers.dirt
       .setTexture(dirty === 'dust' ? 'car_dust' : 'car_dirt')
       .setVisible(Boolean(dirty));
-  }
-
-  setDriverVisible(visible) {
-    this.layers.driver.setVisible(visible);
   }
 
   setWindowTint(looks) {

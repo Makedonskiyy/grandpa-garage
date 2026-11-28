@@ -37,7 +37,6 @@ export class PalychScene extends BaseScene {
       x: CENTER_X - BUMPER_GAP / 2 - SKYLINE_FRONT * SKYLINE_SCALE,
       y: GROUND,
       scale: SKYLINE_SCALE,
-      driver: true,
       dirty: gameState.car.dirty,
     });
     const rival = buildMarkII(this, {

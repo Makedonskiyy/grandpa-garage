@@ -36,7 +36,6 @@ const PREVIEW = process.argv.includes('--preview');
 
 // ---------- Сетка ----------
 const GEO = JSON.parse(readFileSync(`${SRC}r34-geometry.json`, 'utf8'));
-const { grandson } = JSON.parse(readFileSync(`${ROOT}data/drivers.json`, 'utf8'));
 const W = GEO.grid.width; // 864
 const H = GEO.grid.height; // 288
 const GROUND = GEO.grid.ground; // 276
@@ -611,7 +610,6 @@ function drawGlass(base, m) {
 }
 
 function windowLayers(m) {
-  const driver = new Pix();
   const tint = new Pix();
   const reflection = new Pix();
   const inside = (pane, x, y) =>
@@ -639,23 +637,11 @@ function windowLayers(m) {
   }
   const region = { left: minX, top: minY, width: maxX - minX + 1, height: maxY - minY + 1 };
 
-  // Водитель в профиль, перед подголовником. Край двери закрывает низ куртки.
-  const [left, top, pixel] = [386, 54, 2];
-  for (const [row, pixels] of grandson.pixels.entries()) {
-    for (const [col, ink] of [...pixels].entries()) {
-      const color = grandson.palette[ink];
-      if (!color) continue;
-      for (let y = top + row * pixel; y < top + (row + 1) * pixel; y++)
-        for (let x = left + col * pixel; x < left + (col + 1) * pixel; x++)
-          if (onDoor(x, y)) driver.set(x, y, color);
-    }
-  }
-
   for (let k = 0; k < 6; k++) reflection.line(428 + k, 54, 396 + k, 116, C.glassShine, onDoor, 98);
   for (let k = 0; k < 2; k++) reflection.line(442 + k, 54, 410 + k, 116, C.glassShine, onDoor, 80);
   for (let k = 0; k < 3; k++)
     reflection.line(292 + k, 60, 276 + k, 94, C.glassStreak, onQuarter, 152);
-  return { driver, tint, reflection, region };
+  return { tint, reflection, region };
 }
 
 function paintLens(p, mk, edge, fill, hi, lo) {
@@ -1236,11 +1222,10 @@ async function main() {
 
   const m = await bodyMasks();
   const { paint, base, tone } = drawBody(m);
-  const { driver, tint: windowTint, reflection, region } = windowLayers(m);
+  const { tint: windowTint, reflection, region } = windowLayers(m);
   await save('car_shadow', await layerShadow(m).png());
   await save('car_wells', await layerWells(m).png());
   await save('car_base', await base.png());
-  await save('car_driver', await driver.png(region));
   await save('car_glass_tint', await windowTint.png(region));
   await save('car_glass_reflection', await reflection.png(region));
   await save('car_paint', await paint.png());
