@@ -7,6 +7,7 @@ import { SCENES, MUSIC, SFX, AMB, TEST_IDS } from '../config/constants.js';
 import { drawGarageRoom, placeGarageCar } from './garageBackdrop.js';
 import { StoryStage } from '../systems/StoryStage.js';
 import { audio } from '../systems/AudioManager.js';
+import { playVoice, stopVoice } from '../systems/voice.js';
 import {
   computeStats,
   getPartsBySlot,
@@ -121,6 +122,7 @@ export class GarageScene extends BaseScene {
     this.test = getTest(this.testId);
     this.view = { tile: null, slot: null, look: 'paint' };
     this.hover = null; // { slot, partId } — карточка под курсором
+    this.hintVoiced = false;
     this.cache = new Map();
 
     drawGarageRoom(this, { lampX: cfg.carX, groundY: cfg.groundY });
@@ -142,6 +144,7 @@ export class GarageScene extends BaseScene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.alive = false;
       window.removeEventListener('keydown', onKey, true);
+      stopVoice();
       off();
     });
     this.#showIntroduction();
@@ -986,6 +989,10 @@ export class GarageScene extends BaseScene {
    */
   #renderHubDetail() {
     const hint = shouldShowGrandpaHint(this.testId) ? this.test.grandpaHint : null;
+    if (hint && gameState.flags.garageIntroSeen && !this.hintVoiced) {
+      this.hintVoiced = true;
+      void playVoice(`hint-${this.testId}`);
+    }
     const last = gameState.lastResult;
     const lastHint = last && !last.ok && last.testId === this.testId ? last.hint : null;
     const text = hint ?? lastHint;

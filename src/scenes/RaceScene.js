@@ -13,6 +13,7 @@ import { ScreenLight } from '../ui/ScreenLight.js';
 import { showRunOverlay, runOverText } from '../ui/RunOverlay.js';
 import { StoryStage } from '../systems/StoryStage.js';
 import { audio } from '../systems/AudioManager.js';
+import { playVoice, stopVoice } from '../systems/voice.js';
 import { getRenderZoom } from '../systems/scale.js';
 import { getSettings } from '../systems/settings.js';
 import { gameState, recordResult } from '../gameState.js';
@@ -45,6 +46,7 @@ export class RaceScene extends BaseScene {
 
   async create(data = {}) {
     this.enter({ steadyCamera: true });
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, stopVoice);
     audio.playMusic(MUSIC.DRIVE);
     this.ambience = AMB.NIGHT;
     audio.playAmbience(this.ambience);
@@ -264,6 +266,7 @@ export class RaceScene extends BaseScene {
   #taunt(key) {
     if (this.said.has(key)) return;
     this.said.add(key);
+    void playVoice(`race-${key}`);
     this.bubble?.destroy();
     const b = this.add
       .text(this.rival.x, this.rival.y - this.rival.plateOffset - 10, t(`race.taunts.${key}`), {

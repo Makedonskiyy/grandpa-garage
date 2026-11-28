@@ -24,6 +24,7 @@ import characters from '../../data/characters.json';
 import storyBackgrounds from '../../data/story-backgrounds.json';
 import { SFX, WORLD } from '../config/constants.js';
 import { audio } from './AudioManager.js';
+import { playVoice, stopVoice } from './voice.js';
 import { charDelayMs } from './settings.js';
 import { createLayer } from '../ui/overlay.js';
 import { el, clear } from '../ui/dom.js';
@@ -196,6 +197,7 @@ export class StoryStage {
 
   /** Немедленно закрывает историю (кнопка «Пропустить»). */
   finish(callResolve = true) {
+    stopVoice();
     this.#stopTyping();
     this.holdTimer?.remove();
     this.line = null;
@@ -227,6 +229,7 @@ export class StoryStage {
   // ---------- Реплика ----------
 
   #show(id) {
+    stopVoice();
     const line = byId.get(id);
     if (!line) throw new Error(`Нет реплики ${id}`);
     this.line = line;
@@ -242,6 +245,7 @@ export class StoryStage {
     this.#focus(line.who);
     this.layer.dataset.kind = line.kind;
     this.#layout(line);
+    this.voicedLine = line.kind === 'speech' && playVoice(`story-${line.id}`);
     this.#startTyping();
   }
 
@@ -290,6 +294,7 @@ export class StoryStage {
     }
     if (n.phase === 'open' && n.shown < n.lines.length) return this.#noteLine();
     if (n.phase === 'open') {
+      stopVoice();
       n.phase = 'closing';
       this.$note.classList.add('is-closing');
       audio.playSfx(SFX.NOTE_FOLD);
@@ -312,6 +317,7 @@ export class StoryStage {
       for (const side of ['left', 'right'])
         if (side in line.cast) this.#setActor(side, line.cast[side]);
     this.$paper.append(el('p', { class: 'story-note__line', text: line.text }));
+    void playVoice(`story-${line.id}`);
     this.$note.classList.toggle('is-last', n.shown >= n.lines.length);
     audio.playSfx(SFX.NOTE_WRITE, { volume: 0.6 });
   }
@@ -528,7 +534,8 @@ export class StoryStage {
       callback: () => {
         this.shown += 1;
         this.$text.textContent = this.line.text.slice(0, this.shown);
-        if (this.shown % cfg.clickEveryChars === 0) audio.playSfx(SFX.TYPE, { volume: 0.5 });
+        if (!this.voicedLine && this.shown % cfg.clickEveryChars === 0)
+          audio.playSfx(SFX.TYPE, { volume: 0.5 });
         if (this.shown >= this.line.text.length) this.#completeTyping();
       },
     });
