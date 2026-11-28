@@ -525,6 +525,7 @@ export class TrialScene extends BaseScene {
       if (e.type === 'hit' && e.surface === 'pothole') {
         this.car.bump(5 + e.v * 4);
         audio.playSfx(SFX.BUMP, { volume: Math.min(1, 0.28 + e.v / 14) });
+        if (e.axle === 'front' && run.damageZones.bumper) this.car.detachFrontBumper();
       }
       if (e.type === 'overrev') this.hud.say('overrev', 'warn');
       if (e.type === 'early') this.hud.say('early', 'warn');
@@ -608,9 +609,14 @@ export class TrialScene extends BaseScene {
     this.sounds.stop();
     this.result = summarize(this.run, this.best);
     const { reasonKey } = this.run;
-    if (reasonKey === 'tireBurst') {
+    if (this.run.damageZones.engine) {
       audio.playSfx(SFX.BREAK);
-      this.hud.say('tireBurst', 'warn');
+      this.fx.engineSmoke();
+      this.hud.say('engineImpact', 'warn');
+    } else if (this.run.damageZones.wheel) {
+      audio.playSfx(SFX.BREAK);
+      this.car.deflateTire(this.run.damageZones.wheel);
+      this.hud.say(reasonKey, 'warn');
     } else if (reasonKey === 'broken') {
       audio.playSfx(SFX.BREAK);
       this.car.drop(60);

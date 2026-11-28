@@ -269,6 +269,7 @@ export class GarageScene extends BaseScene {
     const buildKey = JSON.stringify(gameState.build);
     const looksKey = JSON.stringify(gameState.cosmetics);
     this.car.apply(gameState.build, gameState.cosmetics, gameState.car.dirty);
+    this.car.setHeadlightPreview(this.view.tile === 'looks' && this.view.look === 'headlight');
     if (buildKey !== this.lastBuild) this.car.drop();
     this.lastBuild = buildKey;
     this.lastLooks = looksKey;
@@ -874,22 +875,25 @@ export class GarageScene extends BaseScene {
       const start = cosmeticHex(group, value) ?? '#2f7bff';
       const picker = colorPicker(start, (hex) => this.#paint(group, hex, false));
       out.push(el('h3', { class: 'gside__section', text: t('garage.looks.custom') }), picker.node);
+      if (group === 'headlight') {
+        out.push(el('p', { class: 'gside__sub', text: t('garage.looks.headlightPreview') }));
+      }
     }
     return out;
   }
 
   /** Перекраска: блик по кузову; из пипетки — без перерисовки панели, чтобы не сбить перетаскивание. */
   #paint(group, value, rerender = true) {
+    clearTimeout(this.paintTimer);
     if (!rerender) {
       gameState.cosmetics[group] = value; // тот же путь, что setCosmetic, без emit
       this.car.apply(gameState.build, gameState.cosmetics, gameState.car.dirty);
-      clearTimeout(this.paintTimer);
       this.paintTimer = setTimeout(() => setCosmetic(group, value), 250);
       return;
     }
     setCosmetic(group, value);
     audio.playSfx(SFX.PAINT);
-    this.car.shine?.();
+    if (group === 'paint') this.car.shine?.();
   }
 
   // ---------- Обслуживание ----------

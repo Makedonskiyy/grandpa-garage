@@ -158,7 +158,7 @@ function neonTexture(scene) {
 
 /**
  * Луч фары: направленный конус вперёд — узкое яркое ядро внутри широкого тусклого,
- * оба гаснут к концу и сильно размыты по краям. Без пятна-ореола у самой фары.
+ * оба гаснут к концу и сильно размыты по краям.
  */
 function beamTexture(scene) {
   const L = 220;
@@ -182,6 +182,20 @@ function beamTexture(scene) {
     };
     cone(34, 0.35, 9); // широкий тусклый
     cone(16, 0.6, 5); // ядро
+  });
+}
+
+/** Один нейтральный ореол для всех цветов. Оттенок задаётся на спрайте. */
+function headlightGlowTexture(scene) {
+  return glowTexture(scene, 'fx_headlight_glow', 80, 48, (ctx) => {
+    ctx.translate(40, 24);
+    ctx.scale(1.55, 1);
+    const light = ctx.createRadialGradient(0, 0, 1, 0, 0, 22);
+    light.addColorStop(0, 'rgba(255,255,255,0.9)');
+    light.addColorStop(0.3, 'rgba(255,255,255,0.45)');
+    light.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = light;
+    ctx.fillRect(-22, -22, 44, 44);
   });
 }
 
@@ -306,6 +320,11 @@ export class CarRig extends Phaser.GameObjects.Container {
       .setScale(1 / GLOW_K)
       .setAlpha(0.6)
       .setBlendMode(Phaser.BlendModes.ADD);
+    this.headlightGlow = scene.add
+      .image(car.headlight.x - AX, car.headlight.y - AY - PIVOT_Y, headlightGlowTexture(scene))
+      .setScale(1 / GLOW_K)
+      .setBlendMode(Phaser.BlendModes.ADD);
+    this.setHeadlightPreview(false);
     // Ореол стоп-сигнала: красное свечение вокруг фонаря поверх кузова.
     this.brakeGlow = scene.add
       .image(
@@ -329,6 +348,7 @@ export class CarRig extends Phaser.GameObjects.Container {
     this.bodyFront = scene.add.container(0, PIVOT_Y, [
       ...Object.values(this.layers),
       this.beam,
+      this.headlightGlow,
       this.brakeGlow,
     ]);
 
@@ -389,7 +409,8 @@ export class CarRig extends Phaser.GameObjects.Container {
 
     const lightColor = colorOf('headlight', looks.headlight);
     L.headlight.setTint(lightColor);
-    this.beam.setVisible(this.night).setTint(lightColor);
+    this.beam.setTint(lightColor);
+    this.headlightGlow.setTint(lightColor);
 
     const neon = colorOf('neon', looks.neon);
     this.neon.setVisible(neon !== null);
@@ -416,6 +437,53 @@ export class CarRig extends Phaser.GameObjects.Container {
     this.bricks.setVisible(!hasWheels);
     this.build = build;
     return this;
+  }
+
+  setHeadlightPreview(on) {
+    this.beam.setVisible(this.night || on).setAlpha(this.night ? 0.85 : 0.62);
+    this.headlightGlow.setAlpha(this.night || on ? 0.82 : 0.28);
+  }
+
+  deflateTire(axle) {
+    const wheel = this.wheels[axle];
+    wheel.tire.setScale(TEX, TEX * 0.84);
+    for (const layer of WHEEL_LAYERS) wheel[layer].y += 2;
+  }
+
+  detachFrontBumper() {
+    if (this.frontBumperDetached) return;
+    this.frontBumperDetached = true;
+    const { scene } = this;
+    const x = 266;
+    const y = 65;
+    const width = car.size.width - x;
+    const height = car.size.height - y;
+    const debris = scene.add.container(x - AX, this.bodyFront.y + y - AY - PIVOT_Y);
+    for (const key of ['base', 'paint', 'tone', 'overlay', 'headlight', 'dirt']) {
+      const layer = this.layers[key];
+      const copy = (px, py) =>
+        scene.add
+          .image(px, py, layer.texture.key)
+          .setOrigin(0)
+          .setScale(TEX)
+          .setTint(layer.tintTopLeft)
+          .setAlpha(layer.alpha)
+          .setVisible(layer.visible);
+      const top = copy(layer.x, layer.y).setCrop(x / TEX, 0, width / TEX, y / TEX);
+      this.bodyFront.addAt(top, this.bodyFront.getIndex(layer) + 1);
+      debris.add(copy(-x, -y).setCrop(x / TEX, y / TEX, width / TEX, height / TEX));
+      layer.setCrop(0, 0, x / TEX, car.size.height / TEX);
+    }
+    this.add(debris);
+    scene.tweens.add({
+      targets: debris,
+      x: debris.x - 220,
+      y: debris.y + 27,
+      angle: 20,
+      alpha: 0,
+      duration: 950,
+      onComplete: () => debris.destroy(),
+    });
   }
 
   /** Повторяет позу кузова и кадр колёс другой машины (отражение на полу гаража). */

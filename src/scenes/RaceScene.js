@@ -426,7 +426,10 @@ export class RaceScene extends BaseScene {
     }
     this.result = summarize(this.run, this.best);
     if (['broken', 'tireBurst'].includes(this.run.reasonKey)) audio.playSfx(SFX.BREAK);
-    if (this.run.reasonKey === 'tireBurst') this.hud.say('tireBurst', 'warn');
+    if (this.run.damageZones.wheel) {
+      this.player.deflateTire(this.run.damageZones.wheel);
+      this.hud.say('tireBurst', 'warn');
+    }
     this.$time.textContent = formatSeconds(this.run.t);
     if (this.result.ok) this.#taunt('lost');
     audio.playSfx(this.result.ok ? SFX.SUCCESS : SFX.FAIL);
