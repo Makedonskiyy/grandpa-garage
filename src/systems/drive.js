@@ -22,6 +22,7 @@ import {
   FRESH_CONDITION,
   defaultData,
 } from './simulate.js';
+import { t } from './strings.js';
 
 export const STEP = 1 / 240;
 /** Колёсная база, м: задняя ось наезжает на препятствие позже передней. */
@@ -67,6 +68,7 @@ export function createRun(testId, build, opts = {}, data = defaultData) {
     rpm: ph.engine.idleRpm,
     slip: 0,
     rearLocked: false,
+    brakeSlide: 0,
     shiftTimer: 0,
     /** Зелёный загорелся: время идёт с этого момента. До старта машина стоит. */
     green: false,
@@ -314,6 +316,16 @@ function tick(run, gas, brake, handbrake, h) {
   // Настоящее ускорение: на месте тормоз уже не тянет кузов вперёд.
   run.accel = (run.v - v) / h;
   run.log.topSpeed = Math.max(run.log.topSpeed, run.v);
+
+  const burst = ph.tireBurst;
+  const locked = handbrake ? 1 : run.lock;
+  if (burst) {
+    run.brakeSlide =
+      v >= burst.minSpeed && locked > 0
+        ? run.brakeSlide + v * locked * h
+        : Math.max(0, run.brakeSlide - burst.recoveryPerSec * h);
+    if (run.brakeSlide >= burst.slideDistance) return finish(run, false, 'tireBurst');
+  }
 
   if (!neutral && !burnout) {
     rpm = Math.max(wheelRpm(run, run.v) * (1 + run.slip * ph.slip.rpmFlare), clutchFloor, idleRpm);
@@ -575,13 +587,15 @@ export function summarize(run, best = null) {
   let reasonKey = run.ok ? null : run.reasonKey;
   // Сборка позволяла, а не вышло — значит, дело в езде.
   const buildCould = best?.ok;
-  if (!run.ok && buildCould && !['broken', 'jump'].includes(reasonKey)) reasonKey = 'driving';
+  if (!run.ok && buildCould && !['broken', 'jump', 'tireBurst'].includes(reasonKey))
+    reasonKey = 'driving';
   if (!run.ok && buildCould && reasonKey === 'broken' && modeOf(run) !== 'drag')
     reasonKey = 'rough';
 
   let reason = null;
   if (reasonKey === 'broken')
     reason = format(test.reasons.broken, { part: stats.weakestPart?.name });
+  else if (reasonKey === 'tireBurst') reason = t('result.tireBurst.reason');
   else if (reasonKey === 'slow') {
     reason = test.reasons[raceWeakness(run, best)];
     if (stats.mass >= test.heavyMass) reason += test.reasons.heavySuffix;
@@ -612,6 +626,7 @@ export function summarize(run, best = null) {
     ? test.resultHints[reasonKey === 'slow' ? raceWeakness(run, best) : reasonKey]
     : null;
   if (reasonKey === 'driving' || reasonKey === 'rough') hint = drivingHint(run);
+  if (reasonKey === 'tireBurst') hint = t('result.tireBurst.hint');
   return { ok: run.ok, reasonKey, reason, hint, stats, details };
 }
 

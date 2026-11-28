@@ -16,6 +16,11 @@
   },
   "brakeMu": 0.9,
   "handbrakeMultiplier": 1.12,
+  "tireBurst": {
+    "minSpeed": 28,
+    "slideDistance": 35,
+    "recoveryPerSec": 35
+  },
   "slip": {
     "kinetic": 0.72,
     "rise": 7,

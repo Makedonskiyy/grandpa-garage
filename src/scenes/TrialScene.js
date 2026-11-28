@@ -608,7 +608,10 @@ export class TrialScene extends BaseScene {
     this.sounds.stop();
     this.result = summarize(this.run, this.best);
     const { reasonKey } = this.run;
-    if (reasonKey === 'broken') {
+    if (reasonKey === 'tireBurst') {
+      audio.playSfx(SFX.BREAK);
+      this.hud.say('tireBurst', 'warn');
+    } else if (reasonKey === 'broken') {
       audio.playSfx(SFX.BREAK);
       this.car.drop(60);
       this.#puff(0x777777, this.car.x + 110, this.car.y - 50);
@@ -624,7 +627,7 @@ export class TrialScene extends BaseScene {
     // Объездная — практика: не засчитывается, только рекорд дистанции.
     if (this.test.practice) {
       this.#savePractice();
-      this.hud.say('freeEnd', 'warn');
+      if (reasonKey !== 'tireBurst') this.hud.say('freeEnd', 'warn');
       this.time.delayedCall(1600, () => this.goTo(SCENES.GARAGE));
       return;
     }
@@ -658,6 +661,7 @@ export class TrialScene extends BaseScene {
         alpha: 0,
         scale: 2,
         duration: 900 + i * 60,
+        onComplete: () => c.destroy(),
       });
     }
   }

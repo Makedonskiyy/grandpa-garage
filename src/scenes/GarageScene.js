@@ -39,6 +39,7 @@ import { withTip } from '../ui/tooltip.js';
 import { colorPicker } from '../ui/colorPicker.js';
 import { wheelThumb } from '../ui/wheelThumb.js';
 import { openSettings } from '../ui/SettingsPanel.js';
+import { isModalOpen } from '../ui/overlay.js';
 import { openHowTo } from '../ui/HowToPanel.js';
 import { openGarageGuide } from '../ui/GarageGuide.js';
 import { openMapSelect } from '../ui/MapSelect.js';
@@ -134,10 +135,13 @@ export class GarageScene extends BaseScene {
     this.alive = true;
     this.#buildUI();
     this.#render();
+    const onKey = (event) => this.#navigateGarage(event);
+    window.addEventListener('keydown', onKey, true);
 
     const off = onStateChange(() => this.#render());
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.alive = false;
+      window.removeEventListener('keydown', onKey, true);
       off();
     });
     this.#showIntroduction();
@@ -199,7 +203,7 @@ export class GarageScene extends BaseScene {
         tip,
       );
     this.$side = el('aside', { class: 'ui-abs gside' });
-    this.$detail = el('section', { class: 'ui-abs gdetail', hidden: true });
+    this.$detail = el('section', { class: 'ui-abs gdetail', tabindex: '0', hidden: true });
     this.$tiles = el('nav', { class: 'ui-abs gtiles', 'aria-label': 'Разделы' });
     this.$launch = webButton(t('garage.launchMap'), () => this.#launch(), {
       variant: 'primary',
@@ -218,11 +222,15 @@ export class GarageScene extends BaseScene {
     this.ui.append(
       el('header', { class: 'ui-abs gtop' }, [
         el('div', { class: 'gtop__goal' }, [
+          icon('finish'),
+          el('div', { class: 'gtop__objective' }, [
+            el('strong', { class: 'gtop__title', text: this.test.name }),
+            el('span', { class: 'gtop__text', text: t(`garage.objective.${this.testId}`) }),
+          ]),
           el('span', {
-            class: 'gtop__chip',
-            text: t('garage.testChip', { name: this.test.name, n, total: TEST_IDS.length }),
+            class: 'gtop__stage',
+            text: t('garage.testStage', { n, total: TEST_IDS.length }),
           }),
-          el('span', { class: 'gtop__text', text: this.test.goal }),
         ]),
         el('div', { class: 'gtop__plaques' }, [
           plaque(t('garage.rating'), this.$rating, t('garage.ratingTip'), 'speed'),
@@ -252,6 +260,12 @@ export class GarageScene extends BaseScene {
   #render() {
     // В create() сцена ещё не «активна» по мнению Phaser, поэтому свой флаг жизни.
     if (!this.alive) return;
+    const active = document.activeElement;
+    const focusGroup = [this.$tiles, this.$side].find((group) => group.contains(active));
+    const focusIndex = active?.matches('button:focus-visible')
+      ? [...(focusGroup?.querySelectorAll('button') ?? [])].indexOf(active)
+      : -1;
+    const sideView = this.$side.dataset.view;
     const buildKey = JSON.stringify(gameState.build);
     const looksKey = JSON.stringify(gameState.cosmetics);
     this.car.apply(gameState.build, gameState.cosmetics, gameState.car.dirty);
@@ -263,6 +277,67 @@ export class GarageScene extends BaseScene {
     this.#renderTiles();
     this.#renderSide();
     this.#renderDetail();
+    if (focusIndex >= 0 && (focusGroup !== this.$side || sideView === this.$side.dataset.view)) {
+      const next = focusGroup.querySelectorAll('button')[focusIndex];
+      if (next && !next.disabled) next.focus();
+    }
+  }
+
+  #navigateGarage(event) {
+    if (
+      this._leaving ||
+      this.ui.style.visibility === 'hidden' ||
+      isModalOpen() ||
+      this.ui.querySelector('.map-picker') ||
+      event.altKey ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.target.closest?.('input, textarea, select, [contenteditable]')
+    )
+      return;
+
+    const active = document.activeElement;
+    const tiles = [...this.$tiles.querySelectorAll('button:not(:disabled)')];
+    const currentTile = this.$tiles.querySelector('.is-active') ?? tiles[0];
+    if (event.code === 'Escape' && this.view.tile) {
+      const index = TILES.indexOf(this.view.tile);
+      event.preventDefault();
+      event.stopPropagation();
+      this.#openTile(null);
+      this.$tiles.querySelectorAll('.gtile')[index]?.focus();
+      return;
+    }
+
+    const horizontal = ['ArrowLeft', 'ArrowRight', 'KeyA', 'KeyD'].includes(event.code);
+    const vertical = ['ArrowUp', 'ArrowDown', 'KeyW', 'KeyS'].includes(event.code);
+    if (!horizontal && !vertical) return;
+    if (this.$detail.contains(active)) return;
+    if (active !== document.body && !this.ui.contains(active)) return;
+    const backward = ['ArrowLeft', 'ArrowUp', 'KeyA', 'KeyW'].includes(event.code);
+    const move = (items) => {
+      const index = items.indexOf(active);
+      return index < 0
+        ? items[0]
+        : items[(index + (backward ? -1 : 1) + items.length) % items.length];
+    };
+    const side = [...this.$side.querySelectorAll('button:not(:disabled)')];
+    let next = currentTile;
+    if (this.$tiles.contains(active)) {
+      if (horizontal) next = move(tiles);
+      else if (backward) next = side.find((button) => button.matches('.is-selected')) ?? side[0];
+    } else if (this.$side.contains(active)) {
+      if (vertical) next = move(side);
+      else if (active.matches('.gside__tab, .swatch')) {
+        next = move(
+          side.filter((button) =>
+            button.matches(active.matches('.swatch') ? '.swatch' : '.gside__tab'),
+          ),
+        );
+      }
+    }
+    if (!next) return;
+    event.preventDefault();
+    next.focus();
   }
 
   #renderPlaques(preview = null) {
@@ -465,19 +540,24 @@ export class GarageScene extends BaseScene {
     const now = line(this.#forecast(build));
     const next = preview ? line(this.#forecast(preview)) : null;
     const changed = next && next.text !== now.text;
+    const result = next ?? now;
     return withTip(
-      el('div', { class: `forecast ${(changed ? next : now).ok ? 'is-ok' : 'is-bad'}` }, [
-        el('div', { class: 'forecast__title' }, [
-          icon(this.testId === 'trial' ? 'finish' : 'timer'),
-          t('garage.forecastTitle', {
-            test: this.test.name[0].toLowerCase() + this.test.name.slice(1),
-          }),
-        ]),
-        changed ? el('p', { class: 'forecast__was', text: now.text }) : null,
-        el('p', { class: 'forecast__text', text: (changed ? next : now).text }),
-        (changed ? next : now).extra
-          ? el('p', { class: 'forecast__extra' }, [icon('oil'), (changed ? next : now).extra])
+      el('section', { class: 'forecast', 'aria-label': t('garage.forecastTitle') }, [
+        el('div', { class: 'forecast__title' }, [icon('timer'), t('garage.forecastTitle')]),
+        changed
+          ? el('p', { class: 'forecast__was' }, [
+              el('span', { class: 'forecast__label', text: t('garage.current') }),
+              now.text,
+            ])
           : null,
+        el('div', { class: 'forecast__result' }, [
+          icon(result.ok ? 'check' : 'warning'),
+          el('p', { class: 'forecast__text' }, [
+            changed ? el('span', { class: 'forecast__label', text: t('garage.ifInstall') }) : null,
+            result.text,
+          ]),
+        ]),
+        result.extra ? el('p', { class: 'forecast__extra' }, [icon('oil'), result.extra]) : null,
       ]),
       t('garage.forecastTip'),
     );
@@ -536,9 +616,7 @@ export class GarageScene extends BaseScene {
         'aria-pressed': String(selected),
         onclick: () => this.#install(slot, part, card),
         onpointerenter: () => this.#hoverPart(slot, id),
-        onpointerleave: () => this.#hoverPart(null),
         onfocus: () => this.#hoverPart(slot, id),
-        onblur: () => this.#hoverPart(null),
       },
       [
         el('span', { class: 'gcard__thumb' }, [this.#thumb(slot, part)]),
@@ -604,10 +682,11 @@ export class GarageScene extends BaseScene {
   }
 
   #hoverPart(slot, id = null) {
-    this.hover = slot ? { slot: slot.id, id } : null;
+    if (this.hover?.slot === slot.id && this.hover.id === id) return;
+    this.hover = { slot: slot.id, id };
     this.#renderDetail();
-    const preview = this.hover ? { ...gameState.build, [slot.id]: id } : null;
-    this.#renderPlaques(preview);
+    this.$detail.scrollTop = 0;
+    this.#renderPlaques({ ...gameState.build, [slot.id]: id });
   }
 
   /** Поставить деталь: анимация карточки, машина «садится», пыль из-под колёс. */
@@ -685,7 +764,7 @@ export class GarageScene extends BaseScene {
       el('h2', { class: 'gdetail__title', text: part?.name ?? (slot.none ?? empty).name }),
       el('p', {
         class: 'gdetail__text',
-        text: part?.description ?? (slot.none ?? empty).description,
+        text: (installed ? part?.description : part?.short) ?? (slot.none ?? empty).description,
       }),
       el('div', { class: 'gdetail__facts' }, this.#facts(slot, part)),
       installed ? null : el('h3', { class: 'gdetail__section', text: t('garage.ifInstall') }),

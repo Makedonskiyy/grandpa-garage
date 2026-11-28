@@ -44,7 +44,7 @@ export function openHowTo() {
           el('section', {}, [
             el('h3', { class: 'modal__section', text: t('howTo.stepsTitle') }),
             el('ol', { class: 'howto__steps' }, steps),
-            el('h3', { class: 'modal__section', text: t('howTo.tipsTitle') }),
+            el('h3', { class: 'modal__section howto__tips-title', text: t('howTo.tipsTitle') }),
             el(
               'ul',
               { class: 'howto__tips' },

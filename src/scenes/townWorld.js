@@ -321,7 +321,7 @@ export class TownWorld {
     this.scene = scene;
     this.seed = seed >>> 0;
     this.ppm = ppm;
-    this.res = Phaser.Math.Clamp(Math.round(getRenderZoom() * 2) / 2, 1, 4);
+    this.res = Phaser.Math.Clamp(Math.round(getRenderZoom() * 2) / 2, 1, 2);
     this.id = `tw${Math.floor(Math.random() * 1e9)}`;
     const c = document.createElement('canvas');
     c.width = VIEW_W * this.res;
@@ -390,7 +390,7 @@ export class TownWorld {
         }
       }
       for (const [ci, img] of layer.chunks) {
-        if (ci >= first - 1) continue;
+        if (ci >= first - 1 && ci <= last + 1) continue;
         const key = img.texture.key;
         img.destroy();
         this.scene.textures.remove(key);

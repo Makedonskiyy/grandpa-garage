@@ -1688,6 +1688,10 @@ kbd {
 }
 
 /* Советы в «Как играть». */
+.howto__tips-title {
+  margin-top: 24px;
+}
+
 .howto__tips {
   margin: 0;
   padding-left: 24px;

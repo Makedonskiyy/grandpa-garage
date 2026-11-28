@@ -97,8 +97,8 @@ export function initScale(game, stage = document.getElementById('stage')) {
     stage.style.setProperty('--canvas-height', `${UI_HEIGHT * canvasScale}px`);
     stage.style.setProperty('--scene-bleed', `${(UI_WIDTH * (1 - canvasScale)) / 2}px`);
 
-    // Холст — в физических пикселях окна, камера увеличивает мир под него.
-    renderZoom = canvasZoom * dpr;
+    // Высокий DPR не должен раздувать буфер игры сверх Full HD.
+    renderZoom = Math.min(canvasZoom * dpr, 3);
     game.scale.resize(Math.round(GAME_WIDTH * renderZoom), Math.round(GAME_HEIGHT * renderZoom));
     for (const scene of game.scene.getScenes(false)) {
       const camera = scene.cameras?.main;

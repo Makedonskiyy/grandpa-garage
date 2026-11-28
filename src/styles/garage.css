@@ -58,31 +58,48 @@
 .gtop__goal {
   flex: 1;
   min-width: 0;
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 16px;
-  padding: 0 24px 0 12px;
+  gap: 12px;
+  padding: 0 16px;
   border-radius: 18px;
 }
 
-.gtop__chip {
-  flex: none;
-  padding: 10px 16px;
-  border-radius: 10px;
-  font-size: 20px;
-  font-weight: 600;
-  line-height: 1;
-  color: var(--ui-ink);
-  background: var(--ui-accent);
+.gtop__goal > .icon {
+  width: 28px;
+  height: 28px;
+  color: var(--ui-accent);
+}
+
+.gtop__objective {
+  display: grid;
+  gap: 2px;
+  line-height: 1.2;
+}
+
+.gtop__title {
+  font-size: 22px;
+  font-weight: 650;
+}
+
+.gtop__stage {
+  padding-inline-start: 12px;
+  border-inline-start: 1px solid var(--ui-line-strong);
+  color: var(--ui-text-2);
+  font-size: 17px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .gtop__text {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 22px;
-  font-weight: 500;
-  color: var(--ui-text);
+  font-size: 19px;
+  color: var(--ui-text-2);
+}
+
+.gside button:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
 }
 
 .gtop__plaques {
@@ -373,16 +390,10 @@
 
 /* Прогноз заезда. */
 .forecast {
-  margin-top: 8px;
-  padding: 16px 20px;
-  border-radius: 16px;
-  background: var(--ui-d0);
-  box-shadow: inset 4px 0 0 #8fd694;
+  margin-top: 4px;
+  padding: 14px 0;
+  border-block: 1px solid var(--ui-line-strong);
   cursor: help;
-}
-
-.forecast.is-bad {
-  box-shadow: inset 4px 0 0 #ef8a7e;
 }
 
 .forecast__title {
@@ -399,10 +410,32 @@
 }
 
 .forecast__text {
-  margin: 8px 0 0;
+  margin: 0;
   font-size: 21px;
   font-weight: 600;
   line-height: 1.35;
+}
+
+.forecast__result {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.forecast__result .icon {
+  width: 20px;
+  height: 20px;
+  margin-top: 3px;
+  color: var(--ui-accent);
+}
+
+.forecast__label {
+  display: block;
+  color: var(--ui-text-2);
+  font-size: 16px;
+  font-weight: 500;
 }
 
 .forecast__extra {
@@ -423,10 +456,10 @@
 
 .forecast__was {
   margin: 8px 0 0;
+  padding-inline-start: 30px;
   font-size: 17px;
   line-height: 1.35;
-  color: var(--ui-text-3);
-  text-decoration: line-through;
+  color: var(--ui-text-2);
 }
 
 /* Карточки деталей. */
@@ -793,9 +826,24 @@
   flex-direction: column;
   gap: 14px;
   border-radius: 24px;
-  overflow-y: auto;
+  overflow: hidden auto;
+  overscroll-behavior: contain;
   scrollbar-width: thin;
   animation: detail-in var(--ui-enter) var(--ui-ease);
+}
+
+.gdetail > * {
+  flex-shrink: 0;
+}
+
+.gdetail:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+
+.gdetail.is-preview {
+  gap: 10px;
+  padding: 22px;
 }
 
 @keyframes detail-in {
@@ -1018,24 +1066,24 @@
 
 /* Запуск: название — одна строка, подпись «не хватает» — не больше двух строк. */
 .glaunch {
-  flex: none;
-  align-self: center;
-  width: clamp(220px, 18%, 300px);
+  flex: 1.35 1 0;
+  align-self: stretch;
   min-width: 0;
   height: auto;
-  min-height: 76px;
-  padding: 14px 20px;
-  gap: 12px;
-  border-radius: 16px;
-  font-size: 24px;
+  flex-direction: column;
+  padding: 12px;
+  gap: 10px;
+  border-radius: 20px;
+  box-shadow: none;
+  font-size: 22px;
   font-weight: 650;
   white-space: normal;
 }
 
 .glaunch .icon {
   flex: none;
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
 }
 
 .glaunch .wbtn__label {
@@ -1048,9 +1096,7 @@
 }
 
 .glaunch__title {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .glaunch__sub {
